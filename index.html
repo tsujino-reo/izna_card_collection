@@ -22,7 +22,7 @@
 
         /* トリミング調整画面で長押しすると「画像を保存」等のブラウザ標準メニューが
            出てしまうのを防ぐ。select-noneだけでは防げないため明示的に指定する。 */
-        #cropSourceImg, #cropStage {
+        #cameraVideo {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
@@ -170,38 +170,37 @@
     </div>
 
     <!-- 標準カメラ/ギャラリーで撮った写真を、トレカ枠に合わせてドラッグ・ピンチで位置調整して切り出すモーダル -->
-    <input type="file" id="cropSourceInput" accept="image/*" capture="environment" class="file-input-hidden">
+    <input type="file" id="memberPhotoInput" accept="image/*" class="file-input-hidden" onchange="handleMemberPhotoSelected(this)">
 
-    <div id="cropModal" class="fixed inset-0 bg-black flex flex-col hidden z-[70]">
+    <div id="cameraModal" class="fixed inset-0 bg-black flex flex-col hidden z-[70]">
         <div class="flex items-center justify-between p-3 bg-black/80">
-            <span class="text-white text-xs font-bold">📐 枠に合わせて位置調整</span>
-            <button onclick="closeCropModal()" class="text-white text-lg px-2">✕</button>
+            <span class="text-white text-xs font-bold">📸 トレカを枠に合わせて撮影</span>
+            <button onclick="closeCameraCapture()" class="text-white text-lg px-2">✕</button>
         </div>
 
-        <div id="cropStage" class="relative flex-1 overflow-hidden bg-gray-900 touch-none flex items-center justify-center">
-            <div id="cropImgWrapper" style="touch-action: none;">
-                <img id="cropSourceImg" src="" draggable="false" class="block select-none max-w-none">
+        <div class="relative flex-1 overflow-hidden bg-black flex items-center justify-center">
+            <video id="cameraVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+
+            <!-- トレカ比率のガイド枠。中央固定で表示し、枠外を暗くして合わせやすくする -->
+            <div id="cameraGuideOverlay" class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div id="cameraGuideFrame" class="border-2 border-pink-400 rounded-xl shadow-[0_0_0_2000px_rgba(0,0,0,0.55)]" style="aspect-ratio: 2/3; width: 70%; max-height: 80%;"></div>
             </div>
 
-            <!-- トレカ比率(2:3)の切り出しガイド枠。中央固定、枠外を暗くして見やすくする -->
-            <div id="cropGuideOverlay" class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div id="cropGuideFrame" class="border-2 border-pink-400 rounded-xl shadow-[0_0_0_2000px_rgba(0,0,0,0.6)]" style="aspect-ratio: 2/3; width: 70%; max-height: 80%;"></div>
-            </div>
-
-            <button onclick="toggleCropOrientation()" class="absolute top-3 right-3 z-10 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+            <button onclick="toggleCameraOrientation()" class="absolute top-3 right-3 z-10 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
                 🔄 縦/横を切り替え
             </button>
 
-            <canvas id="cropCanvas" class="hidden"></canvas>
+            <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6">
+                トレカを枠の中にきっちり収めてください
+            </p>
+
+            <canvas id="cameraCanvas" class="hidden"></canvas>
         </div>
 
-        <p class="text-center text-white text-[11px] font-bold px-6 py-2 bg-black/80">
-            ドラッグして移動、2本指でピンチして拡大縮小できます
-        </p>
-
-        <div class="flex items-center justify-center gap-4 p-4 bg-black/80">
-            <button onclick="closeCropModal()" class="flex-1 max-w-[120px] bg-gray-800 text-white text-xs font-bold py-3 rounded-xl">キャンセル</button>
-            <button onclick="confirmCrop()" class="flex-1 max-w-[160px] bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold py-3 rounded-xl">この位置で確定</button>
+        <div class="flex items-center justify-center gap-6 p-6 bg-black/80">
+            <button onclick="switchCameraFacing()" class="text-white text-2xl bg-gray-800 rounded-full w-12 h-12 flex items-center justify-center">🔄</button>
+            <button onclick="captureCardPhoto()" class="bg-white rounded-full w-16 h-16 flex items-center justify-center border-4 border-gray-300 active:scale-90 transition-transform"></button>
+            <div class="w-12 h-12"></div>
         </div>
     </div>
 
@@ -250,7 +249,7 @@
                             <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">画像を選択</span>
                         </div>
                     </label>
-                    <button type="button" onclick="startCardCapture('front')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
+                    <button type="button" onclick="openCameraCapture('front')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
                         📸 カメラで撮影
                     </button>
                 </div>
@@ -266,7 +265,7 @@
                             <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">裏面を追加（任意）</span>
                         </div>
                     </label>
-                    <button type="button" onclick="startCardCapture('back')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
+                    <button type="button" onclick="openCameraCapture('back')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
                         📸 カメラで撮影
                     </button>
                 </div>
@@ -454,6 +453,12 @@
                 await loadAppBackground();
             } catch (err) {
                 console.warn("背景画像の読み込みに失敗しました:", err);
+            }
+
+            try {
+                await loadMemberPhotos();
+            } catch (err) {
+                console.warn("メンバー写真の読み込みに失敗しました:", err);
             }
 
             // ここから先は画面表示に必須なので、何があっても必ず実行する
@@ -796,16 +801,85 @@
             updateStorageEstimate();
         }
 
+        // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
+        let memberPhotoUrls = {};
+
+        async function loadMemberPhotos() {
+            for (const m of memberData) {
+                const blob = await getImageBlob("member_" + m.name);
+                if (blob) {
+                    if (memberPhotoUrls[m.name]) URL.revokeObjectURL(memberPhotoUrls[m.name]);
+                    memberPhotoUrls[m.name] = URL.createObjectURL(blob);
+                } else {
+                    memberPhotoUrls[m.name] = null;
+                }
+            }
+        }
+
         function renderTabs() {
             const container = document.getElementById("memberTabs");
-            container.innerHTML = memberData.map(m => `
-                <button onclick="selectMember('${m.name}')" id="tab-${m.name}" 
-                        class="flex items-center gap-2 bg-gray-900 border border-gray-800 text-xs font-bold rounded-xl p-2.5 transition-all active:scale-95 cursor-pointer">
-                    <span class="text-sm">${m.icon}</span>
+            const isAdmin = (currentRole === "admin");
+
+            container.innerHTML = memberData.map(m => {
+                const photoUrl = memberPhotoUrls[m.name];
+                const avatarHtml = photoUrl
+                    ? `<img src="${photoUrl}" class="w-7 h-7 rounded-full object-cover border border-gray-700 shrink-0">`
+                    : `<span class="text-sm">${m.icon}</span>`;
+                const editBtnHtml = isAdmin
+                    ? `<button type="button" onclick="event.stopPropagation(); openMemberPhotoPicker('${m.name}')" class="absolute -top-1 -right-1 w-4 h-4 bg-gray-800 border border-gray-600 rounded-full flex items-center justify-center text-[8px]">📷</button>`
+                    : '';
+
+                // 注意: <button>の中に<button>(editBtnHtml)をネストすると不正なHTMLになり、
+                // ブラウザが構造を予期せず修復してレイアウト崩れや誤クリックを引き起こす。
+                // そのため外側はdiv(role="button")にし、合法な入れ子構造にしている。
+                return `
+                <div onclick="selectMember('${m.name}')" id="tab-${m.name}" role="button" tabindex="0"
+                        class="relative flex items-center gap-2 bg-gray-900 border border-gray-800 text-xs font-bold rounded-xl p-2.5 transition-all active:scale-95 cursor-pointer">
+                    <span class="relative shrink-0">${avatarHtml}${editBtnHtml}</span>
                     <span class="text-gray-300">${m.name}</span>
-                </button>
-            `).join('');
+                </div>
+            `;
+            }).join('');
             updateTabUI();
+        }
+
+        // 管理者がタブの📷ボタンを押した時に、対象メンバーの顔写真選択を開始する
+        let memberPhotoTargetName = null;
+        function openMemberPhotoPicker(memberName) {
+            memberPhotoTargetName = memberName;
+            const input = document.getElementById("memberPhotoInput");
+            input.value = "";
+            input.click();
+        }
+
+        function handleMemberPhotoSelected(input) {
+            const file = input.files[0];
+            if (!file || !memberPhotoTargetName) return;
+
+            const img = new Image();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.onload = async () => {
+                    // 円形アイコン表示に十分な解像度(200x200)に正規化して容量を抑える
+                    const size = 200;
+                    const canvas = document.createElement("canvas");
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext("2d");
+                    // 中央を正方形にクロップして描画
+                    const minSide = Math.min(img.width, img.height);
+                    const sx = (img.width - minSide) / 2;
+                    const sy = (img.height - minSide) / 2;
+                    ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+                    await saveImageBlob("member_" + memberPhotoTargetName, dataUrl);
+                    await loadMemberPhotos();
+                    renderTabs();
+                    console.log(`「${memberPhotoTargetName}」の写真を設定しました`);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function selectMember(name) {
@@ -819,10 +893,10 @@
                 const btn = document.getElementById(`tab-${m.name}`);
                 if (!btn) return;
                 if (m.name === currentMember) {
-                    btn.className = "flex items-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-xs font-black rounded-xl p-2.5 shadow-lg shadow-purple-900/30 cursor-pointer transform scale-[1.02] border-transparent";
+                    btn.className = "relative flex items-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-xs font-black rounded-xl p-2.5 shadow-lg shadow-purple-900/30 cursor-pointer border-transparent";
                     btn.querySelector('span:last-child').className = "text-white font-black";
                 } else {
-                    btn.className = "flex items-center gap-2 bg-gray-900/60 border border-gray-800/80 text-xs font-bold rounded-xl p-2.5 hover:bg-gray-800/50 transition-all cursor-pointer";
+                    btn.className = "relative flex items-center gap-2 bg-gray-900/60 border border-gray-800/80 text-xs font-bold rounded-xl p-2.5 hover:bg-gray-800/50 transition-all cursor-pointer";
                     btn.querySelector('span:last-child').className = "text-gray-400 font-bold";
                 }
             });
@@ -903,7 +977,10 @@
 
             document.getElementById("statsCount").innerText = `${filteredCards.length}枚`;
             const currentTabMobData = memberData.find(m => m.name === currentMember);
-            document.getElementById("currentMemberIcon").innerHTML = currentTabMobData ? currentTabMobData.icon : "👤";
+            const currentPhotoUrl = memberPhotoUrls[currentMember];
+            document.getElementById("currentMemberIcon").innerHTML = currentPhotoUrl
+                ? `<img src="${currentPhotoUrl}" class="w-full h-full object-cover">`
+                : (currentTabMobData ? currentTabMobData.icon : "👤");
 
             albums.forEach(album => {
                 const albumCards = filteredCards.filter(d => d.album === album.name);
@@ -1118,6 +1195,7 @@
 
         function closeModal() {
             document.getElementById("cardModal").classList.add("hidden");
+            stopCameraStream(); // 念のため、カメラが起動したままになっていないか確認して停止
         }
 
         function previewImage(input) {
@@ -1178,87 +1256,78 @@
         }
 
         // ══════════════════════════════════════════════════════════════
-        // トレカ撮影（標準カメラで撮影 → 枠に合わせて位置調整して切り出し）
+        // トレカ撮影（getUserMediaによるリアルタイム枠ガイド撮影）
+        // HTTPS環境（Netlify等）にホスティングされたことで getUserMedia が使用可能になったため、
+        // カメラ映像をリアルタイムに表示し、画面に重ねたガイド枠に合わせて撮影できるようにしている。
         // ══════════════════════════════════════════════════════════════
-        // getUserMedia は file:// では権限エラーになるため、
-        // <input type="file" capture="environment"> でOS標準のカメラを起動し、
-        // 撮った写真をこのアプリ内の調整画面でドラッグ/ピンチして枠に合わせる方式にしている。
-        //
-        // 配置のズレを防ぐため、画像の初期表示位置は CSS(flex centering) に任せ、
-        // JS側は画像を包む cropImgWrapper に対して transform: scale() のみを適用する。
-        // ドラッグ操作も同じ wrapper の translate に乗せるだけなので、座標計算が不要になる。
-        let cropTargetFace = "front"; // "front" or "back"
-        let cropOrientation = "portrait"; // "portrait"(縦) or "landscape"(横)
-        let cropScale = 1, cropMinScale = 0.3, cropMaxScale = 5;
-        let cropTranslateX = 0, cropTranslateY = 0;
-        let cropPointers = new Map();
-        let cropPinchStartDist = 0, cropPinchStartScale = 1;
-        let cropDragStart = null; // {x, y, translateX, translateY}
+        let cameraStream = null;
+        let cameraTargetFace = "front"; // "front" or "back" のどちらに結果を反映するか
+        let cameraFacingMode = "environment"; // "environment"=背面カメラ, "user"=前面カメラ
+        let cameraOrientation = "portrait"; // "portrait"(縦) or "landscape"(横)
 
-        function startCardCapture(targetFace) {
-            cropTargetFace = targetFace;
-            const input = document.getElementById("cropSourceInput");
-            input.onchange = handleCropSourceSelected;
-            input.value = "";
-            input.click();
+        async function openCameraCapture(targetFace) {
+            cameraTargetFace = targetFace;
+            cameraOrientation = "portrait";
+            updateCameraGuideOrientation();
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("お使いの端末・ブラウザはカメラ撮影に対応していません。");
+                return;
+            }
+
+            document.getElementById("cameraModal").classList.remove("hidden");
+            document.getElementById("cameraModal").classList.add("flex");
+
+            await startCameraStream();
         }
 
-        function handleCropSourceSelected(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (ev) => openCropModal(ev.target.result);
-            reader.onerror = () => alert("画像の読み込みに失敗しました。");
-            reader.readAsDataURL(file);
-        }
-
-        function openCropModal(dataUrl) {
-            const modal = document.getElementById("cropModal");
-            const imgEl = document.getElementById("cropSourceImg");
-
-            // 撮影ごとに状態をリセット
-            cropScale = 1;
-            cropTranslateX = 0;
-            cropTranslateY = 0;
-            cropOrientation = "portrait";
-            updateGuideFrameOrientation();
-
-            imgEl.onload = () => {
-                resetCropTransform();
-                attachCropGestureHandlers();
-            };
-            imgEl.onerror = () => {
-                alert("画像の表示に失敗しました。もう一度撮影し直してください。");
-                closeCropModal();
-            };
-
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-            imgEl.src = dataUrl;
-
-            if (imgEl.complete && imgEl.naturalWidth > 0) {
-                resetCropTransform();
-                attachCropGestureHandlers();
+        async function startCameraStream() {
+            stopCameraStream(); // 既存のストリームがあれば先に停止
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: cameraFacingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1920 }
+                    },
+                    audio: false
+                });
+                const video = document.getElementById("cameraVideo");
+                video.srcObject = cameraStream;
+            } catch (err) {
+                console.error("カメラの起動に失敗しました:", err);
+                alert("カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: " + (err && err.message ? err.message : err));
+                closeCameraCapture();
             }
         }
 
-        function closeCropModal() {
-            document.getElementById("cropModal").classList.add("hidden");
-            document.getElementById("cropModal").classList.remove("flex");
-            detachCropGestureHandlers();
-            cropPointers.clear();
+        function stopCameraStream() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+        }
+
+        function switchCameraFacing() {
+            cameraFacingMode = (cameraFacingMode === "environment") ? "user" : "environment";
+            startCameraStream();
+        }
+
+        function closeCameraCapture() {
+            stopCameraStream();
+            document.getElementById("cameraModal").classList.add("hidden");
+            document.getElementById("cameraModal").classList.remove("flex");
         }
 
         // 縦/横の切り替え：ガイド枠のアスペクト比を反転させる
-        function toggleCropOrientation() {
-            cropOrientation = (cropOrientation === "portrait") ? "landscape" : "portrait";
-            updateGuideFrameOrientation();
+        function toggleCameraOrientation() {
+            cameraOrientation = (cameraOrientation === "portrait") ? "landscape" : "portrait";
+            updateCameraGuideOrientation();
         }
 
-        function updateGuideFrameOrientation() {
-            const frame = document.getElementById("cropGuideFrame");
-            if (cropOrientation === "landscape") {
+        function updateCameraGuideOrientation() {
+            const frame = document.getElementById("cameraGuideFrame");
+            if (cameraOrientation === "landscape") {
                 frame.style.aspectRatio = "3/2";
                 frame.style.width = "80%";
                 frame.style.maxHeight = "60%";
@@ -1269,137 +1338,59 @@
             }
         }
 
-        // transformを初期状態（スケール1、移動なし）に戻す。
-        // 画像はimg側のmax-width/max-heightで自動的にステージに収まるよう表示されるため、
-        // JS側で位置計算をする必要がない。
-        function resetCropTransform() {
-            const imgEl = document.getElementById("cropSourceImg");
-            const stage = document.getElementById("cropStage");
-            const stageRect = stage.getBoundingClientRect();
-            const stageH = stageRect.height || (window.innerHeight - 200);
-            const stageW = stageRect.width || window.innerWidth;
+        // 撮影ボタン押下時：video映像のうち、画面上のガイド枠に対応する実ピクセル範囲だけを
+        // canvasに描画して切り出す（クレジットカードスキャナーと同じ考え方）
+        function captureCardPhoto() {
+            const video = document.getElementById("cameraVideo");
+            const frameEl = document.getElementById("cameraGuideFrame");
 
-            // 画像がステージ内に収まる初期表示サイズになるようCSSで制約する
-            imgEl.style.maxWidth = stageW + "px";
-            imgEl.style.maxHeight = stageH + "px";
-            imgEl.style.width = "auto";
-            imgEl.style.height = "auto";
-
-            cropScale = 1;
-            cropTranslateX = 0;
-            cropTranslateY = 0;
-            applyCropTransform();
-        }
-
-        function applyCropTransform() {
-            const wrapper = document.getElementById("cropImgWrapper");
-            wrapper.style.transform = `translate(${cropTranslateX}px, ${cropTranslateY}px) scale(${cropScale})`;
-        }
-
-        // ── ドラッグ／ピンチ操作（Pointer Events で統一的に処理） ──────────────
-        function attachCropGestureHandlers() {
-            const stage = document.getElementById("cropStage");
-            stage.addEventListener("pointerdown", onCropPointerDown);
-            stage.addEventListener("pointermove", onCropPointerMove);
-            stage.addEventListener("pointerup", onCropPointerUp);
-            stage.addEventListener("pointercancel", onCropPointerUp);
-            // 長押しで「画像を保存」等のブラウザ標準メニューが出るのを防ぐ
-            stage.addEventListener("contextmenu", preventCropContextMenu);
-        }
-
-        function preventCropContextMenu(e) {
-            e.preventDefault();
-        }
-
-        function detachCropGestureHandlers() {
-            const stage = document.getElementById("cropStage");
-            stage.removeEventListener("pointerdown", onCropPointerDown);
-            stage.removeEventListener("pointermove", onCropPointerMove);
-            stage.removeEventListener("pointerup", onCropPointerUp);
-            stage.removeEventListener("pointercancel", onCropPointerUp);
-            stage.removeEventListener("contextmenu", preventCropContextMenu);
-        }
-
-        function onCropPointerDown(e) {
-            e.preventDefault();
-            cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-            if (cropPointers.size === 1) {
-                cropDragStart = { x: e.clientX, y: e.clientY, translateX: cropTranslateX, translateY: cropTranslateY };
-            } else if (cropPointers.size === 2) {
-                const pts = Array.from(cropPointers.values());
-                cropPinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-                cropPinchStartScale = cropScale;
-            }
-        }
-
-        function onCropPointerMove(e) {
-            if (!cropPointers.has(e.pointerId)) return;
-            cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-            if (cropPointers.size === 1 && cropDragStart) {
-                const dx = e.clientX - cropDragStart.x;
-                const dy = e.clientY - cropDragStart.y;
-                cropTranslateX = cropDragStart.translateX + dx;
-                cropTranslateY = cropDragStart.translateY + dy;
-                applyCropTransform();
-            } else if (cropPointers.size === 2) {
-                const pts = Array.from(cropPointers.values());
-                const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-                if (cropPinchStartDist > 0) {
-                    cropScale = Math.min(cropMaxScale, Math.max(cropMinScale, cropPinchStartScale * (dist / cropPinchStartDist)));
-                    applyCropTransform();
-                }
-            }
-        }
-
-        function onCropPointerUp(e) {
-            cropPointers.delete(e.pointerId);
-            if (cropPointers.size < 2) cropPinchStartDist = 0;
-            if (cropPointers.size === 0) cropDragStart = null;
-        }
-
-        // 「この位置で確定」：画面上のガイド枠に対応する画像の実ピクセル範囲を切り出す。
-        // wrapperにtransformを適用した「見た目上の画像の表示範囲」を基準に、
-        // 枠の画面座標がimg要素のどの相対位置にあるかを逆算する。
-        function confirmCrop() {
-            const imgEl = document.getElementById("cropSourceImg");
-            const frameEl = document.getElementById("cropGuideFrame");
-
-            const imgRect = imgEl.getBoundingClientRect(); // transform適用後の画面上の表示範囲
-            const frameRect = frameEl.getBoundingClientRect();
-
-            if (imgRect.width === 0 || imgRect.height === 0) {
-                alert("画像の準備中です。少し待ってから再度お試しください。");
+            if (!video.videoWidth || !video.videoHeight) {
+                alert("カメラの準備中です。少し待ってから再度お試しください。");
                 return;
             }
 
-            // 画像の natural サイズに対する、表示上1pxあたりの実ピクセル比率
-            const ratioX = imgEl.naturalWidth / imgRect.width;
-            const ratioY = imgEl.naturalHeight / imgRect.height;
+            // video要素は object-cover で表示されているため、
+            // 画面上の見た目のサイズ・位置から、実際の映像ピクセル座標へ変換する
+            const videoRect = video.getBoundingClientRect();
+            const frameRect = frameEl.getBoundingClientRect();
 
-            const sx = (frameRect.left - imgRect.left) * ratioX;
-            const sy = (frameRect.top - imgRect.top) * ratioY;
-            const sw = frameRect.width * ratioX;
-            const sh = frameRect.height * ratioY;
+            const videoNativeW = video.videoWidth;
+            const videoNativeH = video.videoHeight;
 
-            const canvas = document.getElementById("cropCanvas");
+            // object-cover時の表示倍率（縦横どちらが基準になっているか）を算出
+            const scale = Math.max(videoRect.width / videoNativeW, videoRect.height / videoNativeH);
+            const displayedW = videoNativeW * scale;
+            const displayedH = videoNativeH * scale;
+            // object-coverは中央基準で表示範囲をクロップするので、はみ出た分のオフセットを計算
+            const offsetX = (displayedW - videoRect.width) / 2;
+            const offsetY = (displayedH - videoRect.height) / 2;
+
+            // ガイド枠の画面上位置 → video表示座標系 → video実ピクセル座標系の順に変換
+            const frameLeftInDisplay = (frameRect.left - videoRect.left) + offsetX;
+            const frameTopInDisplay = (frameRect.top - videoRect.top) + offsetY;
+
+            const sx = frameLeftInDisplay / scale;
+            const sy = frameTopInDisplay / scale;
+            const sw = frameRect.width / scale;
+            const sh = frameRect.height / scale;
+
+            const canvas = document.getElementById("cameraCanvas");
             // 縦長/横長で出力解像度を切り替える
-            const outW = (cropOrientation === "landscape") ? 1200 : 800;
-            const outH = (cropOrientation === "landscape") ? 800 : 1200;
+            const outW = (cameraOrientation === "landscape") ? 1200 : 800;
+            const outH = (cameraOrientation === "landscape") ? 800 : 1200;
             canvas.width = outW;
             canvas.height = outH;
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(imgEl, sx, sy, sw, sh, 0, 0, outW, outH);
+            ctx.drawImage(video, sx, sy, sw, sh, 0, 0, outW, outH);
 
             const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            applyCroppedPhoto(dataUrl);
-            closeCropModal();
+            applyCapturedPhoto(dataUrl);
+            closeCameraCapture();
         }
 
         // 切り出した画像を表面/裏面どちらかのプレビューに反映する
-        function applyCroppedPhoto(dataUrl) {
-            if (cropTargetFace === "back") {
+        function applyCapturedPhoto(dataUrl) {
+            if (cameraTargetFace === "back") {
                 currentTempImageUrlBack = dataUrl;
                 removeBackImageFlag = false;
                 const imgPreview = document.getElementById("imgPreviewBack");
@@ -1415,6 +1406,7 @@
                 document.getElementById("imgPlaceholder").classList.add("hidden");
             }
         }
+
 
 
         async function saveCard() {
