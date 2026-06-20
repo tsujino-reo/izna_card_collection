@@ -195,6 +195,8 @@
                 <span id="cameraDetectLabel">枠を認識中...</span>
             </div>
 
+            <div id="cameraDebugInfo" class="absolute top-12 left-3 z-10 bg-black/80 text-emerald-300 text-[9px] font-mono px-2 py-1.5 rounded-lg leading-tight whitespace-pre"></div>
+
             <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6">
                 トレカを枠の中にきっちり収めてください
             </p>
@@ -1550,8 +1552,11 @@
 
                 const found = findCardLikeContour(contours, DETECT_W, DETECT_H);
                 updateAlignmentState(found);
+                renderDetectDebug();
             } catch (err) {
                 console.warn("検出処理でエラーが発生しました:", err);
+                const el = document.getElementById("cameraDebugInfo");
+                if (el) el.innerText = "検出エラー: " + (err && err.message ? err.message : String(err));
             } finally {
                 // OpenCV.jsのMatはJS側のGCが効かないため、明示的に解放する必要がある
                 if (src) src.delete();
@@ -1568,11 +1573,12 @@
         // ガイド枠と近いアスペクト比を持つもの。
         function findCardLikeContour(contours, frameW, frameH) {
             const targetRatio = (cameraOrientation === "landscape") ? (3 / 2) : (2 / 3);
-            const minArea = frameW * frameH * 0.08; // 画面に対してある程度の大きさがあること（さらに緩和）
+            const minArea = frameW * frameH * 0.08;
 
-            // 「一番スコアが良い1つ」だけを見るのではなく、条件を満たす候補が
-            // 1つでもあればOKとする。複数の輪郭(ノイズ含む)が見つかっても、
-            // その中にカードらしいものが紛れていれば検出できるようにする。
+            let candidateCount = 0;
+            let bestDebug = null; // しきい値を満たさなくても、デバッグ表示用に最良候補を記録する
+            let bestDebugScore = Infinity;
+
             for (let i = 0; i < contours.size(); i++) {
                 const cnt = contours.get(i);
                 const area = cv.contourArea(cnt);
@@ -1582,11 +1588,10 @@
                 const perimeter = cv.arcLength(cnt, true);
                 cv.approxPolyDP(cnt, approx, 0.03 * perimeter, true);
 
-                // 実際のカードは反射や手の影で完全な4角形にならないことが多いため、3〜8角まで許容
                 if (approx.rows >= 3 && approx.rows <= 8) {
+                    candidateCount++;
                     const rect = cv.boundingRect(approx);
                     const ratio = rect.width / rect.height;
-                    // 縦長/横長どちらの向きでも一致を試す（カメラの向きで反転することがあるため）
                     const ratioDiff = Math.min(
                         Math.abs(ratio - targetRatio),
                         Math.abs(ratio - 1 / targetRatio)
@@ -1597,15 +1602,20 @@
                     const centerDist = Math.hypot(cx - frameW / 2, cy - frameH / 2) / Math.max(frameW, frameH);
                     const areaRatio = area / (frameW * frameH);
 
+                    const debugScore = ratioDiff + centerDist;
+                    if (debugScore < bestDebugScore) {
+                        bestDebugScore = debugScore;
+                        bestDebug = { ratioDiff, centerDist, areaRatio, corners: approx.rows };
+                    }
+
                     approx.delete();
                     cnt.delete();
 
-                    // 条件を満たす候補が見つかった時点で即座にOKとする
                     if (ratioDiff < 0.45 && centerDist < 0.35 && areaRatio > 0.10) {
-                        // 残りの輪郭も解放する必要があるため、ループを抜けつつ後始末する
                         for (let j = i + 1; j < contours.size(); j++) {
                             contours.get(j).delete();
                         }
+                        lastDetectDebug = { candidateCount, best: bestDebug, matched: true };
                         return true;
                     }
                     continue;
@@ -1614,7 +1624,27 @@
                 cnt.delete();
             }
 
+            lastDetectDebug = { candidateCount, best: bestDebug, matched: false };
             return false;
+        }
+
+        let lastDetectDebug = null;
+
+        function renderDetectDebug() {
+            const el = document.getElementById("cameraDebugInfo");
+            if (!el) return;
+            if (!lastDetectDebug) { el.innerText = ""; return; }
+            const { candidateCount, best } = lastDetectDebug;
+            if (!best) {
+                el.innerText = `候補輪郭: 0件\n(四角形が見つかっていません)`;
+            } else {
+                el.innerText =
+                    `候補輪郭: ${candidateCount}件\n` +
+                    `角数: ${best.corners}\n` +
+                    `比率差: ${best.ratioDiff.toFixed(2)} (基準<0.45)\n` +
+                    `中心距離: ${best.centerDist.toFixed(2)} (基準<0.35)\n` +
+                    `面積比: ${best.areaRatio.toFixed(2)} (基準>0.10)`;
+            }
         }
 
         function updateAlignmentState(found) {
