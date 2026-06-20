@@ -190,11 +190,17 @@
                 🔄 縦/横を切り替え
             </button>
 
+            <div id="cameraDetectStatus" class="absolute top-3 left-3 z-10 bg-black/70 text-gray-400 text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                <span id="cameraDetectDot" class="w-2 h-2 rounded-full bg-gray-500"></span>
+                <span id="cameraDetectLabel">枠を認識中...</span>
+            </div>
+
             <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6">
                 トレカを枠の中にきっちり収めてください
             </p>
 
             <canvas id="cameraCanvas" class="hidden"></canvas>
+            <canvas id="cameraDetectCanvas" class="hidden"></canvas>
         </div>
 
         <div class="flex items-center justify-center gap-6 p-6 bg-black/80">
@@ -1269,6 +1275,7 @@
             cameraTargetFace = targetFace;
             cameraOrientation = "portrait";
             updateCameraGuideOrientation();
+            setDetectStatus("loading", "画像認識を準備中...");
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert("お使いの端末・ブラウザはカメラ撮影に対応していません。");
@@ -1279,6 +1286,16 @@
             document.getElementById("cameraModal").classList.add("flex");
 
             await startCameraStream();
+
+            // OpenCV.jsの読み込みは数秒かかるため、カメラ起動と並行して進める。
+            // 読み込み中は検出を行わず、完了後にループを開始する。
+            try {
+                await ensureOpenCvLoaded();
+                startCardDetectionLoop();
+            } catch (err) {
+                console.error("OpenCV.jsの読み込みに失敗しました:", err);
+                setDetectStatus("error", "枠認識は利用できません（撮影は可能です）");
+            }
         }
 
         async function startCameraStream() {
@@ -1315,6 +1332,7 @@
 
         function closeCameraCapture() {
             stopCameraStream();
+            stopCardDetectionLoop();
             document.getElementById("cameraModal").classList.add("hidden");
             document.getElementById("cameraModal").classList.remove("flex");
         }
@@ -1323,6 +1341,8 @@
         function toggleCameraOrientation() {
             cameraOrientation = (cameraOrientation === "portrait") ? "landscape" : "portrait";
             updateCameraGuideOrientation();
+            isCardAligned = false; // 比率が変わるため判定をリセット
+            if (cardDetectionTimer) setDetectStatus("searching", "枠に合わせてください");
         }
 
         function updateCameraGuideOrientation() {
@@ -1404,6 +1424,192 @@
                 imgPreview.src = dataUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // カード輪郭検出（OpenCV.js）
+        // カメラ映像から定期的にフレームを取得し、エッジ検出→輪郭抽出→四角形判定を行い、
+        // 検出した輪郭がガイド枠の位置・サイズに十分近ければ枠の色を緑にする。
+        // OpenCV.jsは数MBあるため、撮影モーダルを開いたタイミングで初めて読み込む（遅延読み込み）。
+        // ══════════════════════════════════════════════════════════════
+        let openCvLoadPromise = null;
+        let cardDetectionTimer = null;
+        let isCardAligned = false;
+
+        function ensureOpenCvLoaded() {
+            if (window.cv && window.cv.Mat) return Promise.resolve();
+            if (openCvLoadPromise) return openCvLoadPromise;
+
+            openCvLoadPromise = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = "https://docs.opencv.org/4.9.0/opencv.js";
+                script.async = true;
+                script.onload = () => {
+                    // opencv.jsはWASM初期化が非同期なため、cv.onRuntimeInitializedを待つ
+                    if (window.cv && window.cv.onRuntimeInitialized !== undefined) {
+                        window.cv.onRuntimeInitialized = () => resolve();
+                    } else if (window.cv && window.cv.Mat) {
+                        resolve();
+                    } else {
+                        // 念のためポーリングでも待つ
+                        const checkInterval = setInterval(() => {
+                            if (window.cv && window.cv.Mat) {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                        setTimeout(() => { clearInterval(checkInterval); reject(new Error("OpenCV.js初期化タイムアウト")); }, 15000);
+                    }
+                };
+                script.onerror = () => reject(new Error("OpenCV.jsの読み込みに失敗しました"));
+                document.head.appendChild(script);
+            });
+
+            return openCvLoadPromise;
+        }
+
+        function setDetectStatus(state, label) {
+            const dot = document.getElementById("cameraDetectDot");
+            const labelEl = document.getElementById("cameraDetectLabel");
+            const frame = document.getElementById("cameraGuideFrame");
+            if (!dot || !labelEl || !frame) return;
+
+            labelEl.innerText = label;
+            if (state === "aligned") {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                frame.style.borderColor = "#34d399"; // emerald-400
+                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55), 0 0 16px 2px rgba(52,211,153,0.7)";
+            } else if (state === "searching") {
+                dot.className = "w-2 h-2 rounded-full bg-pink-400";
+                frame.style.borderColor = "#f472b6"; // pink-400
+                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
+            } else if (state === "error") {
+                dot.className = "w-2 h-2 rounded-full bg-gray-500";
+                frame.style.borderColor = "#f472b6";
+                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
+            } else { // loading
+                dot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-pulse";
+                frame.style.borderColor = "#f472b6";
+                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
+            }
+        }
+
+        function startCardDetectionLoop() {
+            stopCardDetectionLoop();
+            setDetectStatus("searching", "枠に合わせてください");
+            // 200ms間隔で検出（処理負荷とレスポンスのバランス）
+            cardDetectionTimer = setInterval(runCardDetection, 200);
+        }
+
+        function stopCardDetectionLoop() {
+            if (cardDetectionTimer) {
+                clearInterval(cardDetectionTimer);
+                cardDetectionTimer = null;
+            }
+            isCardAligned = false;
+        }
+
+        // 1回分の検出処理：videoから縮小フレームを取得し、グレースケール→ぼかし→エッジ検出→
+        // 輪郭抽出を行い、画面中央付近にあり、ガイド枠と近いサイズ・比率の四角形があるかを判定する。
+        function runCardDetection() {
+            const video = document.getElementById("cameraVideo");
+            if (!video.videoWidth || !video.videoHeight) return;
+            if (!window.cv || !window.cv.Mat) return;
+
+            const detectCanvas = document.getElementById("cameraDetectCanvas");
+            // 処理負荷を抑えるため、検出用には縮小した解像度を使う
+            const DETECT_W = 320;
+            const DETECT_H = Math.round((video.videoHeight / video.videoWidth) * DETECT_W);
+            detectCanvas.width = DETECT_W;
+            detectCanvas.height = DETECT_H;
+            const ctx = detectCanvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, DETECT_W, DETECT_H);
+
+            let src, gray, blurred, edges, contours, hierarchy;
+            try {
+                src = cv.imread(detectCanvas);
+                gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                blurred = new cv.Mat();
+                cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+
+                edges = new cv.Mat();
+                cv.Canny(blurred, edges, 50, 150);
+
+                contours = new cv.MatVector();
+                hierarchy = new cv.Mat();
+                cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+                const found = findCardLikeContour(contours, DETECT_W, DETECT_H);
+                updateAlignmentState(found);
+            } catch (err) {
+                console.warn("検出処理でエラーが発生しました:", err);
+            } finally {
+                // OpenCV.jsのMatはJS側のGCが効かないため、明示的に解放する必要がある
+                if (src) src.delete();
+                if (gray) gray.delete();
+                if (blurred) blurred.delete();
+                if (edges) edges.delete();
+                if (contours) contours.delete();
+                if (hierarchy) hierarchy.delete();
+            }
+        }
+
+        // 検出した輪郭群の中から「カードらしい四角形」を探す。
+        // 条件: 4〜6角形に近似でき、画面中央付近にあり、面積が一定以上で、
+        // ガイド枠と近いアスペクト比を持つもの。
+        function findCardLikeContour(contours, frameW, frameH) {
+            const targetRatio = (cameraOrientation === "landscape") ? (3 / 2) : (2 / 3);
+            const minArea = frameW * frameH * 0.12; // 画面に対してある程度の大きさがあること
+            let best = null;
+            let bestScore = Infinity;
+
+            for (let i = 0; i < contours.size(); i++) {
+                const cnt = contours.get(i);
+                const area = cv.contourArea(cnt);
+                if (area < minArea) { cnt.delete(); continue; }
+
+                const approx = new cv.Mat();
+                const perimeter = cv.arcLength(cnt, true);
+                cv.approxPolyDP(cnt, approx, 0.02 * perimeter, true);
+
+                if (approx.rows >= 4 && approx.rows <= 6) {
+                    const rect = cv.boundingRect(approx);
+                    const ratio = rect.width / rect.height;
+                    const ratioDiff = Math.abs(ratio - targetRatio);
+
+                    // 輪郭の中心が画面中央付近にあるか
+                    const cx = rect.x + rect.width / 2;
+                    const cy = rect.y + rect.height / 2;
+                    const centerDist = Math.hypot(cx - frameW / 2, cy - frameH / 2) / Math.max(frameW, frameH);
+
+                    // スコアが低いほど「カードらしい」（比率の近さ＋中心からの距離）
+                    const score = ratioDiff * 2 + centerDist;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        best = { ratioDiff, centerDist, area, areaRatio: area / (frameW * frameH) };
+                    }
+                }
+                approx.delete();
+                cnt.delete();
+            }
+
+            // 比率のズレが小さく、中心に近く、十分な大きさがあれば「合っている」と判定
+            if (best && best.ratioDiff < 0.18 && best.centerDist < 0.18 && best.areaRatio > 0.25) {
+                return true;
+            }
+            return false;
+        }
+
+        function updateAlignmentState(found) {
+            if (found === isCardAligned) return; // 状態が変わった時だけUI更新
+            isCardAligned = found;
+            if (found) {
+                setDetectStatus("aligned", "✓ ぴったり合っています");
+            } else {
+                setDetectStatus("searching", "枠に合わせてください");
             }
         }
 
