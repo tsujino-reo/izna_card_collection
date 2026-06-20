@@ -1342,6 +1342,8 @@
             cameraOrientation = (cameraOrientation === "portrait") ? "landscape" : "portrait";
             updateCameraGuideOrientation();
             isCardAligned = false; // 比率が変わるため判定をリセット
+            alignedStreak = 0;
+            notAlignedStreak = 0;
             if (cardDetectionTimer) setDetectStatus("searching", "枠に合わせてください");
         }
 
@@ -1436,6 +1438,8 @@
         let openCvLoadPromise = null;
         let cardDetectionTimer = null;
         let isCardAligned = false;
+        let alignedStreak = 0;    // 連続で「合っている」と判定された回数
+        let notAlignedStreak = 0; // 連続で「合っていない」と判定された回数
 
         function ensureOpenCvLoaded() {
             if (window.cv && window.cv.Mat) return Promise.resolve();
@@ -1499,7 +1503,7 @@
             stopCardDetectionLoop();
             setDetectStatus("searching", "枠に合わせてください");
             // 200ms間隔で検出（処理負荷とレスポンスのバランス）
-            cardDetectionTimer = setInterval(runCardDetection, 200);
+            cardDetectionTimer = setInterval(runCardDetection, 150);
         }
 
         function stopCardDetectionLoop() {
@@ -1508,6 +1512,8 @@
                 cardDetectionTimer = null;
             }
             isCardAligned = false;
+            alignedStreak = 0;
+            notAlignedStreak = 0;
         }
 
         // 1回分の検出処理：videoから縮小フレームを取得し、グレースケール→ぼかし→エッジ検出→
@@ -1597,18 +1603,30 @@
             }
 
             // 比率のズレが小さく、中心に近く、十分な大きさがあれば「合っている」と判定
-            if (best && best.ratioDiff < 0.18 && best.centerDist < 0.18 && best.areaRatio > 0.25) {
+            // ※以前は厳しすぎて緑になる瞬間がほぼ無かったため、しきい値を大幅に緩めている
+            if (best && best.ratioDiff < 0.35 && best.centerDist < 0.30 && best.areaRatio > 0.15) {
                 return true;
             }
             return false;
         }
 
         function updateAlignmentState(found) {
-            if (found === isCardAligned) return; // 状態が変わった時だけUI更新
-            isCardAligned = found;
             if (found) {
-                setDetectStatus("aligned", "✓ ぴったり合っています");
+                alignedStreak++;
+                notAlignedStreak = 0;
             } else {
+                notAlignedStreak++;
+                alignedStreak = 0;
+            }
+
+            // 緑になるのは2フレーム連続でOKなら十分（反応を良くする）。
+            // 一方、緑から外れるのは4フレーム連続でNGになった時だけにして、
+            // 手ブレや一瞬の誤検出で頻繁にピンクへ戻る「チラつき」を防ぐ。
+            if (!isCardAligned && alignedStreak >= 2) {
+                isCardAligned = true;
+                setDetectStatus("aligned", "✓ ぴったり合っています");
+            } else if (isCardAligned && notAlignedStreak >= 4) {
+                isCardAligned = false;
                 setDetectStatus("searching", "枠に合わせてください");
             }
         }
