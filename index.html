@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>izna Photocard Archive</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <style>
+        body { 
+            background-image: radial-gradient(circle at center, #1a1c2e 0%, #090a0f 100%); 
+            color: #f1f5f9; 
+            font-family: system-ui, sans-serif;
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+        }
+        input, select, button { color: #ffffff !important; }
+        input::placeholder { color: #64748b !important; }
+        .card-shadow { box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.2), 0 8px 10px -6px rgba(236, 72, 153, 0.2); }
+        #imgLabel { border: 2px dashed #4b5563; transition: all 0.3s; }
+
+        /* トリミング調整画面で長押しすると「画像を保存」等のブラウザ標準メニューが
+           出てしまうのを防ぐ。select-noneだけでは防げないため明示的に指定する。 */
+        #cropSourceImg, #cropStage {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #imgLabel:hover { border-color: #ec4899; background-color: #111827; }
+
+        /* ファイル入力をdisplay:noneではなく不可視化することで、
+           一部のモバイルブラウザでchangeイベントが発火しない問題を回避 */
+        .file-input-hidden {
+            position: absolute;
+            width: 1px; height: 1px;
+            opacity: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* ドラッグ中のスタイル */
+        .sortable-ghost { opacity: 0.3; background: #4c1d95 !important; }
+        .sortable-drag { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+
+        /* アルバム背景エリア：ブロック全体に背景画像を表示。
+           min-heightで最小の高さを保証することで、トレカの枚数が少ないメンバーに
+           切り替えても背景の見え方（高さ）が大きく変わらないようにしている。
+           枚数が多い場合はmin-heightを超えて自然に伸びる。 */
+        .album-container-bg {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            min-height: 260px;
+        }
+    </style>
+</head>
+<body id="appBody" class="p-3 min-h-screen pb-24">
+
+    <div class="max-w-md mx-auto">
+        <header class="flex justify-between items-center border-b border-gray-800 pb-3 mb-4 bg-black/40 p-2 rounded-xl backdrop-blur-md">
+            <div>
+                <h1 class="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-rose-400">izna ARCHIVE</h1>
+                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Photocard Collection</p>
+            </div>
+            
+            <div class="flex items-center gap-1.5">
+                <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
+                    🏞️ 背景
+                    <input type="file" id="bgImageInput" accept="image/*" class="file-input-hidden" onchange="changeAppBackground(this)">
+                </label>
+                <button id="resetBgBtn" onclick="resetAppBackground()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold transition-colors" title="背景をリセット">↺</button>
+                <div class="relative">
+                    <button onclick="toggleExportMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold transition-colors">💾 出力</button>
+                    <div id="exportMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-44">
+                        <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🖼️ フル出力（画像含む）
+                        </button>
+                        <button onclick="exportData(false)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors">
+                            📝 メタデータのみ（軽量）
+                        </button>
+                    </div>
+                </div>
+                <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
+                    📥 読込
+                    <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
+                </label>
+                
+                <select id="roleSelect" onchange="changeRole()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">
+                    <option value="admin">👑 管理</option>
+                    <option value="editor">✍️ 編集</option>
+                    <option value="viewer">👁️ 閲覧</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="storageSection" class="mb-3 px-1">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">💾 ブラウザストレージ使用量</span>
+                <span id="storageLabel" class="text-[9px] text-gray-400 font-bold"></span>
+            </div>
+            <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div id="storageBar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div id="filterSection" class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
+            
+            <div class="space-y-2 relative z-10">
+                <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
+                       class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
+                
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <label class="text-[9px] text-gray-500 font-black uppercase tracking-wider">SORT ORDER</label>
+                    <select id="sortSelect" onchange="renderApp()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 text-gray-300">
+                        <option value="custom">↕ 並び順 (ドラッグ可)</option>
+                        <option value="newest">📅 新しい順</option>
+                        <option value="oldest">📅 古い順</option>
+                        <option value="theme">🔤 テーマ名順</option>
+                    </select>
+                </div>
+            </div>
+            
+            <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mt-3 mb-1.5 relative z-10">MEMBER SELECT</label>
+            <div class="grid grid-cols-2 gap-2 relative z-10" id="memberTabs"></div>
+        </div>
+
+        <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/80 p-2 rounded-xl border border-gray-800/60 backdrop-blur-md shadow-md">
+            <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
+                <div id="currentMemberIcon" class="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center text-[10px]">👤</div>
+                <div>
+                    <span id="currentMemberName" class="text-white text-sm font-black pb-0.5"></span> の図鑑 
+                    <span id="statsCount" class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded-full ml-1">0枚</span>
+                </div>
+            </div>
+            <div class="flex gap-1.5 items-center">
+                <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
+                    ☑ 複数選択
+                </button>
+                <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
+                    💿 アルバム管理
+                </button>
+                <button id="addBtn" onclick="openModal()" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
+                    ＋ 新規トレカ追加
+                </button>
+            </div>
+        </div>
+
+        <div id="multiSelectBar" class="hidden mb-3 bg-purple-950/80 border border-purple-700/50 p-2 rounded-xl flex items-center justify-between backdrop-blur-md">
+            <span id="selectedCount" class="text-[11px] text-purple-200 font-bold">0枚を選択中</span>
+            <div class="flex gap-2">
+                <button onclick="selectAllCards()" class="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-1 rounded-lg">全選択</button>
+                <button onclick="openBulkMoveModal()" class="text-[10px] text-blue-300 font-bold bg-blue-900/40 px-2 py-1 rounded-lg">移動</button>
+                <button onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
+                <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
+            </div>
+        </div>
+
+        <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/30 border border-pink-900/40 rounded-2xl p-3 backdrop-blur-md">
+            <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
+            <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
+        </div>
+
+        <div id="galleryContainer" class="space-y-6 pb-10"></div>
+    </div>
+
+    <!-- 標準カメラ/ギャラリーで撮った写真を、トレカ枠に合わせてドラッグ・ピンチで位置調整して切り出すモーダル -->
+    <input type="file" id="cropSourceInput" accept="image/*" capture="environment" class="file-input-hidden">
+
+    <div id="cropModal" class="fixed inset-0 bg-black flex flex-col hidden z-[70]">
+        <div class="flex items-center justify-between p-3 bg-black/80">
+            <span class="text-white text-xs font-bold">📐 枠に合わせて位置調整</span>
+            <button onclick="closeCropModal()" class="text-white text-lg px-2">✕</button>
+        </div>
+
+        <div id="cropStage" class="relative flex-1 overflow-hidden bg-gray-900 touch-none flex items-center justify-center">
+            <div id="cropImgWrapper" style="touch-action: none;">
+                <img id="cropSourceImg" src="" draggable="false" class="block select-none max-w-none">
+            </div>
+
+            <!-- トレカ比率(2:3)の切り出しガイド枠。中央固定、枠外を暗くして見やすくする -->
+            <div id="cropGuideOverlay" class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div id="cropGuideFrame" class="border-2 border-pink-400 rounded-xl shadow-[0_0_0_2000px_rgba(0,0,0,0.6)]" style="aspect-ratio: 2/3; width: 70%; max-height: 80%;"></div>
+            </div>
+
+            <button onclick="toggleCropOrientation()" class="absolute top-3 right-3 z-10 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+                🔄 縦/横を切り替え
+            </button>
+
+            <canvas id="cropCanvas" class="hidden"></canvas>
+        </div>
+
+        <p class="text-center text-white text-[11px] font-bold px-6 py-2 bg-black/80">
+            ドラッグして移動、2本指でピンチして拡大縮小できます
+        </p>
+
+        <div class="flex items-center justify-center gap-4 p-4 bg-black/80">
+            <button onclick="closeCropModal()" class="flex-1 max-w-[120px] bg-gray-800 text-white text-xs font-bold py-3 rounded-xl">キャンセル</button>
+            <button onclick="confirmCrop()" class="flex-1 max-w-[160px] bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold py-3 rounded-xl">この位置で確定</button>
+        </div>
+    </div>
+
+    <div id="bulkMoveModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📦 まとめて移動</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">移動先メンバー</label>
+                    <select id="bulkMoveMember" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                </div>
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">移動先アルバム</label>
+                    <select id="bulkMoveAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                </div>
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">移動先カテゴリ</label>
+                    <select id="bulkMoveCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                        <option value="アルバム封入">💿 アルバム封入</option>
+                        <option value="ラキドロ・店舗特典">🏪 ラキドロ・店舗特典</option>
+                        <option value="サノク・サイン会">🤝 サノク・サイン会</option>
+                        <option value="その他">✨ その他</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
+                <button onclick="closeBulkMoveModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">キャンセル</button>
+                <button onclick="confirmBulkMove()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white">移動する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 id="modalTitle" class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">トレカアーカイブ登録</h3>
+            <input type="hidden" id="editIndex">
+            
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">トレカ画像（表面） <span class="text-rose-500 font-black">*必須</span></label>
+                    <input type="file" id="formImage" accept="image/*" class="file-input-hidden" onchange="previewImage(this)">
+                    <label id="imgLabel" for="formImage" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group">
+                        <img id="imgPreview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                        <div id="imgPlaceholder" class="flex flex-col items-center justify-center gap-1.5">
+                            <span class="text-2xl">📷</span>
+                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">画像を選択</span>
+                        </div>
+                    </label>
+                    <button type="button" onclick="startCardCapture('front')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
+                        📸 カメラで撮影
+                    </button>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">トレカ画像（裏面） <span class="text-gray-600 font-bold">任意</span></label>
+                    <input type="file" id="formImageBack" accept="image/*" class="file-input-hidden" onchange="previewImageBack(this)">
+                    <label id="imgLabelBack" for="formImageBack" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group">
+                        <img id="imgPreviewBack" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                        <button type="button" id="removeBackBtn" onclick="event.preventDefault(); event.stopPropagation(); removeBackImage()" class="hidden absolute top-1 right-1 z-20 bg-black/70 hover:bg-rose-900 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+                        <div id="imgPlaceholderBack" class="flex flex-col items-center justify-center gap-1.5">
+                            <span class="text-2xl">🔄</span>
+                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">裏面を追加（任意）</span>
+                        </div>
+                    </label>
+                    <button type="button" onclick="startCardCapture('back')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
+                        📸 カメラで撮影
+                    </button>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">メンバー</label>
+                    <select id="formMember" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">アルバム</label>
+                    <select id="formAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">種類</label>
+                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                        <option value="アルバム封入">💿 アルバム封入</option>
+                        <option value="ラキドロ・店舗特典">🏪 ラキドロ・店舗特典</option>
+                        <option value="サノク・サイン会">🤝 サノク・サイン会</option>
+                        <option value="その他">✨ その他</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">テーマ (例: AWAKENING Ver.A)</label>
+                    <input type="text" id="formTheme" list="formThemeList" placeholder="トレカの名称やバージョン名" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                    <datalist id="formThemeList"></datalist>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 font-bold block mb-1">検索タグ <span class="text-gray-600 font-bold">任意・スペース区切り</span></label>
+                    <input type="text" id="formTags" placeholder="例: ウインク 私服 ぬいぐるみ" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                    <p class="text-[9px] text-gray-500 mt-1">ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
+                <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">閉じる</button>
+                <button onclick="saveCard()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center hidden p-4 z-50" onclick="closePreviewModal()">
+        <div class="bg-gray-950/95 border border-purple-900/50 rounded-2xl max-w-xs w-full p-4 card-shadow text-center space-y-4" onclick="event.stopPropagation()">
+            <div id="viewModalImgWrap" onclick="toggleViewModalFace()" class="w-full aspect-[2/3] max-w-[200px] mx-auto bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow-2xl flex items-center justify-center relative cursor-pointer">
+                <img id="viewModalImg" src="" class="w-full h-full object-cover hidden">
+                <span id="viewModalNoImgIcon" class="text-4xl text-gray-700 hidden">📸</span>
+                <div id="viewModalFlipHint" class="hidden absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] font-bold px-2 py-1 rounded-full">🔄 タップして裏面</div>
+            </div>
+            <div class="text-left space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800/80">
+                <div><span class="text-[9px] text-purple-400 font-bold tracking-widest block uppercase">MEMBER</span><p id="viewModalMember" class="text-xs font-black text-white"></p></div>
+                <div><span class="text-[9px] text-pink-400 font-bold tracking-widest block uppercase">ALBUM</span><p id="viewModalAlbum" class="text-[11px] font-bold text-gray-200 truncate"></p></div>
+                <div><span class="text-[9px] text-rose-400 font-bold tracking-widest block uppercase">CATEGORY</span><p id="viewModalCategory" class="text-xs font-medium text-gray-300"></p></div>
+                <div><span class="text-[9px] text-emerald-400 font-bold tracking-widest block uppercase">THEME</span><p id="viewModalTheme" class="text-sm font-black text-white"></p></div>
+                <div id="viewModalTagsRow" class="hidden">
+                    <span class="text-[9px] text-sky-400 font-bold tracking-widest block uppercase">TAGS</span>
+                    <div id="viewModalTags" class="flex flex-wrap gap-1 mt-1"></div>
+                </div>
+            </div>
+            <button onclick="closePreviewModal()" class="w-full py-2 bg-gradient-to-r from-purple-900 to-pink-900 text-white font-bold text-xs rounded-xl border border-purple-700/30 active:scale-95 transition-transform">閉じる</button>
+        </div>
+    </div>
+
+    <div id="albumModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">💿 アルバム管理</h3>
+            <div id="albumList" class="space-y-3 mb-4 text-xs"></div>
+            <div class="border-t border-gray-800 pt-4 space-y-2">
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">新規アルバムを追加</p>
+                <input type="text" id="newAlbumName" placeholder="アルバム名 (例: Set The Tempo)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                
+                <div class="flex items-center gap-2">
+                    <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] rounded-lg px-3 py-2 font-bold cursor-pointer transition-colors shrink-0">
+                        📁 背景画像を選択
+                        <input type="file" id="newAlbumCoverFile" accept="image/*" class="file-input-hidden" onchange="previewAlbumCoverNew(this)">
+                    </label>
+                    <span id="newAlbumCoverStatus" class="text-[10px] text-gray-500 truncate">未選択</span>
+                </div>
+
+                <button onclick="addAlbum()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">＋ 追加</button>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="undoBar" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 border border-purple-700/50 text-white text-xs font-bold rounded-full pl-4 pr-2 py-2 items-center gap-3 shadow-2xl z-[60]">
+        <span id="undoMessage">削除しました</span>
+        <button onclick="undoLastDelete()" class="bg-purple-700 hover:bg-purple-600 text-white rounded-full px-3 py-1 text-[11px] font-black transition-colors">↩ 元に戻す</button>
+    </div>
+
+    <script>
+        const memberData = [
+            { name: "マイ", icon: "🐈‍⬛" },
+            { name: "ジミン", icon: "🐶" },
+            { name: "ジユン", icon: "🐥" },
+            { name: "ココ", icon: "🐰" },
+            { name: "サラン", icon: "🦊" },
+            { name: "ジョンウン", icon: "🐹" },
+            { name: "セビ", icon: "🐯" },
+            { name: "ユニット", icon: "✨" }
+        ];
+
+        const categories = ["アルバム封入", "ラキドロ・店舗特典", "サノク・サイン会", "その他"];
+
+        const DEFAULT_ALBUMS = [
+            { name: "N/a", coverUrl: "" },
+            { name: "BEEP", coverUrl: "" },
+            { name: "Not Just Pretty", coverUrl: "" },
+            { name: "Set The Tempo", coverUrl: "" }
+        ];
+
+        const STORAGE_KEY_ALBUMS = "izna_albums_v3";
+        
+        let pcData = [];
+        let albums = [];
+        let currentMember = "マイ";
+        let currentRole = "admin";
+        let currentTempImageUrl = "";
+        let currentTempImageUrlBack = "";
+        let removeBackImageFlag = false; // 編集時に既存の裏面画像を削除する意図を示すフラグ
+        let currentTempAlbumCoverUrl = "";
+
+        // ── 複数選択モード用の状態 ───────────────────────────────────
+        let isMultiSelectMode = false;
+        let selectedCardIds = new Set();
+
+        // ── 削除Undo用の状態 ─────────────────────────────────────────
+        let lastDeletedSnapshot = null; // { cards: [...], images: Map<id, dataUrl> }
+        let undoTimer = null;
+
+        // 【修正5】生成済みSortableインスタンスを保持し、再描画前に破棄するためのレジストリ
+        let sortableInstances = [];
+
+        const DB_NAME = "iznaArchiveDB_v3";
+        const DB_VERSION = 3;
+        const STORE_NAME = "cards";
+        const IMAGE_STORE_NAME = "images";
+        const SETTINGS_STORE_NAME = "settings";
+        let db;
+
+        // 画像ObjectURLは使い終わったら解放するため、発行済みURLを記録しておく
+        let issuedObjectUrls = new Set();
+        let currentBgObjectUrl = null;
+
+        async function init() {
+            let dbReady = false;
+            try {
+                await openDB();
+                dbReady = true;
+            } catch (err) {
+                console.error("DBの初期化に失敗しました:", err);
+            }
+
+            if (!dbReady || !db) {
+                // データベースに接続できない場合、中途半端に動かして保存時に
+                // クラッシュするより、ここで明確に状況を伝えて止める。
+                document.body.innerHTML = `
+                    <div style="padding:24px; text-align:center; color:#f1f5f9;">
+                        <p style="font-size:14px; font-weight:bold; margin-bottom:12px;">⚠️ データベースに接続できませんでした</p>
+                        <p style="font-size:12px; color:#9ca3af; line-height:1.6;">
+                            他のタブで同じファイルが開かれていると、データベースの初期化がブロックされることがあります。<br><br>
+                            このタブ以外で開いている「izna ARCHIVE」のタブをすべて閉じてから、もう一度このページを再読み込みしてください。
+                        </p>
+                        <button onclick="location.reload()" style="margin-top:16px; background:linear-gradient(to right,#9333ea,#ec4899); color:white; font-weight:bold; padding:10px 20px; border-radius:12px; border:none; font-size:12px;">再読み込み</button>
+                    </div>
+                `;
+                return;
+            }
+
+            loadSavedRole();
+            loadAlbumsToApp();
+
+            try {
+                await loadPCData();
+            } catch (err) {
+                console.error("カードデータの読み込みに失敗しました:", err);
+                pcData = [];
+            }
+
+            try {
+                await loadAppBackground();
+            } catch (err) {
+                console.warn("背景画像の読み込みに失敗しました:", err);
+            }
+
+            // ここから先は画面表示に必須なので、何があっても必ず実行する
+            renderTabs();
+            updateFormSelectOptions();
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                // 万一どのイベントも発火しない場合に備えたフェイルセーフ（5秒）
+                const timeoutId = setTimeout(() => {
+                    if (!settled) {
+                        settled = true;
+                        reject(new Error("データベースの接続がタイムアウトしました"));
+                    }
+                }, 5000);
+
+                request.onupgradeneeded = (e) => {
+                    db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                    }
+                    if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+                        db.createObjectStore(IMAGE_STORE_NAME, { keyPath: "id" });
+                    }
+                    if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
+                        db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: "key" });
+                    }
+                };
+                request.onsuccess = (e) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timeoutId);
+                    db = e.target.result;
+                    // 他のタブが古いバージョンのDBを開いたままだと将来のアップグレードがブロックされるため、
+                    // versionchangeを検知したらこのタブの接続を閉じてリロードを促す
+                    db.onversionchange = () => {
+                        db.close();
+                        alert("アプリが更新されました。ページを再読み込みしてください。");
+                    };
+                    resolve(db);
+                };
+                request.onblocked = () => {
+                    console.warn("DBのアップグレードが他のタブによりブロックされました");
+                    // resolve/rejectしない: onsuccessが後から発火する可能性があるため待つ。
+                    // ただしユーザーには状況を伝える。
+                    alert("他のタブでこのアプリが開かれているため、データベースを更新できません。他のタブを閉じてから再読み込みしてください。");
+                };
+                request.onerror = (e) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timeoutId);
+                    reject(e.target.error);
+                };
+            });
+        }
+
+        // ── 画像Blobストア用ヘルパー ──────────────────────────────
+        // dataURL(base64) → Blob へ変換して images ストアに保存
+        // dataURL(base64) → Blob への変換。fetch()がdata:スキームに対応しない環境でも
+        // 確実に動作するよう、atob/Uint8Arrayを使った手動デコードに変更。
+        function dataUrlToBlob(dataUrl) {
+            const parts = dataUrl.split(',');
+            const meta = parts[0]; // e.g. "data:image/jpeg;base64"
+            const mimeMatch = meta.match(/data:([^;]+);base64/);
+            const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+            const binary = atob(parts[1]);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return new Blob([bytes], { type: mime });
+        }
+
+        async function saveImageBlob(id, dataUrl) {
+            if (!dataUrl) {
+                console.warn("saveImageBlob: dataUrl が空のためスキップしました (id:", id, ")");
+                return;
+            }
+            let blob;
+            try {
+                blob = dataUrlToBlob(dataUrl);
+            } catch (err) {
+                console.error("dataUrlToBlob 変換失敗:", err);
+                throw new Error("画像データの変換に失敗しました");
+            }
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+                tx.objectStore(IMAGE_STORE_NAME).put({ id, blob });
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function getImageBlob(id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IMAGE_STORE_NAME, "readonly");
+                const req = tx.objectStore(IMAGE_STORE_NAME).get(id);
+                req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function deleteImageBlob(id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+                tx.objectStore(IMAGE_STORE_NAME).delete(id);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function clearImageStore() {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+                tx.objectStore(IMAGE_STORE_NAME).clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // アプリ背景画像（settingsストアにBlobとして保存）
+        // ══════════════════════════════════════════════════════════════
+        function saveSettingBlob(key, blob) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(SETTINGS_STORE_NAME, "readwrite");
+                tx.objectStore(SETTINGS_STORE_NAME).put({ key, blob });
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function getSettingBlob(key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(SETTINGS_STORE_NAME, "readonly");
+                const req = tx.objectStore(SETTINGS_STORE_NAME).get(key);
+                req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function deleteSettingBlob(key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(SETTINGS_STORE_NAME, "readwrite");
+                tx.objectStore(SETTINGS_STORE_NAME).delete(key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        // 起動時に保存済みの背景画像を読み込んで適用する
+        async function loadAppBackground() {
+            try {
+                const blob = await getSettingBlob("appBackground");
+                if (blob) {
+                    applyBackgroundBlob(blob);
+                    document.getElementById("resetBgBtn").classList.remove("hidden");
+                }
+            } catch (e) {
+                console.warn("背景画像の読み込みに失敗しました:", e);
+            }
+        }
+
+        function applyBackgroundBlob(blob) {
+            if (currentBgObjectUrl) URL.revokeObjectURL(currentBgObjectUrl);
+            currentBgObjectUrl = URL.createObjectURL(blob);
+            const body = document.getElementById("appBody");
+            body.style.backgroundImage = `url('${currentBgObjectUrl}')`;
+            body.style.backgroundSize = "cover";
+            body.style.backgroundPosition = "center";
+            body.style.backgroundAttachment = "fixed";
+        }
+
+        async function changeAppBackground(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            try {
+                await saveSettingBlob("appBackground", file);
+                applyBackgroundBlob(file);
+                document.getElementById("resetBgBtn").classList.remove("hidden");
+                updateStorageEstimate();
+            } catch (err) {
+                console.error("背景画像の保存に失敗:", err);
+                alert("背景画像の保存に失敗しました。");
+            }
+            input.value = "";
+        }
+
+        async function resetAppBackground() {
+            if (!confirm("背景画像を元のデフォルトに戻しますか？")) return;
+            try {
+                await deleteSettingBlob("appBackground");
+                if (currentBgObjectUrl) {
+                    URL.revokeObjectURL(currentBgObjectUrl);
+                    currentBgObjectUrl = null;
+                }
+                const body = document.getElementById("appBody");
+                body.style.backgroundImage = "";
+                document.getElementById("resetBgBtn").classList.add("hidden");
+                updateStorageEstimate();
+            } catch (err) {
+                console.error("背景画像のリセットに失敗:", err);
+            }
+        }
+
+        // カードオブジェクトから imgUrl（base64 / ObjectURL）を除いたメタデータだけを取り出す
+        function stripImgUrl(card) {
+            const { imgUrl, imgUrlBack, ...meta } = card;
+            return meta;
+        }
+
+        // メタデータのみを cards ストアへ保存（画像は別途 saveImageBlob で保存する）
+        function saveCardToDB(card) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).put(stripImgUrl(card));
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function deleteCardFromDB(id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).delete(id);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            }).then(() => Promise.all([deleteImageBlob(id), deleteImageBlob(id + "_back")]));
+        }
+
+        // メタデータを取得し、各カードに images ストアから読み込んだ ObjectURL を付与する
+        async function getAllCardsFromDB() {
+            const metaList = await new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readonly");
+                const request = tx.objectStore(STORE_NAME).getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.onerror);
+            });
+
+            // 前回発行したObjectURLを解放してメモリリークを防ぐ
+            issuedObjectUrls.forEach(url => URL.revokeObjectURL(url));
+            issuedObjectUrls = new Set();
+
+            const withImages = await Promise.all(metaList.map(async (card) => {
+                const [blob, backBlob] = await Promise.all([
+                    getImageBlob(card.id),
+                    getImageBlob(card.id + "_back")
+                ]);
+                const result = { ...card, imgUrl: "", imgUrlBack: "" };
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    issuedObjectUrls.add(url);
+                    result.imgUrl = url;
+                }
+                if (backBlob) {
+                    const backUrl = URL.createObjectURL(backBlob);
+                    issuedObjectUrls.add(backUrl);
+                    result.imgUrlBack = backUrl;
+                }
+                return result;
+            }));
+            return withImages;
+        }
+
+        // 【修正3】複数カードのメタデータを1つのトランザクションでまとめて保存するバッチ関数。
+        function saveCardsToDB(cards) {
+            return new Promise((resolve, reject) => {
+                if (!cards.length) { resolve(); return; }
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                const store = tx.objectStore(STORE_NAME);
+                cards.forEach(card => store.put(stripImgUrl(card)));
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function loadPCData() {
+            pcData = await getAllCardsFromDB();
+        }
+
+        function loadAlbumsToApp() {
+            const savedAlbums = localStorage.getItem(STORAGE_KEY_ALBUMS);
+            if (savedAlbums) {
+                albums = JSON.parse(savedAlbums);
+                let changed = false;
+
+                // 既存データでも「N/a」を先頭に並べ直す
+                const naIndex = albums.findIndex(a => a.name === "N/a");
+                if (naIndex > 0) {
+                    const [naAlbum] = albums.splice(naIndex, 1);
+                    albums.unshift(naAlbum);
+                    changed = true;
+                }
+
+                // 「Sign」をN/aの直後（2番目）に並べ直す
+                const signIndex = albums.findIndex(a => a.name === "SIGN");
+                if (signIndex > 1) {
+                    const [signAlbum] = albums.splice(signIndex, 1);
+                    albums.splice(1, 0, signAlbum);
+                    changed = true;
+                }
+
+                if (changed) saveAlbums();
+            } else {
+                albums = JSON.parse(JSON.stringify(DEFAULT_ALBUMS));
+                localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums));
+            }
+        }
+
+        function updateFormSelectOptions() {
+            document.getElementById("formAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
+            document.getElementById("formMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+        }
+
+        function loadSavedRole() {
+            const savedRole = localStorage.getItem("izna_role");
+            if (savedRole) {
+                currentRole = savedRole;
+                document.getElementById("roleSelect").value = savedRole;
+            }
+        }
+
+        function changeRole() {
+            currentRole = document.getElementById("roleSelect").value;
+            localStorage.setItem("izna_role", currentRole);
+            if (currentRole === "viewer" && isMultiSelectMode) {
+                isMultiSelectMode = false;
+                selectedCardIds.clear();
+                document.getElementById("multiSelectBar").classList.add("hidden");
+            }
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById("memberTabs");
+            container.innerHTML = memberData.map(m => `
+                <button onclick="selectMember('${m.name}')" id="tab-${m.name}" 
+                        class="flex items-center gap-2 bg-gray-900 border border-gray-800 text-xs font-bold rounded-xl p-2.5 transition-all active:scale-95 cursor-pointer">
+                    <span class="text-sm">${m.icon}</span>
+                    <span class="text-gray-300">${m.name}</span>
+                </button>
+            `).join('');
+            updateTabUI();
+        }
+
+        function selectMember(name) {
+            currentMember = name;
+            updateTabUI();
+            renderApp();
+        }
+
+        function updateTabUI() {
+            memberData.forEach(m => {
+                const btn = document.getElementById(`tab-${m.name}`);
+                if (!btn) return;
+                if (m.name === currentMember) {
+                    btn.className = "flex items-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-xs font-black rounded-xl p-2.5 shadow-lg shadow-purple-900/30 cursor-pointer transform scale-[1.02] border-transparent";
+                    btn.querySelector('span:last-child').className = "text-white font-black";
+                } else {
+                    btn.className = "flex items-center gap-2 bg-gray-900/60 border border-gray-800/80 text-xs font-bold rounded-xl p-2.5 hover:bg-gray-800/50 transition-all cursor-pointer";
+                    btn.querySelector('span:last-child').className = "text-gray-400 font-bold";
+                }
+            });
+        }
+
+        function renderApp() {
+            document.getElementById("currentMemberName").innerText = currentMember;
+            document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
+            document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
+            renderGlobalSearch();
+            renderGallery();
+        }
+
+        // ── 全メンバー横断検索 ──────────────────────────────────────
+        function renderGlobalSearch() {
+            const searchVal = document.getElementById("searchBar").value.toLowerCase().trim();
+            const resultsBox = document.getElementById("globalSearchResults");
+            const listBox = document.getElementById("globalSearchList");
+
+            if (!searchVal || searchVal.length < 1) {
+                resultsBox.classList.add("hidden");
+                return;
+            }
+
+            const matches = pcData.filter(card =>
+                card.theme.toLowerCase().includes(searchVal) ||
+                card.album.toLowerCase().includes(searchVal) ||
+                card.category.toLowerCase().includes(searchVal) ||
+                (card.tags || []).some(t => t.toLowerCase().includes(searchVal))
+            );
+
+            if (matches.length === 0) {
+                resultsBox.classList.add("hidden");
+                return;
+            }
+
+            resultsBox.classList.remove("hidden");
+            listBox.innerHTML = matches.slice(0, 30).map(card => {
+                const mob = memberData.find(m => m.name === card.member);
+                return `
+                    <div onclick="jumpToMember('${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
+                        <span class="text-base shrink-0">${mob ? mob.icon : "👤"}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album} ・ ${card.category}</p>
+                        </div>
+                        <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 検索結果のカードをタップしたら、そのメンバーのタブへジャンプする
+        function jumpToMember(memberName) {
+            selectMember(memberName);
+        }
+
+        function renderGallery() {
+            // 【修正5】再描画の直前に、前回作成したSortableインスタンスを全て破棄する。
+            // これを行わないと、renderGallery()を呼ぶたびに古いインスタンスがDOM上に残り続け、
+            // イベントリスナーやメモリが解放されずリークしていく。
+            destroyAllSortables();
+
+            const container = document.getElementById("galleryContainer");
+            container.innerHTML = "";
+
+            const memberCards = pcData.filter(d => d.member === currentMember);
+            const searchVal = document.getElementById("searchBar").value.toLowerCase().trim();
+
+            const filteredCards = memberCards.filter(card => {
+                if (!searchVal) return true;
+                return card.theme.toLowerCase().includes(searchVal) || 
+                       card.album.toLowerCase().includes(searchVal) || 
+                       card.category.toLowerCase().includes(searchVal) ||
+                       (card.tags || []).some(t => t.toLowerCase().includes(searchVal));
+            });
+
+            document.getElementById("statsCount").innerText = `${filteredCards.length}枚`;
+            const currentTabMobData = memberData.find(m => m.name === currentMember);
+            document.getElementById("currentMemberIcon").innerHTML = currentTabMobData ? currentTabMobData.icon : "👤";
+
+            albums.forEach(album => {
+                const albumCards = filteredCards.filter(d => d.album === album.name);
+                if (albumCards.length === 0 && (currentRole === "viewer" || searchVal !== "")) return;
+
+                const albumSection = document.createElement("div");
+
+                const hasCover = album.coverUrl && album.coverUrl.trim() !== "";
+                if (hasCover) {
+                    albumSection.className = "rounded-2xl album-container-bg border border-gray-800 shadow-xl overflow-hidden";
+                    albumSection.style.backgroundImage = `url(${album.coverUrl})`;
+                } else {
+                    albumSection.className = "bg-gray-950/80 rounded-2xl border border-gray-800 shadow-xl overflow-hidden";
+                }
+
+                // タイトルバーとカテゴリーコンテナに半透明の黒を重ねて、中の文字やトレカを読みやすく調整
+                albumSection.innerHTML = `
+                    <div class="p-4 bg-black/60 border-b border-gray-900/40 relative z-10 backdrop-blur-xs">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-sm font-black tracking-tight text-white flex items-center gap-1.5 truncate">
+                                <span class="bg-gradient-to-br from-pink-400 to-purple-500 w-4 h-4 rounded flex items-center justify-center text-[10px] text-white">💿</span>
+                                ${album.name}
+                            </h2>
+                            <span class="text-[10px] font-bold text-pink-400 bg-pink-950/80 border border-pink-900/30 px-2 py-0.5 rounded-full">${albumCards.length}枚</span>
+                        </div>
+                    </div>
+                    <div class="p-3 space-y-4 relative z-10 bg-black/20">
+                        ${categories.map(category => renderCategory(category, albumCards, album.name)).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(albumSection);
+                
+                categories.forEach(category => {
+                    initSortable(album.name, category);
+                });
+            });
+        }
+
+        function renderCategory(category, albumCards, albumName) {
+            const cards = albumCards.filter(d => d.category === category);
+            const sortBy = document.getElementById("sortSelect").value;
+            
+            if (sortBy === "custom") {
+                cards.sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            } else if (sortBy === "newest") {
+                cards.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+            } else if (sortBy === "oldest") {
+                cards.sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+            } else if (sortBy === "theme") {
+                cards.sort((a,b) => a.theme.localeCompare(b.theme, 'ja'));
+            }
+
+            const listId = `list-${btoa(encodeURIComponent(albumName)).replace(/=/g, '')}-${btoa(encodeURIComponent(category)).replace(/=/g, '')}`;
+            const icons = { "アルバム封入": "💿", "ラキドロ・店舗特典": "🏪", "サノク・サイン会": "🤝", "その他": "✨" };
+            const isViewer = (currentRole === "viewer");
+
+            return `
+                <div class="bg-black/40 p-2 rounded-xl border border-white/5 backdrop-blur-xs">
+                    <h3 class="text-[10px] font-bold text-gray-300 mb-2 flex items-center gap-1">
+                        <span>${icons[category] || "⚫"}</span>
+                        ${category} (${cards.length})
+                    </h3>
+                    <div id="${listId}" class="flex gap-2 overflow-x-auto pb-1.5 hide-scrollbar sortable-list min-h-[40px]" 
+                         data-album="${albumName}" data-category="${category}">
+                        ${cards.map(card => renderCard(card, isViewer)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCard(card, isViewer) {
+            let actionButtons = "";
+            if (!isViewer && !isMultiSelectMode) {
+                actionButtons = `
+                    <div class="mt-2 pt-2 border-t border-gray-800/80 flex gap-1" onclick="event.stopPropagation()">
+                        <button type="button" onclick="editCard('${card.id}')" class="flex-1 bg-gray-800 hover:bg-purple-900 text-white py-1 rounded font-bold text-[9px] transition-colors">編集</button>
+                        ${currentRole === 'admin' ? `<button type="button" onclick="deleteCard('${card.id}')" class="bg-gray-800 hover:bg-rose-950 text-rose-400 px-1.5 rounded text-[9px] transition-colors">✕</button>` : ''}
+                    </div>
+                `;
+            }
+
+            const isSelected = selectedCardIds.has(card.id);
+            const clickHandler = isMultiSelectMode
+                ? `toggleCardSelection('${card.id}')`
+                : `openPreviewModal('${card.id}')`;
+            const selectedRingClass = isSelected ? "ring-2 ring-purple-500" : "";
+            const checkboxHtml = isMultiSelectMode ? `
+                <div class="absolute top-1 left-1 z-20 w-5 h-5 rounded-full border-2 ${isSelected ? 'bg-purple-600 border-purple-400' : 'bg-black/50 border-gray-500'} flex items-center justify-center text-[10px] text-white font-black">
+                    ${isSelected ? '✓' : ''}
+                </div>` : '';
+            const backBadgeHtml = card.imgUrlBack ? `
+                <div class="absolute top-1 right-1 z-20 bg-black/70 text-white text-[9px] rounded-full w-5 h-5 flex items-center justify-center" title="裏面あり">🔄</div>` : '';
+
+            return `
+                <div data-id="${card.id}" class="w-[100px] shrink-0 bg-gray-950/95 border border-gray-800 rounded-xl p-2 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
+                     onclick="${clickHandler}">
+                    ${checkboxHtml}
+                    ${backBadgeHtml}
+                    <div class="aspect-[2/3] bg-gray-900 rounded-lg mb-1.5 flex items-center justify-center border border-gray-800 overflow-hidden relative">
+                        ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-xl">📸</span>`}
+                    </div>
+                    <div class="text-white font-bold text-[10px] truncate w-full">${card.theme || '未指定'}</div>
+                    ${actionButtons}
+                </div>
+            `;
+        }
+
+        // 【修正5】登録済みのSortableインスタンスを全て破棄してレジストリを空にする
+        function destroyAllSortables() {
+            sortableInstances.forEach(instance => {
+                try { instance.destroy(); } catch (e) { /* 既に破棄済みなら無視 */ }
+            });
+            sortableInstances = [];
+        }
+
+        function initSortable(albumName, category) {
+            if (currentRole === "viewer" || document.getElementById("sortSelect").value !== "custom" || isMultiSelectMode) return;
+
+            // SortableJSがCDNから読み込めていない場合は、並び替え機能だけ無効化し、
+            // カードの登録・表示自体は問題なく動作させる
+            if (typeof Sortable === "undefined") {
+                console.warn("SortableJSが読み込まれていないため、ドラッグ並び替えは無効です。");
+                return;
+            }
+
+            const listId = `list-${btoa(encodeURIComponent(albumName)).replace(/=/g, '')}-${btoa(encodeURIComponent(category)).replace(/=/g, '')}`;
+            const el = document.getElementById(listId);
+            if (!el) return;
+
+            const instance = Sortable.create(el, {
+                group: 'pcArchiveGroup',
+                animation: 180,
+                delay: 150,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 5,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: function (evt) {
+                    if (evt.from === evt.to) {
+                        saveOrder(evt.to);
+                    }
+                },
+                onAdd: async function (evt) {
+                    const newAlbum = evt.to.dataset.album;
+                    const newCategory = evt.to.dataset.category;
+                    const id = evt.item.dataset.id;
+                    const card = pcData.find(d => d.id === id);
+                    if (card) {
+                        card.album = newAlbum;
+                        card.category = newCategory;
+                        await saveCardToDB(card);
+                    }
+                    await saveOrder(evt.to);
+                    renderApp();
+                }
+            });
+
+            // 【修正5】生成したインスタンスをレジストリに登録し、次回renderGallery()で破棄できるようにする
+            sortableInstances.push(instance);
+        }
+
+        // 【修正3】forEach+asyncの「待たれない非同期処理」を、
+        // 1トランザクションにまとめたsaveCardsToDB()で確実に直列化する
+        async function saveOrder(listEl) {
+            const elements = listEl.querySelectorAll('.photocard-element');
+            const updatedCards = [];
+            elements.forEach((el, index) => {
+                const id = el.dataset.id;
+                const card = pcData.find(d => d.id === id);
+                if (card) {
+                    card.sortOrder = index;
+                    updatedCards.push(card);
+                }
+            });
+            await saveCardsToDB(updatedCards);
+        }
+
+        function openModal() {
+            document.getElementById("modalTitle").innerText = "トレカアーカイブ登録";
+            document.getElementById("editIndex").value = "";
+            document.getElementById("formTheme").value = "";
+            document.getElementById("formTags").value = "";
+            document.getElementById("formCategory").value = "アルバム封入";
+            document.getElementById("formMember").value = currentMember;
+            currentTempImageUrl = "";
+            currentTempImageUrlBack = "";
+            removeBackImageFlag = false;
+            
+            document.getElementById("imgPreview").src = "";
+            document.getElementById("imgPreview").classList.add("hidden");
+            document.getElementById("imgPlaceholder").classList.remove("hidden");
+
+            document.getElementById("formImageBack").value = "";
+            document.getElementById("imgPreviewBack").src = "";
+            document.getElementById("imgPreviewBack").classList.add("hidden");
+            document.getElementById("imgPlaceholderBack").classList.remove("hidden");
+            document.getElementById("removeBackBtn").classList.add("hidden");
+
+            updateThemeDatalist();
+            document.getElementById("cardModal").classList.remove("hidden");
+        }
+
+        // 既存カードのテーマ名を重複なく集め、ローマ字(Unicode)順に並べてdatalistに反映する。
+        // input要素はlist属性で参照しているだけなので、直接入力もそのまま可能。
+        function updateThemeDatalist() {
+            const uniqueThemes = Array.from(new Set(pcData.map(d => d.theme).filter(t => t && t.trim())));
+            uniqueThemes.sort((a, b) => a.localeCompare(b, "en"));
+            document.getElementById("formThemeList").innerHTML =
+                uniqueThemes.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
+        }
+
+        function closeModal() {
+            document.getElementById("cardModal").classList.add("hidden");
+        }
+
+        function previewImage(input) {
+            console.log("previewImage が呼び出されました。選択ファイル数:", input.files ? input.files.length : 0);
+            const file = input.files[0];
+            if (!file) {
+                console.warn("previewImage: ファイルが選択されていません");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentTempImageUrl = e.target.result;
+                const imgPreview = document.getElementById("imgPreview");
+                imgPreview.src = currentTempImageUrl;
+                imgPreview.classList.remove("hidden");
+                document.getElementById("imgPlaceholder").classList.add("hidden");
+                console.log("画像プレビューを設定しました。データ長:", currentTempImageUrl.length);
+            };
+            reader.onerror = function(err) {
+                console.error("FileReader 読み込み失敗:", err);
+                alert("画像の読み込みに失敗しました。別の画像でお試しください。");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function previewImageBack(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentTempImageUrlBack = e.target.result;
+                removeBackImageFlag = false;
+                const imgPreview = document.getElementById("imgPreviewBack");
+                imgPreview.src = currentTempImageUrlBack;
+                imgPreview.classList.remove("hidden");
+                document.getElementById("imgPlaceholderBack").classList.add("hidden");
+                document.getElementById("removeBackBtn").classList.remove("hidden");
+            };
+            reader.onerror = function(err) {
+                console.error("FileReader(裏面) 読み込み失敗:", err);
+                alert("裏面画像の読み込みに失敗しました。別の画像でお試しください。");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 裏面画像を未設定状態に戻す（編集中の既存裏面を削除する意図も含む）
+        function removeBackImage() {
+            currentTempImageUrlBack = "";
+            removeBackImageFlag = true;
+            document.getElementById("formImageBack").value = "";
+            const imgPreview = document.getElementById("imgPreviewBack");
+            imgPreview.src = "";
+            imgPreview.classList.add("hidden");
+            document.getElementById("imgPlaceholderBack").classList.remove("hidden");
+            document.getElementById("removeBackBtn").classList.add("hidden");
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // トレカ撮影（標準カメラで撮影 → 枠に合わせて位置調整して切り出し）
+        // ══════════════════════════════════════════════════════════════
+        // getUserMedia は file:// では権限エラーになるため、
+        // <input type="file" capture="environment"> でOS標準のカメラを起動し、
+        // 撮った写真をこのアプリ内の調整画面でドラッグ/ピンチして枠に合わせる方式にしている。
+        //
+        // 配置のズレを防ぐため、画像の初期表示位置は CSS(flex centering) に任せ、
+        // JS側は画像を包む cropImgWrapper に対して transform: scale() のみを適用する。
+        // ドラッグ操作も同じ wrapper の translate に乗せるだけなので、座標計算が不要になる。
+        let cropTargetFace = "front"; // "front" or "back"
+        let cropOrientation = "portrait"; // "portrait"(縦) or "landscape"(横)
+        let cropScale = 1, cropMinScale = 0.3, cropMaxScale = 5;
+        let cropTranslateX = 0, cropTranslateY = 0;
+        let cropPointers = new Map();
+        let cropPinchStartDist = 0, cropPinchStartScale = 1;
+        let cropDragStart = null; // {x, y, translateX, translateY}
+
+        function startCardCapture(targetFace) {
+            cropTargetFace = targetFace;
+            const input = document.getElementById("cropSourceInput");
+            input.onchange = handleCropSourceSelected;
+            input.value = "";
+            input.click();
+        }
+
+        function handleCropSourceSelected(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => openCropModal(ev.target.result);
+            reader.onerror = () => alert("画像の読み込みに失敗しました。");
+            reader.readAsDataURL(file);
+        }
+
+        function openCropModal(dataUrl) {
+            const modal = document.getElementById("cropModal");
+            const imgEl = document.getElementById("cropSourceImg");
+
+            // 撮影ごとに状態をリセット
+            cropScale = 1;
+            cropTranslateX = 0;
+            cropTranslateY = 0;
+            cropOrientation = "portrait";
+            updateGuideFrameOrientation();
+
+            imgEl.onload = () => {
+                resetCropTransform();
+                attachCropGestureHandlers();
+            };
+            imgEl.onerror = () => {
+                alert("画像の表示に失敗しました。もう一度撮影し直してください。");
+                closeCropModal();
+            };
+
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            imgEl.src = dataUrl;
+
+            if (imgEl.complete && imgEl.naturalWidth > 0) {
+                resetCropTransform();
+                attachCropGestureHandlers();
+            }
+        }
+
+        function closeCropModal() {
+            document.getElementById("cropModal").classList.add("hidden");
+            document.getElementById("cropModal").classList.remove("flex");
+            detachCropGestureHandlers();
+            cropPointers.clear();
+        }
+
+        // 縦/横の切り替え：ガイド枠のアスペクト比を反転させる
+        function toggleCropOrientation() {
+            cropOrientation = (cropOrientation === "portrait") ? "landscape" : "portrait";
+            updateGuideFrameOrientation();
+        }
+
+        function updateGuideFrameOrientation() {
+            const frame = document.getElementById("cropGuideFrame");
+            if (cropOrientation === "landscape") {
+                frame.style.aspectRatio = "3/2";
+                frame.style.width = "80%";
+                frame.style.maxHeight = "60%";
+            } else {
+                frame.style.aspectRatio = "2/3";
+                frame.style.width = "70%";
+                frame.style.maxHeight = "80%";
+            }
+        }
+
+        // transformを初期状態（スケール1、移動なし）に戻す。
+        // 画像はimg側のmax-width/max-heightで自動的にステージに収まるよう表示されるため、
+        // JS側で位置計算をする必要がない。
+        function resetCropTransform() {
+            const imgEl = document.getElementById("cropSourceImg");
+            const stage = document.getElementById("cropStage");
+            const stageRect = stage.getBoundingClientRect();
+            const stageH = stageRect.height || (window.innerHeight - 200);
+            const stageW = stageRect.width || window.innerWidth;
+
+            // 画像がステージ内に収まる初期表示サイズになるようCSSで制約する
+            imgEl.style.maxWidth = stageW + "px";
+            imgEl.style.maxHeight = stageH + "px";
+            imgEl.style.width = "auto";
+            imgEl.style.height = "auto";
+
+            cropScale = 1;
+            cropTranslateX = 0;
+            cropTranslateY = 0;
+            applyCropTransform();
+        }
+
+        function applyCropTransform() {
+            const wrapper = document.getElementById("cropImgWrapper");
+            wrapper.style.transform = `translate(${cropTranslateX}px, ${cropTranslateY}px) scale(${cropScale})`;
+        }
+
+        // ── ドラッグ／ピンチ操作（Pointer Events で統一的に処理） ──────────────
+        function attachCropGestureHandlers() {
+            const stage = document.getElementById("cropStage");
+            stage.addEventListener("pointerdown", onCropPointerDown);
+            stage.addEventListener("pointermove", onCropPointerMove);
+            stage.addEventListener("pointerup", onCropPointerUp);
+            stage.addEventListener("pointercancel", onCropPointerUp);
+            // 長押しで「画像を保存」等のブラウザ標準メニューが出るのを防ぐ
+            stage.addEventListener("contextmenu", preventCropContextMenu);
+        }
+
+        function preventCropContextMenu(e) {
+            e.preventDefault();
+        }
+
+        function detachCropGestureHandlers() {
+            const stage = document.getElementById("cropStage");
+            stage.removeEventListener("pointerdown", onCropPointerDown);
+            stage.removeEventListener("pointermove", onCropPointerMove);
+            stage.removeEventListener("pointerup", onCropPointerUp);
+            stage.removeEventListener("pointercancel", onCropPointerUp);
+            stage.removeEventListener("contextmenu", preventCropContextMenu);
+        }
+
+        function onCropPointerDown(e) {
+            e.preventDefault();
+            cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            if (cropPointers.size === 1) {
+                cropDragStart = { x: e.clientX, y: e.clientY, translateX: cropTranslateX, translateY: cropTranslateY };
+            } else if (cropPointers.size === 2) {
+                const pts = Array.from(cropPointers.values());
+                cropPinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                cropPinchStartScale = cropScale;
+            }
+        }
+
+        function onCropPointerMove(e) {
+            if (!cropPointers.has(e.pointerId)) return;
+            cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            if (cropPointers.size === 1 && cropDragStart) {
+                const dx = e.clientX - cropDragStart.x;
+                const dy = e.clientY - cropDragStart.y;
+                cropTranslateX = cropDragStart.translateX + dx;
+                cropTranslateY = cropDragStart.translateY + dy;
+                applyCropTransform();
+            } else if (cropPointers.size === 2) {
+                const pts = Array.from(cropPointers.values());
+                const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                if (cropPinchStartDist > 0) {
+                    cropScale = Math.min(cropMaxScale, Math.max(cropMinScale, cropPinchStartScale * (dist / cropPinchStartDist)));
+                    applyCropTransform();
+                }
+            }
+        }
+
+        function onCropPointerUp(e) {
+            cropPointers.delete(e.pointerId);
+            if (cropPointers.size < 2) cropPinchStartDist = 0;
+            if (cropPointers.size === 0) cropDragStart = null;
+        }
+
+        // 「この位置で確定」：画面上のガイド枠に対応する画像の実ピクセル範囲を切り出す。
+        // wrapperにtransformを適用した「見た目上の画像の表示範囲」を基準に、
+        // 枠の画面座標がimg要素のどの相対位置にあるかを逆算する。
+        function confirmCrop() {
+            const imgEl = document.getElementById("cropSourceImg");
+            const frameEl = document.getElementById("cropGuideFrame");
+
+            const imgRect = imgEl.getBoundingClientRect(); // transform適用後の画面上の表示範囲
+            const frameRect = frameEl.getBoundingClientRect();
+
+            if (imgRect.width === 0 || imgRect.height === 0) {
+                alert("画像の準備中です。少し待ってから再度お試しください。");
+                return;
+            }
+
+            // 画像の natural サイズに対する、表示上1pxあたりの実ピクセル比率
+            const ratioX = imgEl.naturalWidth / imgRect.width;
+            const ratioY = imgEl.naturalHeight / imgRect.height;
+
+            const sx = (frameRect.left - imgRect.left) * ratioX;
+            const sy = (frameRect.top - imgRect.top) * ratioY;
+            const sw = frameRect.width * ratioX;
+            const sh = frameRect.height * ratioY;
+
+            const canvas = document.getElementById("cropCanvas");
+            // 縦長/横長で出力解像度を切り替える
+            const outW = (cropOrientation === "landscape") ? 1200 : 800;
+            const outH = (cropOrientation === "landscape") ? 800 : 1200;
+            canvas.width = outW;
+            canvas.height = outH;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imgEl, sx, sy, sw, sh, 0, 0, outW, outH);
+
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            applyCroppedPhoto(dataUrl);
+            closeCropModal();
+        }
+
+        // 切り出した画像を表面/裏面どちらかのプレビューに反映する
+        function applyCroppedPhoto(dataUrl) {
+            if (cropTargetFace === "back") {
+                currentTempImageUrlBack = dataUrl;
+                removeBackImageFlag = false;
+                const imgPreview = document.getElementById("imgPreviewBack");
+                imgPreview.src = dataUrl;
+                imgPreview.classList.remove("hidden");
+                document.getElementById("imgPlaceholderBack").classList.add("hidden");
+                document.getElementById("removeBackBtn").classList.remove("hidden");
+            } else {
+                currentTempImageUrl = dataUrl;
+                const imgPreview = document.getElementById("imgPreview");
+                imgPreview.src = dataUrl;
+                imgPreview.classList.remove("hidden");
+                document.getElementById("imgPlaceholder").classList.add("hidden");
+            }
+        }
+
+
+        async function saveCard() {
+            const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
+            const member = document.getElementById("formMember").value;
+            const album = document.getElementById("formAlbum").value;
+            const category = document.getElementById("formCategory").value;
+            const editId = document.getElementById("editIndex").value;
+            const tags = parseTagsInput(document.getElementById("formTags").value);
+
+            if (!editId && !currentTempImageUrl) {
+                alert("トレカ画像を登録してください！");
+                return;
+            }
+
+            try {
+                if (editId) {
+                    const card = pcData.find(d => d.id === editId);
+                    if (card) {
+                        card.theme = theme;
+                        card.member = member;
+                        card.album = album;
+                        card.category = category;
+                        card.tags = tags;
+                        await saveCardToDB(card);
+                        // 新しい画像が選択された場合のみBlobを更新
+                        if (currentTempImageUrl) {
+                            await saveImageBlob(card.id, currentTempImageUrl);
+                        }
+                        // 裏面: 新しい画像が選ばれていれば更新、削除フラグが立っていればBlobを削除
+                        if (currentTempImageUrlBack) {
+                            await saveImageBlob(card.id + "_back", currentTempImageUrlBack);
+                        } else if (removeBackImageFlag) {
+                            await deleteImageBlob(card.id + "_back");
+                        }
+                    }
+                } else {
+                    const newId = generateId();
+                    const newCard = {
+                        id: newId,
+                        member: member,
+                        album: album,
+                        category: category,
+                        theme: theme,
+                        tags: tags,
+                        sortOrder: 999,
+                        createdAt: Date.now()
+                    };
+                    await saveCardToDB(newCard);
+                    await saveImageBlob(newId, currentTempImageUrl);
+                    if (currentTempImageUrlBack) {
+                        await saveImageBlob(newId + "_back", currentTempImageUrlBack);
+                    }
+                }
+
+                closeModal();
+                await loadPCData();
+                renderApp();
+                updateStorageEstimate();
+            } catch (err) {
+                console.error("saveCard failed:", err);
+                alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
+            }
+        }
+
+        // "ウインク, ぬいぐるみ" のようなカンマ区切り入力を配列に変換する
+        function parseTagsInput(value) {
+            if (!value) return [];
+            // 半角スペース・全角スペースの両方を区切り文字として扱う
+            return value.split(/[\s\u3000]+/).map(t => t.trim()).filter(t => t.length > 0);
+        }
+
+        async function editCard(id) {
+            const card = pcData.find(d => d.id === id);
+            if (!card) return;
+
+            updateThemeDatalist();
+            document.getElementById("modalTitle").innerText = "トレカ情報の編集";
+            document.getElementById("editIndex").value = card.id;
+            document.getElementById("formTheme").value = card.theme;
+            document.getElementById("formMember").value = card.member;
+            document.getElementById("formAlbum").value = card.album;
+            document.getElementById("formCategory").value = card.category;
+            document.getElementById("formTags").value = (card.tags || []).join(" ");
+            
+            currentTempImageUrl = "";
+            const imgPreview = document.getElementById("imgPreview");
+            if (card.imgUrl) {
+                imgPreview.src = card.imgUrl;
+                imgPreview.classList.remove("hidden");
+                document.getElementById("imgPlaceholder").classList.add("hidden");
+            } else {
+                imgPreview.classList.add("hidden");
+                document.getElementById("imgPlaceholder").classList.remove("hidden");
+            }
+
+            // 裏面画像の表示
+            currentTempImageUrlBack = "";
+            removeBackImageFlag = false;
+            document.getElementById("formImageBack").value = "";
+            const imgPreviewBack = document.getElementById("imgPreviewBack");
+            if (card.imgUrlBack) {
+                imgPreviewBack.src = card.imgUrlBack;
+                imgPreviewBack.classList.remove("hidden");
+                document.getElementById("imgPlaceholderBack").classList.add("hidden");
+                document.getElementById("removeBackBtn").classList.remove("hidden");
+            } else {
+                imgPreviewBack.src = "";
+                imgPreviewBack.classList.add("hidden");
+                document.getElementById("imgPlaceholderBack").classList.remove("hidden");
+                document.getElementById("removeBackBtn").classList.add("hidden");
+            }
+
+            document.getElementById("cardModal").classList.remove("hidden");
+        }
+
+        async function deleteCard(id) {
+            if (!confirm("このトレカを削除してもよろしいですか？")) return;
+            const target = pcData.find(d => d.id === id);
+            if (target) await captureUndoSnapshot([target]);
+            await deleteCardFromDB(id);
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+            showUndoToast(1);
+        }
+
+        let currentPreviewCardId = null;
+        let isShowingBackFace = false;
+
+        function openPreviewModal(id) {
+            const card = pcData.find(d => d.id === id);
+            if (!card) return;
+
+            currentPreviewCardId = id;
+            isShowingBackFace = false;
+            renderPreviewFace(card);
+
+            document.getElementById("viewModalMember").innerText = card.member;
+            document.getElementById("viewModalAlbum").innerText = card.album;
+            document.getElementById("viewModalCategory").innerText = card.category;
+            document.getElementById("viewModalTheme").innerText = card.theme;
+
+            const tagsRow = document.getElementById("viewModalTagsRow");
+            const tagsBox = document.getElementById("viewModalTags");
+            if (card.tags && card.tags.length > 0) {
+                tagsRow.classList.remove("hidden");
+                tagsBox.innerHTML = card.tags.map(t =>
+                    `<span class="bg-sky-950/60 text-sky-300 border border-sky-800/50 text-[10px] font-bold px-2 py-0.5 rounded-full">#${t}</span>`
+                ).join('');
+            } else {
+                tagsRow.classList.add("hidden");
+                tagsBox.innerHTML = "";
+            }
+
+            document.getElementById("previewModal").classList.remove("hidden");
+        }
+
+        // プレビューモーダル内の画像領域をタップすると表/裏を切り替える
+        function renderPreviewFace(card) {
+            const imgEl = document.getElementById("viewModalImg");
+            const noImgIcon = document.getElementById("viewModalNoImgIcon");
+            const flipHint = document.getElementById("viewModalFlipHint");
+
+            const targetUrl = isShowingBackFace ? card.imgUrlBack : card.imgUrl;
+
+            if (targetUrl) {
+                imgEl.src = targetUrl;
+                imgEl.classList.remove("hidden");
+                noImgIcon.classList.add("hidden");
+            } else {
+                imgEl.classList.add("hidden");
+                noImgIcon.classList.remove("hidden");
+            }
+
+            // 裏面画像が存在する場合だけ「タップして裏面」ヒントを出す
+            if (card.imgUrlBack) {
+                flipHint.classList.remove("hidden");
+                flipHint.innerText = isShowingBackFace ? "🔄 タップして表面" : "🔄 タップして裏面";
+            } else {
+                flipHint.classList.add("hidden");
+            }
+        }
+
+        function toggleViewModalFace() {
+            const card = pcData.find(d => d.id === currentPreviewCardId);
+            if (!card || !card.imgUrlBack) return; // 裏面が無いカードは切り替え不要
+            isShowingBackFace = !isShowingBackFace;
+            renderPreviewFace(card);
+        }
+
+        function closePreviewModal() {
+            document.getElementById("previewModal").classList.add("hidden");
+            currentPreviewCardId = null;
+            isShowingBackFace = false;
+        }
+
+        function openAlbumModal() {
+            currentTempAlbumCoverUrl = "";
+            document.getElementById("newAlbumCoverStatus").innerText = "未選択";
+            renderAlbumListModal();
+            document.getElementById("albumModal").classList.remove("hidden");
+        }
+
+        function closeAlbumModal() {
+            document.getElementById("albumModal").classList.add("hidden");
+            updateFormSelectOptions();
+            renderApp();
+        }
+
+        function renderAlbumListModal() {
+            const container = document.getElementById("albumList");
+            container.innerHTML = albums.map((a, i) => `
+                <div class="flex flex-col gap-2 bg-gray-900 border border-gray-800 rounded-lg p-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 font-bold">名:</span>
+                        <input type="text" value="${a.name}" onchange="renameAlbum(${i}, this.value)" class="flex-1 font-bold text-white text-xs bg-transparent border-b border-gray-700 focus:border-pink-500 focus:outline-none px-1">
+                        ${albums.length > 1 ? `<button onclick="deleteAlbum(${i})" class="text-rose-400 hover:text-rose-300 text-xs font-bold px-1">✕</button>` : ''}
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-md px-2 py-1 font-bold cursor-pointer transition-colors">
+                            📸 フォルダから画像を選ぶ
+                            <input type="file" accept="image/*" class="file-input-hidden" onchange="updateAlbumCoverFile(${i}, this)">
+                        </label>
+                        <span class="text-[10px] ${a.coverUrl ? 'text-emerald-400' : 'text-gray-500'} font-bold">
+                            ${a.coverUrl ? '✓ 設定済み' : '画像なし'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 【修正3】forEach + async (await待ちなし) を for...of に変更し、
+        // 全カードの更新が完了してから saveAlbums()/renderAlbumListModal() に進むようにする
+        async function renameAlbum(index, newName) {
+            const oldName = albums[index].name;
+            const trimNewName = newName.trim();
+            if (trimNewName === "" || trimNewName === oldName) { renderAlbumListModal(); return; }
+            if (albums.some((a, idx) => a.name === trimNewName && idx !== index)) { alert("同名のアルバムが存在します"); renderAlbumListModal(); return; }
+
+            albums[index].name = trimNewName;
+
+            const affectedCards = pcData.filter(card => card.album === oldName);
+            affectedCards.forEach(card => { card.album = trimNewName; });
+            await saveCardsToDB(affectedCards);
+
+            saveAlbums();
+            renderAlbumListModal();
+        }
+
+        function updateAlbumCoverFile(index, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                albums[index].coverUrl = e.target.result;
+                saveAlbums();
+                renderAlbumListModal();
+                updateStorageEstimate();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function previewAlbumCoverNew(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentTempAlbumCoverUrl = e.target.result;
+                document.getElementById("newAlbumCoverStatus").innerText = "✓ 選択中";
+                document.getElementById("newAlbumCoverStatus").className = "text-[10px] text-emerald-400 font-bold";
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function addAlbum() {
+            const name = document.getElementById("newAlbumName").value.trim();
+            if (name === "") return;
+            if (albums.some(a => a.name === name)) { alert("同名のアルバムが存在します"); return; }
+            
+            albums.push({ name, coverUrl: currentTempAlbumCoverUrl || "" });
+            saveAlbums();
+            
+            document.getElementById("newAlbumName").value = "";
+            currentTempAlbumCoverUrl = "";
+            document.getElementById("newAlbumCoverStatus").innerText = "未選択";
+            document.getElementById("newAlbumCoverStatus").className = "text-[10px] text-gray-500";
+            
+            renderAlbumListModal();
+            updateStorageEstimate();
+        }
+
+        // 【修正3】forEach + async (await待ちなし) を for...of に変更
+        async function deleteAlbum(index) {
+            const name = albums[index].name;
+            const cardCount = pcData.filter(d => d.album === name).length;
+            if (cardCount > 0 && !confirm(`アルバム「${name}」には ${cardCount} 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？`)) return;
+            
+            if (cardCount > 0) {
+                const affectedCards = pcData.filter(card => card.album === name);
+                affectedCards.forEach(card => { card.album = "N/a"; });
+                await saveCardsToDB(affectedCards);
+            }
+            albums.splice(index, 1);
+            saveAlbums();
+            renderAlbumListModal();
+            updateStorageEstimate();
+        }
+
+        function saveAlbums() { localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums)); }
+        function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+        // ══════════════════════════════════════════════════════════════
+        // 複数選択モード・一括操作
+        // ══════════════════════════════════════════════════════════════
+        function toggleMultiSelectMode() {
+            isMultiSelectMode = !isMultiSelectMode;
+            selectedCardIds.clear();
+
+            const toggleBtn = document.getElementById("multiSelectToggleBtn");
+            const bar = document.getElementById("multiSelectBar");
+            const addBtn = document.getElementById("addBtn");
+            const albumBtn = document.getElementById("manageAlbumsBtn");
+
+            bar.classList.toggle("hidden", !isMultiSelectMode);
+            toggleBtn.classList.toggle("bg-purple-700", isMultiSelectMode);
+            toggleBtn.classList.toggle("border-purple-500", isMultiSelectMode);
+            // 選択モード中は新規追加・アルバム管理ボタンを隠して誤操作を防ぐ
+            if (currentRole !== "viewer") {
+                addBtn.classList.toggle("hidden", isMultiSelectMode);
+                if (currentRole === "admin") albumBtn.classList.toggle("hidden", isMultiSelectMode);
+            }
+
+            updateSelectedCountLabel();
+            renderApp();
+        }
+
+        function toggleCardSelection(id) {
+            if (selectedCardIds.has(id)) selectedCardIds.delete(id);
+            else selectedCardIds.add(id);
+            updateSelectedCountLabel();
+            renderGallery();
+        }
+
+        function updateSelectedCountLabel() {
+            document.getElementById("selectedCount").innerText = `${selectedCardIds.size}枚を選択中`;
+        }
+
+        function selectAllCards() {
+            const memberCards = pcData.filter(d => d.member === currentMember);
+            memberCards.forEach(card => selectedCardIds.add(card.id));
+            updateSelectedCountLabel();
+            renderGallery();
+        }
+
+        async function bulkDeleteCards() {
+            if (selectedCardIds.size === 0) { alert("カードが選択されていません。"); return; }
+            if (!confirm(`選択した ${selectedCardIds.size} 枚のトレカを削除します。よろしいですか？`)) return;
+
+            const targets = pcData.filter(d => selectedCardIds.has(d.id));
+            await captureUndoSnapshot(targets);
+
+            for (const card of targets) {
+                await deleteCardFromDB(card.id);
+            }
+
+            selectedCardIds.clear();
+            toggleMultiSelectMode();
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+            showUndoToast(targets.length);
+        }
+
+        function openBulkMoveModal() {
+            if (selectedCardIds.size === 0) { alert("カードが選択されていません。"); return; }
+            document.getElementById("bulkMoveMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+            document.getElementById("bulkMoveAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
+            document.getElementById("bulkMoveMember").value = currentMember;
+            document.getElementById("bulkMoveModal").classList.remove("hidden");
+        }
+
+        function closeBulkMoveModal() {
+            document.getElementById("bulkMoveModal").classList.add("hidden");
+        }
+
+        async function confirmBulkMove() {
+            const targetMember = document.getElementById("bulkMoveMember").value;
+            const targetAlbum = document.getElementById("bulkMoveAlbum").value;
+            const targetCategory = document.getElementById("bulkMoveCategory").value;
+
+            const targets = pcData.filter(d => selectedCardIds.has(d.id));
+            targets.forEach(card => {
+                card.member = targetMember;
+                card.album = targetAlbum;
+                card.category = targetCategory;
+            });
+            await saveCardsToDB(targets);
+
+            closeBulkMoveModal();
+            selectedCardIds.clear();
+            toggleMultiSelectMode();
+            currentMember = targetMember;
+            updateTabUI();
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // 削除のUndo（元に戻す）
+        // ══════════════════════════════════════════════════════════════
+        // 削除予定のカードの画像Blobをbase64にコピーしておく(Blobは削除すると失われるため)
+        async function captureUndoSnapshot(cardsToDelete) {
+            const imagesMap = new Map();
+            for (const card of cardsToDelete) {
+                const blob = await getImageBlob(card.id);
+                if (blob) imagesMap.set(card.id, await blobToDataUrl(blob));
+            }
+            lastDeletedSnapshot = {
+                cards: cardsToDelete.map(c => ({ ...stripImgUrl(c) })),
+                images: imagesMap
+            };
+        }
+
+        function showUndoToast(count) {
+            const bar = document.getElementById("undoBar");
+            document.getElementById("undoMessage").innerText = `${count}枚を削除しました`;
+            bar.classList.remove("hidden");
+            bar.classList.add("flex");
+            if (undoTimer) clearTimeout(undoTimer);
+            undoTimer = setTimeout(() => {
+                bar.classList.add("hidden");
+                bar.classList.remove("flex");
+                lastDeletedSnapshot = null;
+            }, 6000);
+        }
+
+        async function undoLastDelete() {
+            if (!lastDeletedSnapshot) return;
+            const { cards, images } = lastDeletedSnapshot;
+
+            await saveCardsToDB(cards);
+            for (const card of cards) {
+                const dataUrl = images.get(card.id);
+                if (dataUrl) await saveImageBlob(card.id, dataUrl);
+            }
+
+            lastDeletedSnapshot = null;
+            if (undoTimer) clearTimeout(undoTimer);
+            const bar = document.getElementById("undoBar");
+            bar.classList.add("hidden");
+            bar.classList.remove("flex");
+
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        function toggleExportMenu() {
+            document.getElementById("exportMenu").classList.toggle("hidden");
+        }
+        // メニュー外をタップしたら閉じる
+        document.addEventListener("click", function(e) {
+            const menu = document.getElementById("exportMenu");
+            const btn = e.target.closest("button");
+            if (menu && !menu.classList.contains("hidden")) {
+                const clickedToggle = btn && btn.getAttribute("onclick") === "toggleExportMenu()";
+                if (!menu.contains(e.target) && !clickedToggle) menu.classList.add("hidden");
+            }
+        });
+
+        // Blob → base64文字列 へ変換するヘルパー（フル出力用）
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function exportData(includeImages) {
+            document.getElementById("exportMenu").classList.add("hidden");
+
+            let exportAlbums = albums;
+            let exportCards;
+
+            if (!includeImages) {
+                // 画像(base64)を除いたメタデータのみのコピーを作成
+                exportCards = pcData.map(({ imgUrl, imgUrlBack, ...rest }) => ({ ...rest, imgUrl: "", imgUrlBack: "" }));
+            } else {
+                // imgUrl/imgUrlBackは表示用のObjectURLなので、images ストアのBlobからbase64を再生成する
+                exportCards = await Promise.all(pcData.map(async (card) => {
+                    const [blob, backBlob] = await Promise.all([
+                        getImageBlob(card.id),
+                        getImageBlob(card.id + "_back")
+                    ]);
+                    const dataUrl = blob ? await blobToDataUrl(blob) : "";
+                    const backDataUrl = backBlob ? await blobToDataUrl(backBlob) : "";
+                    const { imgUrl, imgUrlBack, ...rest } = card;
+                    return { ...rest, imgUrl: dataUrl, imgUrlBack: backDataUrl };
+                }));
+            }
+
+            const backupData = {
+                meta: { exportedAt: new Date().toISOString(), includesImages: !!includeImages },
+                albums: exportAlbums,
+                cards: exportCards
+            };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            const suffix = includeImages ? "full" : "metadata";
+            a.href = URL.createObjectURL(blob);
+            a.download = `izna_photocard_backup_${suffix}_${Date.now()}.json`;
+            a.click();
+        }
+
+        // 【修正3】store.clear()のトランザクション完了を明示的に待ち、
+        // その後にカード群を1トランザクションでまとめてput（saveCardsToDB）するよう変更
+        function clearCardStore() {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.albums && data.cards) {
+                        const isMetadataOnly = data.meta && data.meta.includesImages === false;
+                        const warningMsg = isMetadataOnly
+                            ? "⚠️ このファイルはメタデータのみのバックアップで、画像が含まれていません。\nインポートすると画像が空欄の状態で登録されます。\n続行しますか？"
+                            : "データを上書きインポートします。よろしいですか？";
+                        if (confirm(warningMsg)) {
+                            albums = data.albums;
+                            saveAlbums();
+
+                            await clearCardStore();
+                            await clearImageStore();
+                            await saveCardsToDB(data.cards);
+                            // フル出力（base64入り）の場合は画像をBlobとして個別に保存
+                            for (const card of data.cards) {
+                                if (card.imgUrl && card.imgUrl.startsWith("data:")) {
+                                    await saveImageBlob(card.id, card.imgUrl);
+                                }
+                                if (card.imgUrlBack && card.imgUrlBack.startsWith("data:")) {
+                                    await saveImageBlob(card.id + "_back", card.imgUrlBack);
+                                }
+                            }
+
+                            await loadPCData();
+                            updateFormSelectOptions();
+                            renderApp();
+                            updateStorageEstimate();
+                            alert("インポートが完了しました！");
+                        }
+                    } else {
+                        alert("不正なファイルフォーマットです。");
+                    }
+                } catch(err) {
+                    alert("ファイルの読み込みに失敗しました。");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function updateStorageEstimate() {
+            const section = document.getElementById("storageSection");
+
+            // 閲覧者には残量情報を見せない
+            if (currentRole === "viewer") {
+                section.classList.add("hidden");
+                return;
+            }
+            section.classList.remove("hidden");
+
+            try {
+                if (navigator.storage && navigator.storage.estimate) {
+                    const { usage, quota } = await navigator.storage.estimate();
+                    const pct = quota ? Math.min(100, (usage / quota) * 100) : 0;
+                    const bar = document.getElementById("storageBar");
+                    bar.style.width = pct.toFixed(1) + "%";
+                    bar.className = "h-full rounded-full transition-all " +
+                        (pct > 80 ? "bg-rose-500" : pct > 50 ? "bg-yellow-500" : "bg-gradient-to-r from-purple-500 to-pink-500");
+                    const usageMB = (usage / 1024 / 1024).toFixed(1);
+                    const quotaMB = (quota / 1024 / 1024).toFixed(0);
+                    document.getElementById("storageLabel").innerText = `${usageMB} MB / ${quotaMB} MB (${pct.toFixed(0)}%)`;
+                } else {
+                    document.getElementById("storageLabel").innerText = "この端末では取得できません";
+                }
+            } catch (e) {
+                document.getElementById("storageLabel").innerText = "取得に失敗しました";
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
