@@ -190,19 +190,11 @@
                 🔄 縦/横を切り替え
             </button>
 
-            <div id="cameraDetectStatus" class="absolute top-3 left-3 z-10 bg-black/70 text-gray-400 text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                <span id="cameraDetectDot" class="w-2 h-2 rounded-full bg-gray-500"></span>
-                <span id="cameraDetectLabel">枠を認識中...</span>
-            </div>
-
-            <div id="cameraDebugInfo" class="absolute top-12 left-3 z-10 bg-black/80 text-emerald-300 text-[9px] font-mono px-2 py-1.5 rounded-lg leading-tight whitespace-pre"></div>
-
             <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6">
                 トレカを枠の中にきっちり収めてください
             </p>
 
             <canvas id="cameraCanvas" class="hidden"></canvas>
-            <canvas id="cameraDetectCanvas" class="hidden"></canvas>
         </div>
 
         <div class="flex items-center justify-center gap-6 p-6 bg-black/80">
@@ -1281,7 +1273,6 @@
             cameraTargetFace = targetFace;
             cameraOrientation = "portrait";
             updateCameraGuideOrientation();
-            setDetectStatus("loading", "画像認識を準備中...");
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert("お使いの端末・ブラウザはカメラ撮影に対応していません。");
@@ -1292,16 +1283,6 @@
             document.getElementById("cameraModal").classList.add("flex");
 
             await startCameraStream();
-
-            // OpenCV.jsの読み込みは数秒かかるため、カメラ起動と並行して進める。
-            // 読み込み中は検出を行わず、完了後にループを開始する。
-            try {
-                await ensureOpenCvLoaded();
-                startCardDetectionLoop();
-            } catch (err) {
-                console.error("OpenCV.jsの読み込みに失敗しました:", err);
-                setDetectStatus("error", "枠認識は利用できません（撮影は可能です）");
-            }
         }
 
         async function startCameraStream() {
@@ -1338,7 +1319,6 @@
 
         function closeCameraCapture() {
             stopCameraStream();
-            stopCardDetectionLoop();
             document.getElementById("cameraModal").classList.add("hidden");
             document.getElementById("cameraModal").classList.remove("flex");
         }
@@ -1347,10 +1327,6 @@
         function toggleCameraOrientation() {
             cameraOrientation = (cameraOrientation === "portrait") ? "landscape" : "portrait";
             updateCameraGuideOrientation();
-            isCardAligned = false; // 比率が変わるため判定をリセット
-            alignedStreak = 0;
-            notAlignedStreak = 0;
-            if (cardDetectionTimer) setDetectStatus("searching", "枠に合わせてください");
         }
 
         function updateCameraGuideOrientation() {
@@ -1434,286 +1410,6 @@
                 document.getElementById("imgPlaceholder").classList.add("hidden");
             }
         }
-
-        // ══════════════════════════════════════════════════════════════
-        // カード輪郭検出（OpenCV.js）
-        // カメラ映像から定期的にフレームを取得し、エッジ検出→輪郭抽出→四角形判定を行い、
-        // 検出した輪郭がガイド枠の位置・サイズに十分近ければ枠の色を緑にする。
-        // OpenCV.jsは数MBあるため、撮影モーダルを開いたタイミングで初めて読み込む（遅延読み込み）。
-        // ══════════════════════════════════════════════════════════════
-        let openCvLoadPromise = null;
-        let cardDetectionTimer = null;
-        let isCardAligned = false;
-        let alignedStreak = 0;    // 連続で「合っている」と判定された回数
-        let notAlignedStreak = 0; // 連続で「合っていない」と判定された回数
-
-        function ensureOpenCvLoaded() {
-            if (window.cv && window.cv.Mat) return Promise.resolve();
-            if (openCvLoadPromise) return openCvLoadPromise;
-
-            openCvLoadPromise = new Promise((resolve, reject) => {
-                const script = document.createElement("script");
-                script.src = "https://docs.opencv.org/4.9.0/opencv.js";
-                script.async = true;
-                script.onload = () => {
-                    // opencv.jsはWASM初期化が非同期なため、cv.onRuntimeInitializedを待つ
-                    if (window.cv && window.cv.onRuntimeInitialized !== undefined) {
-                        window.cv.onRuntimeInitialized = () => resolve();
-                    } else if (window.cv && window.cv.Mat) {
-                        resolve();
-                    } else {
-                        // 念のためポーリングでも待つ
-                        const checkInterval = setInterval(() => {
-                            if (window.cv && window.cv.Mat) {
-                                clearInterval(checkInterval);
-                                resolve();
-                            }
-                        }, 100);
-                        setTimeout(() => { clearInterval(checkInterval); reject(new Error("OpenCV.js初期化タイムアウト")); }, 15000);
-                    }
-                };
-                script.onerror = () => reject(new Error("OpenCV.jsの読み込みに失敗しました"));
-                document.head.appendChild(script);
-            });
-
-            return openCvLoadPromise;
-        }
-
-        function setDetectStatus(state, label) {
-            const dot = document.getElementById("cameraDetectDot");
-            const labelEl = document.getElementById("cameraDetectLabel");
-            const frame = document.getElementById("cameraGuideFrame");
-            if (!dot || !labelEl || !frame) return;
-
-            labelEl.innerText = label;
-            if (state === "aligned") {
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                frame.style.borderColor = "#34d399"; // emerald-400
-                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55), 0 0 16px 2px rgba(52,211,153,0.7)";
-            } else if (state === "searching") {
-                dot.className = "w-2 h-2 rounded-full bg-pink-400";
-                frame.style.borderColor = "#f472b6"; // pink-400
-                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
-            } else if (state === "error") {
-                dot.className = "w-2 h-2 rounded-full bg-gray-500";
-                frame.style.borderColor = "#f472b6";
-                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
-            } else { // loading
-                dot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-pulse";
-                frame.style.borderColor = "#f472b6";
-                frame.style.boxShadow = "0 0 0 2000px rgba(0,0,0,0.55)";
-            }
-        }
-
-        function startCardDetectionLoop() {
-            stopCardDetectionLoop();
-            setDetectStatus("searching", "枠に合わせてください");
-            // 200ms間隔で検出（処理負荷とレスポンスのバランス）
-            cardDetectionTimer = setInterval(runCardDetection, 150);
-        }
-
-        function stopCardDetectionLoop() {
-            if (cardDetectionTimer) {
-                clearInterval(cardDetectionTimer);
-                cardDetectionTimer = null;
-            }
-            isCardAligned = false;
-            alignedStreak = 0;
-            notAlignedStreak = 0;
-        }
-
-        // 1回分の検出処理：videoから縮小フレームを取得し、グレースケール→ぼかし→エッジ検出→
-        // 輪郭抽出を行い、画面中央付近にあり、ガイド枠と近いサイズ・比率の四角形があるかを判定する。
-        // グレースケール画像のメディア値（中央値）をヒストグラムから計算する。
-        // Canny法のしきい値を画像の明暗状況に応じて自動調整するために使う。
-        function getMedianGray(grayMat) {
-            const hist = new cv.Mat();
-            const histSize = [256];
-            const ranges = [0, 256];
-            const srcVec = new cv.MatVector();
-            srcVec.push_back(grayMat);
-            cv.calcHist(srcVec, [0], new cv.Mat(), hist, histSize, ranges);
-
-            const totalPixels = grayMat.rows * grayMat.cols;
-            let cumulative = 0;
-            let median = 128; // フォールバック値
-            for (let i = 0; i < 256; i++) {
-                cumulative += hist.floatAt(i, 0);
-                if (cumulative >= totalPixels / 2) {
-                    median = i;
-                    break;
-                }
-            }
-            hist.delete();
-            srcVec.delete();
-            return median;
-        }
-
-        function runCardDetection() {
-            const video = document.getElementById("cameraVideo");
-            if (!video.videoWidth || !video.videoHeight) return;
-            if (!window.cv || !window.cv.Mat) return;
-
-            const detectCanvas = document.getElementById("cameraDetectCanvas");
-            // 処理負荷を抑えるため、検出用には縮小した解像度を使う
-            const DETECT_W = 320;
-            const DETECT_H = Math.round((video.videoHeight / video.videoWidth) * DETECT_W);
-            detectCanvas.width = DETECT_W;
-            detectCanvas.height = DETECT_H;
-            const ctx = detectCanvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, DETECT_W, DETECT_H);
-
-            let src, gray, blurred, edges, dilated, contours, hierarchy;
-            try {
-                src = cv.imread(detectCanvas);
-                gray = new cv.Mat();
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-                blurred = new cv.Mat();
-                cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-
-                // 固定しきい値(50,150)だと木目・コンクリートなどコントラストが低い背景では
-                // エッジがほぼ検出できないことが判明したため、画像の明度分布(メディアン)に
-                // 応じてしきい値を自動調整する（明暗差が小さい画像ほど低いしきい値を使う）。
-                const median = getMedianGray(blurred);
-                const lowThresh = Math.max(10, 0.66 * median);
-                const highThresh = Math.min(255, 1.33 * median);
-
-                edges = new cv.Mat();
-                cv.Canny(blurred, edges, lowThresh, highThresh);
-
-                // 検出されたエッジが途切れていると四角形として閉じないことが多いため、
-                // 軽く膨張(dilate)させてエッジを繋がりやすくする
-                dilated = new cv.Mat();
-                const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
-                cv.dilate(edges, dilated, kernel);
-                kernel.delete();
-
-                contours = new cv.MatVector();
-                hierarchy = new cv.Mat();
-                cv.findContours(dilated, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-
-                const found = findCardLikeContour(contours, DETECT_W, DETECT_H);
-                updateAlignmentState(found);
-                renderDetectDebug(lowThresh, highThresh);
-            } catch (err) {
-                console.warn("検出処理でエラーが発生しました:", err);
-                const el = document.getElementById("cameraDebugInfo");
-                if (el) el.innerText = "検出エラー: " + (err && err.message ? err.message : String(err));
-            } finally {
-                // OpenCV.jsのMatはJS側のGCが効かないため、明示的に解放する必要がある
-                if (src) src.delete();
-                if (gray) gray.delete();
-                if (blurred) blurred.delete();
-                if (edges) edges.delete();
-                if (dilated) dilated.delete();
-                if (contours) contours.delete();
-                if (hierarchy) hierarchy.delete();
-            }
-        }
-
-        // 検出した輪郭群の中から「カードらしい四角形」を探す。
-        // 条件: 4〜6角形に近似でき、画面中央付近にあり、面積が一定以上で、
-        // ガイド枠と近いアスペクト比を持つもの。
-        function findCardLikeContour(contours, frameW, frameH) {
-            const targetRatio = (cameraOrientation === "landscape") ? (3 / 2) : (2 / 3);
-            const minArea = frameW * frameH * 0.08;
-
-            let candidateCount = 0;
-            let bestDebug = null; // しきい値を満たさなくても、デバッグ表示用に最良候補を記録する
-            let bestDebugScore = Infinity;
-
-            for (let i = 0; i < contours.size(); i++) {
-                const cnt = contours.get(i);
-                const area = cv.contourArea(cnt);
-                if (area < minArea) { cnt.delete(); continue; }
-
-                const approx = new cv.Mat();
-                const perimeter = cv.arcLength(cnt, true);
-                cv.approxPolyDP(cnt, approx, 0.03 * perimeter, true);
-
-                if (approx.rows >= 3 && approx.rows <= 8) {
-                    candidateCount++;
-                    const rect = cv.boundingRect(approx);
-                    const ratio = rect.width / rect.height;
-                    const ratioDiff = Math.min(
-                        Math.abs(ratio - targetRatio),
-                        Math.abs(ratio - 1 / targetRatio)
-                    );
-
-                    const cx = rect.x + rect.width / 2;
-                    const cy = rect.y + rect.height / 2;
-                    const centerDist = Math.hypot(cx - frameW / 2, cy - frameH / 2) / Math.max(frameW, frameH);
-                    const areaRatio = area / (frameW * frameH);
-
-                    const debugScore = ratioDiff + centerDist;
-                    if (debugScore < bestDebugScore) {
-                        bestDebugScore = debugScore;
-                        bestDebug = { ratioDiff, centerDist, areaRatio, corners: approx.rows };
-                    }
-
-                    approx.delete();
-                    cnt.delete();
-
-                    if (ratioDiff < 0.45 && centerDist < 0.35 && areaRatio > 0.10) {
-                        for (let j = i + 1; j < contours.size(); j++) {
-                            contours.get(j).delete();
-                        }
-                        lastDetectDebug = { candidateCount, best: bestDebug, matched: true };
-                        return true;
-                    }
-                    continue;
-                }
-                approx.delete();
-                cnt.delete();
-            }
-
-            lastDetectDebug = { candidateCount, best: bestDebug, matched: false };
-            return false;
-        }
-
-        let lastDetectDebug = null;
-
-        function renderDetectDebug(lowThresh, highThresh) {
-            const el = document.getElementById("cameraDebugInfo");
-            if (!el) return;
-            const threshLine = (lowThresh !== undefined) ? `閾値: ${Math.round(lowThresh)}-${Math.round(highThresh)}\n` : "";
-            if (!lastDetectDebug) { el.innerText = threshLine; return; }
-            const { candidateCount, best } = lastDetectDebug;
-            if (!best) {
-                el.innerText = `${threshLine}候補輪郭: 0件\n(四角形が見つかっていません)`;
-            } else {
-                el.innerText =
-                    `${threshLine}候補輪郭: ${candidateCount}件\n` +
-                    `角数: ${best.corners}\n` +
-                    `比率差: ${best.ratioDiff.toFixed(2)} (基準<0.45)\n` +
-                    `中心距離: ${best.centerDist.toFixed(2)} (基準<0.35)\n` +
-                    `面積比: ${best.areaRatio.toFixed(2)} (基準>0.10)`;
-            }
-        }
-
-        function updateAlignmentState(found) {
-            if (found) {
-                alignedStreak++;
-                notAlignedStreak = 0;
-            } else {
-                notAlignedStreak++;
-                alignedStreak = 0;
-            }
-
-            // 緑になるのは2フレーム連続でOKなら十分（反応を良くする）。
-            // 一方、緑から外れるのは4フレーム連続でNGになった時だけにして、
-            // 手ブレや一瞬の誤検出で頻繁にピンクへ戻る「チラつき」を防ぐ。
-            if (!isCardAligned && alignedStreak >= 2) {
-                isCardAligned = true;
-                setDetectStatus("aligned", "✓ ぴったり合っています");
-            } else if (isCardAligned && notAlignedStreak >= 4) {
-                isCardAligned = false;
-                setDetectStatus("searching", "枠に合わせてください");
-            }
-        }
-
-
 
         async function saveCard() {
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
@@ -2032,4 +1728,306 @@
         // ══════════════════════════════════════════════════════════════
         function toggleMultiSelectMode() {
             isMultiSelectMode = !isMultiSelectMode;
-          
+            selectedCardIds.clear();
+
+            const toggleBtn = document.getElementById("multiSelectToggleBtn");
+            const bar = document.getElementById("multiSelectBar");
+            const addBtn = document.getElementById("addBtn");
+            const albumBtn = document.getElementById("manageAlbumsBtn");
+
+            bar.classList.toggle("hidden", !isMultiSelectMode);
+            toggleBtn.classList.toggle("bg-purple-700", isMultiSelectMode);
+            toggleBtn.classList.toggle("border-purple-500", isMultiSelectMode);
+            // 選択モード中は新規追加・アルバム管理ボタンを隠して誤操作を防ぐ
+            if (currentRole !== "viewer") {
+                addBtn.classList.toggle("hidden", isMultiSelectMode);
+                if (currentRole === "admin") albumBtn.classList.toggle("hidden", isMultiSelectMode);
+            }
+
+            updateSelectedCountLabel();
+            renderApp();
+        }
+
+        function toggleCardSelection(id) {
+            if (selectedCardIds.has(id)) selectedCardIds.delete(id);
+            else selectedCardIds.add(id);
+            updateSelectedCountLabel();
+            renderGallery();
+        }
+
+        function updateSelectedCountLabel() {
+            document.getElementById("selectedCount").innerText = `${selectedCardIds.size}枚を選択中`;
+        }
+
+        function selectAllCards() {
+            const memberCards = pcData.filter(d => d.member === currentMember);
+            memberCards.forEach(card => selectedCardIds.add(card.id));
+            updateSelectedCountLabel();
+            renderGallery();
+        }
+
+        async function bulkDeleteCards() {
+            if (selectedCardIds.size === 0) { alert("カードが選択されていません。"); return; }
+            if (!confirm(`選択した ${selectedCardIds.size} 枚のトレカを削除します。よろしいですか？`)) return;
+
+            const targets = pcData.filter(d => selectedCardIds.has(d.id));
+            await captureUndoSnapshot(targets);
+
+            for (const card of targets) {
+                await deleteCardFromDB(card.id);
+            }
+
+            selectedCardIds.clear();
+            toggleMultiSelectMode();
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+            showUndoToast(targets.length);
+        }
+
+        function openBulkMoveModal() {
+            if (selectedCardIds.size === 0) { alert("カードが選択されていません。"); return; }
+            document.getElementById("bulkMoveMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+            document.getElementById("bulkMoveAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
+            document.getElementById("bulkMoveMember").value = currentMember;
+            document.getElementById("bulkMoveModal").classList.remove("hidden");
+        }
+
+        function closeBulkMoveModal() {
+            document.getElementById("bulkMoveModal").classList.add("hidden");
+        }
+
+        async function confirmBulkMove() {
+            const targetMember = document.getElementById("bulkMoveMember").value;
+            const targetAlbum = document.getElementById("bulkMoveAlbum").value;
+            const targetCategory = document.getElementById("bulkMoveCategory").value;
+
+            const targets = pcData.filter(d => selectedCardIds.has(d.id));
+            targets.forEach(card => {
+                card.member = targetMember;
+                card.album = targetAlbum;
+                card.category = targetCategory;
+            });
+            await saveCardsToDB(targets);
+
+            closeBulkMoveModal();
+            selectedCardIds.clear();
+            toggleMultiSelectMode();
+            currentMember = targetMember;
+            updateTabUI();
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // 削除のUndo（元に戻す）
+        // ══════════════════════════════════════════════════════════════
+        // 削除予定のカードの画像Blobをbase64にコピーしておく(Blobは削除すると失われるため)
+        async function captureUndoSnapshot(cardsToDelete) {
+            const imagesMap = new Map();
+            for (const card of cardsToDelete) {
+                const blob = await getImageBlob(card.id);
+                if (blob) imagesMap.set(card.id, await blobToDataUrl(blob));
+            }
+            lastDeletedSnapshot = {
+                cards: cardsToDelete.map(c => ({ ...stripImgUrl(c) })),
+                images: imagesMap
+            };
+        }
+
+        function showUndoToast(count) {
+            const bar = document.getElementById("undoBar");
+            document.getElementById("undoMessage").innerText = `${count}枚を削除しました`;
+            bar.classList.remove("hidden");
+            bar.classList.add("flex");
+            if (undoTimer) clearTimeout(undoTimer);
+            undoTimer = setTimeout(() => {
+                bar.classList.add("hidden");
+                bar.classList.remove("flex");
+                lastDeletedSnapshot = null;
+            }, 6000);
+        }
+
+        async function undoLastDelete() {
+            if (!lastDeletedSnapshot) return;
+            const { cards, images } = lastDeletedSnapshot;
+
+            await saveCardsToDB(cards);
+            for (const card of cards) {
+                const dataUrl = images.get(card.id);
+                if (dataUrl) await saveImageBlob(card.id, dataUrl);
+            }
+
+            lastDeletedSnapshot = null;
+            if (undoTimer) clearTimeout(undoTimer);
+            const bar = document.getElementById("undoBar");
+            bar.classList.add("hidden");
+            bar.classList.remove("flex");
+
+            await loadPCData();
+            renderApp();
+            updateStorageEstimate();
+        }
+
+        function toggleExportMenu() {
+            document.getElementById("exportMenu").classList.toggle("hidden");
+        }
+        // メニュー外をタップしたら閉じる
+        document.addEventListener("click", function(e) {
+            const menu = document.getElementById("exportMenu");
+            const btn = e.target.closest("button");
+            if (menu && !menu.classList.contains("hidden")) {
+                const clickedToggle = btn && btn.getAttribute("onclick") === "toggleExportMenu()";
+                if (!menu.contains(e.target) && !clickedToggle) menu.classList.add("hidden");
+            }
+        });
+
+        // Blob → base64文字列 へ変換するヘルパー（フル出力用）
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function exportData(includeImages) {
+            document.getElementById("exportMenu").classList.add("hidden");
+
+            let exportAlbums = albums;
+            let exportCards;
+
+            if (!includeImages) {
+                // 画像(base64)を除いたメタデータのみのコピーを作成
+                exportCards = pcData.map(({ imgUrl, imgUrlBack, ...rest }) => ({ ...rest, imgUrl: "", imgUrlBack: "" }));
+            } else {
+                // imgUrl/imgUrlBackは表示用のObjectURLなので、images ストアのBlobからbase64を再生成する
+                exportCards = await Promise.all(pcData.map(async (card) => {
+                    const [blob, backBlob] = await Promise.all([
+                        getImageBlob(card.id),
+                        getImageBlob(card.id + "_back")
+                    ]);
+                    const dataUrl = blob ? await blobToDataUrl(blob) : "";
+                    const backDataUrl = backBlob ? await blobToDataUrl(backBlob) : "";
+                    const { imgUrl, imgUrlBack, ...rest } = card;
+                    return { ...rest, imgUrl: dataUrl, imgUrlBack: backDataUrl };
+                }));
+            }
+
+            const backupData = {
+                meta: { exportedAt: new Date().toISOString(), includesImages: !!includeImages },
+                albums: exportAlbums,
+                cards: exportCards
+            };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            const suffix = includeImages ? "full" : "metadata";
+            a.href = URL.createObjectURL(blob);
+            a.download = `izna_photocard_backup_${suffix}_${Date.now()}.json`;
+            a.click();
+        }
+
+        // 【修正3】store.clear()のトランザクション完了を明示的に待ち、
+        // その後にカード群を1トランザクションでまとめてput（saveCardsToDB）するよう変更
+        function clearCardStore() {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.albums && data.cards) {
+                        const isMetadataOnly = data.meta && data.meta.includesImages === false;
+                        const warningMsg = isMetadataOnly
+                            ? "⚠️ このファイルはメタデータのみのバックアップで、画像が含まれていません。\nインポートすると画像が空欄の状態で登録されます。\n続行しますか？"
+                            : "データを上書きインポートします。よろしいですか？";
+                        if (confirm(warningMsg)) {
+                            albums = data.albums;
+                            saveAlbums();
+
+                            await clearCardStore();
+                            await clearImageStore();
+                            await saveCardsToDB(data.cards);
+                            // フル出力（base64入り）の場合は画像をBlobとして個別に保存
+                            for (const card of data.cards) {
+                                if (card.imgUrl && card.imgUrl.startsWith("data:")) {
+                                    await saveImageBlob(card.id, card.imgUrl);
+                                }
+                                if (card.imgUrlBack && card.imgUrlBack.startsWith("data:")) {
+                                    await saveImageBlob(card.id + "_back", card.imgUrlBack);
+                                }
+                            }
+
+                            await loadPCData();
+                            updateFormSelectOptions();
+                            renderApp();
+                            updateStorageEstimate();
+                            alert("インポートが完了しました！");
+                        }
+                    } else {
+                        alert("不正なファイルフォーマットです。");
+                    }
+                } catch(err) {
+                    alert("ファイルの読み込みに失敗しました。");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function updateStorageEstimate() {
+            const section = document.getElementById("storageSection");
+
+            // 閲覧者には残量情報を見せない
+            if (currentRole === "viewer") {
+                section.classList.add("hidden");
+                return;
+            }
+            section.classList.remove("hidden");
+
+            try {
+                if (navigator.storage && navigator.storage.estimate) {
+                    const { usage, quota } = await navigator.storage.estimate();
+                    const pct = quota ? Math.min(100, (usage / quota) * 100) : 0;
+                    const bar = document.getElementById("storageBar");
+                    bar.style.width = pct.toFixed(1) + "%";
+                    bar.className = "h-full rounded-full transition-all " +
+                        (pct > 80 ? "bg-rose-500" : pct > 50 ? "bg-yellow-500" : "bg-gradient-to-r from-purple-500 to-pink-500");
+                    const usageMB = (usage / 1024 / 1024).toFixed(1);
+                    const quotaMB = (quota / 1024 / 1024).toFixed(0);
+                    document.getElementById("storageLabel").innerText = `${usageMB} MB / ${quotaMB} MB (${pct.toFixed(0)}%)`;
+                } else {
+                    document.getElementById("storageLabel").innerText = "この端末では取得できません";
+                }
+            } catch (e) {
+                document.getElementById("storageLabel").innerText = "取得に失敗しました";
+            }
+        }
+
+        // デバッグ用: スマホ単体では開発者コンソールを開きにくいため、
+        // 実行時エラーが起きた場合に画面上に直接表示する仕組みを用意する。
+        window.addEventListener("error", function(e) {
+            showFatalErrorOverlay(e.message, e.filename, e.lineno);
+        });
+        window.addEventListener("unhandledrejection", function(e) {
+            showFatalErrorOverlay("Promise rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason), "", "");
+        });
+
+        function showFatalErrorOverlay(message, filename, lineno) {
+            let overlay = document.getElementById("fatalErrorOverlay");
+            if (!overlay) {
+                overlay = document.createElement("div");
+                overlay.id = "fatalErrorOverlay";
+                overlay.style.cssText = "position:fixed; top:0; left:0; right:0; z-index:99999; background:#7f1d1d; color:#fff; font-size:11px; font-family:monospace; padding:10px; max-height:40vh; overflow-y:auto; white-space:pre-wrap;";
+  
