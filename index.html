@@ -2030,4 +2030,17 @@
                 overlay = document.createElement("div");
                 overlay.id = "fatalErrorOverlay";
                 overlay.style.cssText = "position:fixed; top:0; left:0; right:0; z-index:99999; background:#7f1d1d; color:#fff; font-size:11px; font-family:monospace; padding:10px; max-height:40vh; overflow-y:auto; white-space:pre-wrap;";
-  
+                document.body.prepend(overlay);
+            }
+            const line = document.createElement("div");
+            line.style.borderBottom = "1px solid rgba(255,255,255,0.3)";
+            line.style.paddingBottom = "4px";
+            line.style.marginBottom = "4px";
+            line.innerText = `⚠️ ${message}\n(${filename}:${lineno})`;
+            overlay.appendChild(line);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
