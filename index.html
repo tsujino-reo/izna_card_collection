@@ -69,7 +69,7 @@
             </div>
             
             <div class="flex items-center gap-1.5">
-                <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
+                <label id="bgChangeLabel" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
                     🏞️ 背景
                     <input type="file" id="bgImageInput" accept="image/*" class="file-input-hidden" onchange="changeAppBackground(this)">
                 </label>
@@ -85,7 +85,7 @@
                         </button>
                     </div>
                 </div>
-                <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
+                <label id="importLabel" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
                     📥 読込
                     <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
                 </label>
@@ -134,7 +134,7 @@
             <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
                 <div id="currentMemberIcon" class="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center text-[10px]">👤</div>
                 <div>
-                    <span id="currentMemberName" class="text-white text-sm font-black pb-0.5"></span> の図鑑 
+                    <span id="currentMemberName" class="text-white text-sm font-black pb-0.5"></span>
                     <span id="statsCount" class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded-full ml-1">0枚</span>
                 </div>
             </div>
@@ -277,17 +277,12 @@
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">アルバム</label>
-                    <select id="formAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                    <select id="formAlbum" onchange="updateFormCategoryOptions()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
                 </div>
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">種類</label>
-                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
-                        <option value="アルバム封入">💿 アルバム封入</option>
-                        <option value="ラキドロ・店舗特典">🏪 ラキドロ・店舗特典</option>
-                        <option value="サノク・サイン会">🤝 サノク・サイン会</option>
-                        <option value="その他">✨ その他</option>
-                    </select>
+                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div>
@@ -373,9 +368,33 @@
         ];
 
         const categories = ["アルバム封入", "ラキドロ・店舗特典", "サノク・サイン会", "その他"];
+        const CATEGORY_ICONS = { "アルバム封入": "💿", "ラキドロ・店舗特典": "🏪", "サノク・サイン会": "🤝", "その他": "✨" };
+
+        // 指定したアルバムで使用可能なカテゴリ一覧を返す。
+        // アルバムに categories の指定がなければ、デフォルトの全カテゴリを使う（SIGN以外は全カテゴリ）。
+        function getCategoriesForAlbum(albumName) {
+            const album = albums.find(a => a.name === albumName);
+            return (album && album.categories) ? album.categories : categories;
+        }
+
+        // アルバム選択が変わった時に、formCategoryの選択肢をそのアルバムで使えるものだけに絞り込む
+        function updateFormCategoryOptions() {
+            const albumName = document.getElementById("formAlbum").value;
+            const availableCategories = getCategoriesForAlbum(albumName);
+            const select = document.getElementById("formCategory");
+            const prevValue = select.value;
+            select.innerHTML = availableCategories.map(c =>
+                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
+            ).join('');
+            // 元の選択値がまだ選べるなら維持する
+            if (availableCategories.includes(prevValue)) {
+                select.value = prevValue;
+            }
+        }
 
         const DEFAULT_ALBUMS = [
             { name: "N/a", coverUrl: "" },
+            { name: "SIGN", coverUrl: "", categories: ["サノク・サイン会", "その他"] },
             { name: "BEEP", coverUrl: "" },
             { name: "Not Just Pretty", coverUrl: "" },
             { name: "Set The Tempo", coverUrl: "" }
@@ -388,6 +407,8 @@
         let currentMember = "マイ";
         let currentRole = "admin";
         let currentTempImageUrl = "";
+        let currentTempImageOrientation = "portrait"; // 表面の向き
+        let currentTempImageOrientationBack = "portrait"; // 裏面の向き
         let currentTempImageUrlBack = "";
         let removeBackImageFlag = false; // 編集時に既存の裏面画像を削除する意図を示すフラグ
         let currentTempAlbumCoverUrl = "";
@@ -765,9 +786,13 @@
                     changed = true;
                 }
 
-                // 「Sign」をN/aの直後（2番目）に並べ直す
-                const signIndex = albums.findIndex(a => a.name === "SIGN");
-                if (signIndex > 1) {
+                // 「SIGN」が存在しなければN/aの直後（2番目）に新規追加する
+                let signIndex = albums.findIndex(a => a.name === "SIGN");
+                if (signIndex === -1) {
+                    albums.splice(1, 0, { name: "SIGN", coverUrl: "", categories: ["サノク・サイン会", "その他"] });
+                    changed = true;
+                } else if (signIndex > 1) {
+                    // 既に存在するが位置がズレている場合はN/aの直後に並べ直す
                     const [signAlbum] = albums.splice(signIndex, 1);
                     albums.splice(1, 0, signAlbum);
                     changed = true;
@@ -911,6 +936,10 @@
             document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
             document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
+            // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
+            document.getElementById("bgChangeLabel").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("resetBgBtn").classList.toggle("hidden", currentRole !== "admin" || !currentBgObjectUrl);
+            document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             renderGlobalSearch();
             renderGallery();
         }
@@ -1012,7 +1041,7 @@
                         </div>
                     </div>
                     <div class="p-3 space-y-4 relative z-10 bg-black/20">
-                        ${categories.map(category => renderCategory(category, albumCards, album.name)).join('')}
+                        ${getCategoriesForAlbum(album.name).map(category => renderCategory(category, albumCards, album.name)).join('')}
                     </div>
                 `;
                 
@@ -1039,7 +1068,7 @@
             }
 
             const listId = `list-${btoa(encodeURIComponent(albumName)).replace(/=/g, '')}-${btoa(encodeURIComponent(category)).replace(/=/g, '')}`;
-            const icons = { "アルバム封入": "💿", "ラキドロ・店舗特典": "🏪", "サノク・サイン会": "🤝", "その他": "✨" };
+            const icons = CATEGORY_ICONS;
             const isViewer = (currentRole === "viewer");
 
             return `
@@ -1079,12 +1108,17 @@
             const backBadgeHtml = card.imgUrlBack ? `
                 <div class="absolute top-1 right-1 z-20 bg-black/70 text-white text-[9px] rounded-full w-5 h-5 flex items-center justify-center" title="裏面あり">🔄</div>` : '';
 
+            // 横向きトレカは、縦長カードに無理に収めず、カード自体の幅とアスペクト比を横向き用に変える
+            const isLandscape = card.orientation === "landscape";
+            const cardWidthClass = isLandscape ? "w-[150px]" : "w-[100px]";
+            const imgAspectClass = isLandscape ? "aspect-[3/2]" : "aspect-[2/3]";
+
             return `
-                <div data-id="${card.id}" class="w-[100px] shrink-0 bg-gray-950/95 border border-gray-800 rounded-xl p-2 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
+                <div data-id="${card.id}" class="${cardWidthClass} shrink-0 bg-gray-950/95 border border-gray-800 rounded-xl p-2 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
                      onclick="${clickHandler}">
                     ${checkboxHtml}
                     ${backBadgeHtml}
-                    <div class="aspect-[2/3] bg-gray-900 rounded-lg mb-1.5 flex items-center justify-center border border-gray-800 overflow-hidden relative">
+                    <div class="${imgAspectClass} bg-gray-900 rounded-lg mb-1.5 flex items-center justify-center border border-gray-800 overflow-hidden relative">
                         ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-xl">📸</span>`}
                     </div>
                     <div class="text-white font-bold text-[10px] truncate w-full">${card.theme || '未指定'}</div>
@@ -1168,8 +1202,9 @@
             document.getElementById("editIndex").value = "";
             document.getElementById("formTheme").value = "";
             document.getElementById("formTags").value = "";
-            document.getElementById("formCategory").value = "アルバム封入";
             document.getElementById("formMember").value = currentMember;
+            updateFormCategoryOptions(); // 現在選択中のアルバムに合わせて種類の選択肢を絞り込む
+            document.getElementById("formCategory").value = "アルバム封入";
             currentTempImageUrl = "";
             currentTempImageUrlBack = "";
             removeBackImageFlag = false;
@@ -1186,6 +1221,7 @@
 
             updateThemeDatalist();
             document.getElementById("cardModal").classList.remove("hidden");
+            pushModalHistory("closeModal");
         }
 
         // 既存カードのテーマ名を重複なく集め、ローマ字(Unicode)順に並べてdatalistに反映する。
@@ -1197,9 +1233,10 @@
                 uniqueThemes.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
         }
 
-        function closeModal() {
+        function closeModal(skipHistory) {
             document.getElementById("cardModal").classList.add("hidden");
             stopCameraStream(); // 念のため、カメラが起動したままになっていないか確認して停止
+            if (!skipHistory) history.back();
         }
 
         function previewImage(input) {
@@ -1218,6 +1255,14 @@
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
                 console.log("画像プレビューを設定しました。データ長:", currentTempImageUrl.length);
+
+                // ファイルから選んだ場合、実際の画像サイズから縦/横を自動判定する
+                const img = new Image();
+                img.onload = () => {
+                    currentTempImageOrientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
+                    updatePreviewFrameAspect("imgLabel", currentTempImageOrientation);
+                };
+                img.src = currentTempImageUrl;
             };
             reader.onerror = function(err) {
                 console.error("FileReader 読み込み失敗:", err);
@@ -1281,6 +1326,7 @@
 
             document.getElementById("cameraModal").classList.remove("hidden");
             document.getElementById("cameraModal").classList.add("flex");
+            pushModalHistory("closeCameraCapture");
 
             await startCameraStream();
         }
@@ -1317,10 +1363,11 @@
             startCameraStream();
         }
 
-        function closeCameraCapture() {
+        function closeCameraCapture(skipHistory) {
             stopCameraStream();
             document.getElementById("cameraModal").classList.add("hidden");
             document.getElementById("cameraModal").classList.remove("flex");
+            if (!skipHistory) history.back();
         }
 
         // 縦/横の切り替え：ガイド枠のアスペクト比を反転させる
@@ -1396,18 +1443,35 @@
         function applyCapturedPhoto(dataUrl) {
             if (cameraTargetFace === "back") {
                 currentTempImageUrlBack = dataUrl;
+                currentTempImageOrientationBack = cameraOrientation;
                 removeBackImageFlag = false;
                 const imgPreview = document.getElementById("imgPreviewBack");
                 imgPreview.src = dataUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
+                updatePreviewFrameAspect("imgLabelBack", cameraOrientation);
             } else {
                 currentTempImageUrl = dataUrl;
+                currentTempImageOrientation = cameraOrientation;
                 const imgPreview = document.getElementById("imgPreview");
                 imgPreview.src = dataUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
+                updatePreviewFrameAspect("imgLabel", cameraOrientation);
+            }
+        }
+
+        // 撮影/登録された向きに応じて、プレビュー枠のアスペクト比を切り替える
+        function updatePreviewFrameAspect(labelId, orientation) {
+            const label = document.getElementById(labelId);
+            if (!label) return;
+            if (orientation === "landscape") {
+                label.classList.remove("aspect-[2/3]");
+                label.classList.add("aspect-[3/2]");
+            } else {
+                label.classList.remove("aspect-[3/2]");
+                label.classList.add("aspect-[2/3]");
             }
         }
 
@@ -1433,6 +1497,10 @@
                         card.album = album;
                         card.category = category;
                         card.tags = tags;
+                        // 新しい画像が選ばれた場合のみ向きを更新（差し替えていなければ既存の向きを維持）
+                        if (currentTempImageUrl) {
+                            card.orientation = currentTempImageOrientation;
+                        }
                         await saveCardToDB(card);
                         // 新しい画像が選択された場合のみBlobを更新
                         if (currentTempImageUrl) {
@@ -1454,6 +1522,7 @@
                         category: category,
                         theme: theme,
                         tags: tags,
+                        orientation: currentTempImageOrientation, // 表面の縦/横
                         sortOrder: 999,
                         createdAt: Date.now()
                     };
@@ -1491,6 +1560,7 @@
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formMember").value = card.member;
             document.getElementById("formAlbum").value = card.album;
+            updateFormCategoryOptions(); // アルバムに応じて種類の選択肢を絞り込んでからカテゴリ値を設定する
             document.getElementById("formCategory").value = card.category;
             document.getElementById("formTags").value = (card.tags || []).join(" ");
             
@@ -1546,6 +1616,7 @@
             currentPreviewCardId = id;
             isShowingBackFace = false;
             renderPreviewFace(card);
+            updatePreviewFrameAspect("viewModalImgWrap", card.orientation || "portrait");
 
             document.getElementById("viewModalMember").innerText = card.member;
             document.getElementById("viewModalAlbum").innerText = card.album;
@@ -1565,6 +1636,7 @@
             }
 
             document.getElementById("previewModal").classList.remove("hidden");
+            pushModalHistory("closePreviewModal");
         }
 
         // プレビューモーダル内の画像領域をタップすると表/裏を切り替える
@@ -1600,10 +1672,11 @@
             renderPreviewFace(card);
         }
 
-        function closePreviewModal() {
+        function closePreviewModal(skipHistory) {
             document.getElementById("previewModal").classList.add("hidden");
             currentPreviewCardId = null;
             isShowingBackFace = false;
+            if (!skipHistory) history.back();
         }
 
         function openAlbumModal() {
@@ -1611,12 +1684,14 @@
             document.getElementById("newAlbumCoverStatus").innerText = "未選択";
             renderAlbumListModal();
             document.getElementById("albumModal").classList.remove("hidden");
+            pushModalHistory("closeAlbumModal");
         }
 
-        function closeAlbumModal() {
+        function closeAlbumModal(skipHistory) {
             document.getElementById("albumModal").classList.add("hidden");
             updateFormSelectOptions();
             renderApp();
+            if (!skipHistory) history.back();
         }
 
         function renderAlbumListModal() {
@@ -1791,10 +1866,12 @@
             document.getElementById("bulkMoveAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
             document.getElementById("bulkMoveMember").value = currentMember;
             document.getElementById("bulkMoveModal").classList.remove("hidden");
+            pushModalHistory("closeBulkMoveModal");
         }
 
-        function closeBulkMoveModal() {
+        function closeBulkMoveModal(skipHistory) {
             document.getElementById("bulkMoveModal").classList.add("hidden");
+            if (!skipHistory) history.back();
         }
 
         async function confirmBulkMove() {
@@ -2039,6 +2116,28 @@
             line.innerText = `⚠️ ${message}\n(${filename}:${lineno})`;
             overlay.appendChild(line);
         }
+
+        // ══════════════════════════════════════════════════════════════
+        // モーダルとブラウザの「戻る」ボタンの連携
+        // モーダルを開くたびに履歴へ仮想エントリを積み、戻るボタンが押された時は
+        // ページ自体から離脱せず、開いている最後のモーダルだけを閉じるようにする。
+        // ══════════════════════════════════════════════════════════════
+        let openModalStack = []; // 現在開いているモーダルのcloseFunction名を積むスタック
+
+        function pushModalHistory(closeFnName) {
+            openModalStack.push(closeFnName);
+            history.pushState({ modal: closeFnName }, "");
+        }
+
+        window.addEventListener("popstate", function(e) {
+            if (openModalStack.length > 0) {
+                const closeFnName = openModalStack.pop();
+                const fn = window[closeFnName];
+                if (typeof fn === "function") {
+                    fn(true); // skipHistory=true: 既にpopstateで履歴は消費済みなので、closeModal側で再度backしない
+                }
+            }
+        });
 
         window.onload = init;
     </script>
