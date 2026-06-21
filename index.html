@@ -108,65 +108,92 @@
             </div>
         </div>
 
-        <div id="filterSection" class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
-            <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
-            
-            <div class="space-y-2 relative z-10">
-                <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
-                       class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
-                
-                <div class="flex items-center justify-between gap-2 pt-1">
-                    <label class="text-[9px] text-gray-500 font-black uppercase tracking-wider">SORT ORDER</label>
-                    <select id="sortSelect" onchange="renderApp()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 text-gray-300">
-                        <option value="custom">↕ 並び順 (ドラッグ可)</option>
-                        <option value="newest">📅 新しい順</option>
-                        <option value="oldest">📅 古い順</option>
-                        <option value="theme">🔤 テーマ名順</option>
-                    </select>
-                </div>
+        <!-- ① アルバム選択画面：トップ階層。常にこの順でアルバムを2列表示する -->
+        <div id="albumListView">
+            <div class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
+                <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">ALBUM SELECT</label>
+                <div class="grid grid-cols-2 gap-2 relative z-10" id="albumTabs"></div>
             </div>
-            
-            <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mt-3 mb-1.5 relative z-10">MEMBER SELECT</label>
-            <div class="grid grid-cols-2 gap-2 relative z-10" id="memberTabs"></div>
-        </div>
-
-        <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/80 p-2 rounded-xl border border-gray-800/60 backdrop-blur-md shadow-md">
-            <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
-                <div id="currentMemberIcon" class="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center text-[10px]">👤</div>
-                <div>
-                    <span id="currentMemberName" class="text-white text-sm font-black pb-0.5"></span>
-                    <span id="statsCount" class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded-full ml-1">0枚</span>
-                </div>
-            </div>
-            <div class="flex gap-1.5 items-center">
-                <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
-                    ☑ 複数選択
-                </button>
-                <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
+            <div class="flex justify-end mb-4">
+                <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     💿 アルバム管理
                 </button>
-                <button id="addBtn" onclick="openModal()" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
-                    ＋ 新規トレカ追加
-                </button>
             </div>
         </div>
 
-        <div id="multiSelectBar" class="hidden mb-3 bg-purple-950/80 border border-purple-700/50 p-2 rounded-xl flex items-center justify-between backdrop-blur-md">
-            <span id="selectedCount" class="text-[11px] text-purple-200 font-bold">0枚を選択中</span>
-            <div class="flex gap-2">
-                <button onclick="selectAllCards()" class="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-1 rounded-lg">全選択</button>
-                <button onclick="openBulkMoveModal()" class="text-[10px] text-blue-300 font-bold bg-blue-900/40 px-2 py-1 rounded-lg">移動</button>
-                <button onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
-                <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
+        <!-- ② メンバー選択画面：アルバムを選んだ後に表示される -->
+        <div id="memberListView" class="hidden">
+            <div class="flex items-center gap-2 mb-3">
+                <button onclick="backToAlbumList()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">⬅ アルバム一覧</button>
+                <span id="memberViewAlbumName" class="text-sm font-black text-white truncate"></span>
+            </div>
+            <div class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
+                <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">MEMBER SELECT</label>
+                <div class="grid grid-cols-2 gap-2 relative z-10" id="memberTabs"></div>
             </div>
         </div>
 
-        <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/30 border border-pink-900/40 rounded-2xl p-3 backdrop-blur-md">
-            <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
-            <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
-        </div>
+        <!-- ③ ギャラリー画面：アルバム×メンバーのトレカ一覧 -->
+        <div id="galleryView" class="hidden">
+            <div class="flex items-center gap-2 mb-3">
+                <button onclick="backToMemberList()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">⬅ メンバー一覧</button>
+                <span id="galleryViewTitle" class="text-sm font-black text-white truncate"></span>
+            </div>
 
-        <div id="galleryContainer" class="space-y-6 pb-10"></div>
+            <div id="filterSection" class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
+                <div class="space-y-2 relative z-10">
+                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
+                           class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <label class="text-[9px] text-gray-500 font-black uppercase tracking-wider">SORT ORDER</label>
+                        <select id="sortSelect" onchange="renderApp()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 text-gray-300">
+                            <option value="custom">↕ 並び順 (ドラッグ可)</option>
+                            <option value="newest">📅 新しい順</option>
+                            <option value="oldest">📅 古い順</option>
+                            <option value="theme">🔤 テーマ名順</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/80 p-2 rounded-xl border border-gray-800/60 backdrop-blur-md shadow-md">
+                <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
+                    <div id="currentMemberIcon" class="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center text-[10px]">👤</div>
+                    <div>
+                        <span id="currentMemberName" class="text-white text-sm font-black pb-0.5"></span>
+                        <span id="statsCount" class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded-full ml-1">0枚</span>
+                    </div>
+                </div>
+                <div class="flex gap-1.5 items-center">
+                    <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
+                        ☑ 複数選択
+                    </button>
+                    <button id="addBtn" onclick="openModal()" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
+                        ＋ 新規トレカ追加
+                    </button>
+                </div>
+            </div>
+
+            <div id="multiSelectBar" class="hidden mb-3 bg-purple-950/80 border border-purple-700/50 p-2 rounded-xl flex items-center justify-between backdrop-blur-md">
+                <span id="selectedCount" class="text-[11px] text-purple-200 font-bold">0枚を選択中</span>
+                <div class="flex gap-2">
+                    <button onclick="selectAllCards()" class="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-1 rounded-lg">全選択</button>
+                    <button onclick="openBulkMoveModal()" class="text-[10px] text-blue-300 font-bold bg-blue-900/40 px-2 py-1 rounded-lg">移動</button>
+                    <button onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
+                    <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
+                </div>
+            </div>
+
+            <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/30 border border-pink-900/40 rounded-2xl p-3 backdrop-blur-md">
+                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
+                <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
+            </div>
+
+            <div id="galleryContainer" class="grid grid-cols-4 gap-2 pb-10"></div>
+        </div>
     </div>
 
     <!-- 標準カメラ/ギャラリーで撮った写真を、トレカ枠に合わせてドラッグ・ピンチで位置調整して切り出すモーダル -->
@@ -215,15 +242,6 @@
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">移動先アルバム</label>
                     <select id="bulkMoveAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
-                </div>
-                <div>
-                    <label class="text-gray-400 font-bold block mb-1">移動先カテゴリ</label>
-                    <select id="bulkMoveCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
-                        <option value="アルバム封入">💿 アルバム封入</option>
-                        <option value="ラキドロ・店舗特典">🏪 ラキドロ・店舗特典</option>
-                        <option value="サノク・サイン会">🤝 サノク・サイン会</option>
-                        <option value="その他">✨ その他</option>
-                    </select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
@@ -277,12 +295,7 @@
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">アルバム</label>
-                    <select id="formAlbum" onchange="updateFormCategoryOptions()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
-                </div>
-
-                <div>
-                    <label class="text-gray-400 font-bold block mb-1">種類</label>
-                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                    <select id="formAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
                 </div>
 
                 <div>
@@ -315,7 +328,6 @@
             <div class="text-left space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800/80">
                 <div><span class="text-[9px] text-purple-400 font-bold tracking-widest block uppercase">MEMBER</span><p id="viewModalMember" class="text-xs font-black text-white"></p></div>
                 <div><span class="text-[9px] text-pink-400 font-bold tracking-widest block uppercase">ALBUM</span><p id="viewModalAlbum" class="text-[11px] font-bold text-gray-200 truncate"></p></div>
-                <div><span class="text-[9px] text-rose-400 font-bold tracking-widest block uppercase">CATEGORY</span><p id="viewModalCategory" class="text-xs font-medium text-gray-300"></p></div>
                 <div><span class="text-[9px] text-emerald-400 font-bold tracking-widest block uppercase">THEME</span><p id="viewModalTheme" class="text-sm font-black text-white"></p></div>
                 <div id="viewModalTagsRow" class="hidden">
                     <span class="text-[9px] text-sky-400 font-bold tracking-widest block uppercase">TAGS</span>
@@ -357,44 +369,20 @@
 
     <script>
         const memberData = [
-            { name: "マイ", icon: "🐈‍⬛" },
-            { name: "ジミン", icon: "🐶" },
-            { name: "ジユン", icon: "🐥" },
-            { name: "ココ", icon: "🐰" },
-            { name: "サラン", icon: "🦊" },
-            { name: "ジョンウン", icon: "🐹" },
-            { name: "セビ", icon: "🐯" },
+            { name: "マイ", icon: "🦊" },
+            { name: "ジミン", icon: "🐻" },
+            { name: "ジユン", icon: "🐻‍❄️" },
+            { name: "ココ", icon: "🐈‍⬛" },
+            { name: "サラン", icon: "🐶" },
+            { name: "ジョンウン", icon: "🐆" },
+            { name: "セビ", icon: "🐰" },
             { name: "ユニット", icon: "✨" }
         ];
 
-        const categories = ["アルバム封入", "ラキドロ・店舗特典", "サノク・サイン会", "その他"];
-        const CATEGORY_ICONS = { "アルバム封入": "💿", "ラキドロ・店舗特典": "🏪", "サノク・サイン会": "🤝", "その他": "✨" };
-
-        // 指定したアルバムで使用可能なカテゴリ一覧を返す。
-        // アルバムに categories の指定がなければ、デフォルトの全カテゴリを使う（SIGN以外は全カテゴリ）。
-        function getCategoriesForAlbum(albumName) {
-            const album = albums.find(a => a.name === albumName);
-            return (album && album.categories) ? album.categories : categories;
-        }
-
-        // アルバム選択が変わった時に、formCategoryの選択肢をそのアルバムで使えるものだけに絞り込む
-        function updateFormCategoryOptions() {
-            const albumName = document.getElementById("formAlbum").value;
-            const availableCategories = getCategoriesForAlbum(albumName);
-            const select = document.getElementById("formCategory");
-            const prevValue = select.value;
-            select.innerHTML = availableCategories.map(c =>
-                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
-            ).join('');
-            // 元の選択値がまだ選べるなら維持する
-            if (availableCategories.includes(prevValue)) {
-                select.value = prevValue;
-            }
-        }
-
         const DEFAULT_ALBUMS = [
+            { name: "I-LAND2", coverUrl: "" },
             { name: "N/a", coverUrl: "" },
-            { name: "SIGN", coverUrl: "", categories: ["サノク・サイン会", "その他"] },
+            { name: "SIGN", coverUrl: "" },
             { name: "BEEP", coverUrl: "" },
             { name: "Not Just Pretty", coverUrl: "" },
             { name: "Set The Tempo", coverUrl: "" }
@@ -406,6 +394,8 @@
         let albums = [];
         let currentMember = "マイ";
         let currentRole = "admin";
+        let currentView = "albumList"; // "albumList" | "memberList" | "gallery"
+        let currentAlbum = null; // 選択中のアルバム名
         let currentTempImageUrl = "";
         let currentTempImageOrientation = "portrait"; // 表面の向き
         let currentTempImageOrientationBack = "portrait"; // 裏面の向き
@@ -434,6 +424,45 @@
         // 画像ObjectURLは使い終わったら解放するため、発行済みURLを記録しておく
         let issuedObjectUrls = new Set();
         let currentBgObjectUrl = null;
+
+        // ══════════════════════════════════════════════════════════════
+        // 画面ナビゲーション（アルバム選択 → メンバー選択 → ギャラリー）
+        // ══════════════════════════════════════════════════════════════
+        function showView(view) {
+            currentView = view;
+            document.getElementById("albumListView").classList.toggle("hidden", view !== "albumList");
+            document.getElementById("memberListView").classList.toggle("hidden", view !== "memberList");
+            document.getElementById("galleryView").classList.toggle("hidden", view !== "gallery");
+            window.scrollTo({ top: 0, behavior: "instant" });
+        }
+
+        function selectAlbum(albumName) {
+            currentAlbum = albumName;
+            document.getElementById("memberViewAlbumName").innerText = albumName;
+            renderTabs();
+            showView("memberList");
+            pushModalHistory("backToAlbumList");
+        }
+
+        function backToAlbumList(skipHistory) {
+            currentAlbum = null;
+            showView("albumList");
+            if (!skipHistory) history.back();
+        }
+
+        function selectMemberAndShowGallery(memberName) {
+            currentMember = memberName;
+            updateTabUI();
+            document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
+            showView("gallery");
+            renderApp();
+            pushModalHistory("backToMemberList");
+        }
+
+        function backToMemberList(skipHistory) {
+            showView("memberList");
+            if (!skipHistory) history.back();
+        }
 
         async function init() {
             let dbReady = false;
@@ -487,9 +516,9 @@
             }
 
             // ここから先は画面表示に必須なので、何があっても必ず実行する
-            renderTabs();
+            renderAlbumTabs();
             updateFormSelectOptions();
-            renderApp();
+            showView("albumList");
             updateStorageEstimate();
         }
 
@@ -772,29 +801,28 @@
             pcData = await getAllCardsFromDB();
         }
 
+        // デフォルトの6アルバムは常にこの順序で固定表示する（並べ替え機能は提供しない）。
+        // それ以外に管理者が手動追加したアルバムは、常にこのリストの後ろに追加される。
+        const FIXED_ALBUM_ORDER = ["I-LAND2", "N/a", "SIGN", "BEEP", "Not Just Pretty", "Set The Tempo"];
+
         function loadAlbumsToApp() {
             const savedAlbums = localStorage.getItem(STORAGE_KEY_ALBUMS);
             if (savedAlbums) {
                 albums = JSON.parse(savedAlbums);
                 let changed = false;
 
-                // 既存データでも「N/a」を先頭に並べ直す
-                const naIndex = albums.findIndex(a => a.name === "N/a");
-                if (naIndex > 0) {
-                    const [naAlbum] = albums.splice(naIndex, 1);
-                    albums.unshift(naAlbum);
-                    changed = true;
-                }
+                // 固定6アルバムのうち、存在しないものを追加する（既存のcoverUrl等は壊さない）
+                FIXED_ALBUM_ORDER.forEach(name => {
+                    if (!albums.some(a => a.name === name)) {
+                        albums.push({ name, coverUrl: "" });
+                        changed = true;
+                    }
+                });
 
-                // 「SIGN」が存在しなければN/aの直後（2番目）に新規追加する
-                let signIndex = albums.findIndex(a => a.name === "SIGN");
-                if (signIndex === -1) {
-                    albums.splice(1, 0, { name: "SIGN", coverUrl: "", categories: ["サノク・サイン会", "その他"] });
-                    changed = true;
-                } else if (signIndex > 1) {
-                    // 既に存在するが位置がズレている場合はN/aの直後に並べ直す
-                    const [signAlbum] = albums.splice(signIndex, 1);
-                    albums.splice(1, 0, signAlbum);
+                // 固定6アルバムを定義順に並べ、それ以外（手動追加分）は元の相対順序を保ったまま後ろに続ける
+                const reordered = sortAlbumsByFixedOrder(albums);
+                if (JSON.stringify(reordered) !== JSON.stringify(albums)) {
+                    albums = reordered;
                     changed = true;
                 }
 
@@ -803,6 +831,16 @@
                 albums = JSON.parse(JSON.stringify(DEFAULT_ALBUMS));
                 localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums));
             }
+        }
+
+        // 固定6アルバムを FIXED_ALBUM_ORDER の順に並べ、それ以外のアルバム（手動追加分）は
+        // 元のリスト内での相対順序を保ったまま、固定6アルバムの後ろに続けて並べる。
+        function sortAlbumsByFixedOrder(albumList) {
+            const fixedOnes = FIXED_ALBUM_ORDER
+                .map(name => albumList.find(a => a.name === name))
+                .filter(Boolean);
+            const others = albumList.filter(a => !FIXED_ALBUM_ORDER.includes(a.name));
+            return [...fixedOnes, ...others];
         }
 
         function updateFormSelectOptions() {
@@ -826,7 +864,10 @@
                 selectedCardIds.clear();
                 document.getElementById("multiSelectBar").classList.add("hidden");
             }
-            renderApp();
+            // 現在表示中の画面に応じて、ロール変更を反映する
+            renderAlbumTabs();
+            if (currentView === "memberList") renderTabs();
+            if (currentView === "gallery") renderApp();
             updateStorageEstimate();
         }
 
@@ -862,7 +903,7 @@
                 // ブラウザが構造を予期せず修復してレイアウト崩れや誤クリックを引き起こす。
                 // そのため外側はdiv(role="button")にし、合法な入れ子構造にしている。
                 return `
-                <div onclick="selectMember('${m.name}')" id="tab-${m.name}" role="button" tabindex="0"
+                <div onclick="selectMemberAndShowGallery('${m.name}')" id="tab-${m.name}" role="button" tabindex="0"
                         class="relative flex items-center gap-2 bg-gray-900 border border-gray-800 text-xs font-bold rounded-xl p-2.5 transition-all active:scale-95 cursor-pointer">
                     <span class="relative shrink-0">${avatarHtml}${editBtnHtml}</span>
                     <span class="text-gray-300">${m.name}</span>
@@ -870,6 +911,29 @@
             `;
             }).join('');
             updateTabUI();
+        }
+
+        // アルバム一覧（トップ画面）を描画する。常に albums 配列の順序のまま2列で表示する。
+        function renderAlbumTabs() {
+            const container = document.getElementById("albumTabs");
+            container.innerHTML = albums.map(a => {
+                const hasCover = a.coverUrl && a.coverUrl.trim() !== "";
+                const thumbHtml = hasCover
+                    ? `<img src="${a.coverUrl}" class="w-9 h-9 rounded-lg object-cover border border-gray-700 shrink-0">`
+                    : `<div class="w-9 h-9 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-base shrink-0">💿</div>`;
+                const count = pcData.filter(d => d.album === a.name).length;
+                return `
+                <div onclick="selectAlbum('${a.name}')" role="button" tabindex="0"
+                     class="relative flex items-center gap-2.5 bg-gray-900/90 border border-gray-800/80 text-xs font-bold rounded-xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
+                    ${thumbHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="text-gray-200 font-black truncate">${a.name}</div>
+                        <div class="text-[9px] text-gray-500 font-bold">${count}枚</div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+            document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
         }
 
         // 管理者がタブの📷ボタンを押した時に、対象メンバーの顔写真選択を開始する
@@ -911,11 +975,6 @@
             reader.readAsDataURL(file);
         }
 
-        function selectMember(name) {
-            currentMember = name;
-            updateTabUI();
-            renderApp();
-        }
 
         function updateTabUI() {
             memberData.forEach(m => {
@@ -933,7 +992,6 @@
 
         function renderApp() {
             document.getElementById("currentMemberName").innerText = currentMember;
-            document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
             document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
             // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
@@ -958,7 +1016,6 @@
             const matches = pcData.filter(card =>
                 card.theme.toLowerCase().includes(searchVal) ||
                 card.album.toLowerCase().includes(searchVal) ||
-                card.category.toLowerCase().includes(searchVal) ||
                 (card.tags || []).some(t => t.toLowerCase().includes(searchVal))
             );
 
@@ -971,11 +1028,11 @@
             listBox.innerHTML = matches.slice(0, 30).map(card => {
                 const mob = memberData.find(m => m.name === card.member);
                 return `
-                    <div onclick="jumpToMember('${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
+                    <div onclick="jumpToCard('${card.album}', '${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
                         <span class="text-base shrink-0">${mob ? mob.icon : "👤"}</span>
                         <div class="min-w-0 flex-1">
                             <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
-                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album} ・ ${card.category}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album}</p>
                         </div>
                         <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
                     </div>
@@ -984,8 +1041,15 @@
         }
 
         // 検索結果のカードをタップしたら、そのメンバーのタブへジャンプする
-        function jumpToMember(memberName) {
-            selectMember(memberName);
+        // 全メンバー横断検索の結果をタップした時、該当カードのアルバム×メンバーのギャラリーまで直接移動する
+        function jumpToCard(albumName, memberName) {
+            currentAlbum = albumName;
+            currentMember = memberName;
+            document.getElementById("galleryViewTitle").innerText = `${albumName} / ${memberName}`;
+            document.getElementById("searchBar").value = "";
+            renderTabs();
+            showView("gallery");
+            renderApp();
         }
 
         function renderGallery() {
@@ -997,14 +1061,15 @@
             const container = document.getElementById("galleryContainer");
             container.innerHTML = "";
 
-            const memberCards = pcData.filter(d => d.member === currentMember);
+            // カテゴリ分けを廃止したため、選択中のアルバム×メンバーのカードをフラットな
+            // 1リストとして1行4枚のグリッドに表示する。
+            const albumCards = pcData.filter(d => d.album === currentAlbum && d.member === currentMember);
             const searchVal = document.getElementById("searchBar").value.toLowerCase().trim();
 
-            const filteredCards = memberCards.filter(card => {
+            const filteredCards = albumCards.filter(card => {
                 if (!searchVal) return true;
-                return card.theme.toLowerCase().includes(searchVal) || 
-                       card.album.toLowerCase().includes(searchVal) || 
-                       card.category.toLowerCase().includes(searchVal) ||
+                return card.theme.toLowerCase().includes(searchVal) ||
+                       card.album.toLowerCase().includes(searchVal) ||
                        (card.tags || []).some(t => t.toLowerCase().includes(searchVal));
             });
 
@@ -1015,74 +1080,34 @@
                 ? `<img src="${currentPhotoUrl}" class="w-full h-full object-cover">`
                 : (currentTabMobData ? currentTabMobData.icon : "👤");
 
-            albums.forEach(album => {
-                const albumCards = filteredCards.filter(d => d.album === album.name);
-                if (albumCards.length === 0 && (currentRole === "viewer" || searchVal !== "")) return;
-
-                const albumSection = document.createElement("div");
-
-                const hasCover = album.coverUrl && album.coverUrl.trim() !== "";
-                if (hasCover) {
-                    albumSection.className = "rounded-2xl album-container-bg border border-gray-800 shadow-xl overflow-hidden";
-                    albumSection.style.backgroundImage = `url(${album.coverUrl})`;
-                } else {
-                    albumSection.className = "bg-gray-950/80 rounded-2xl border border-gray-800 shadow-xl overflow-hidden";
-                }
-
-                // タイトルバーとカテゴリーコンテナに半透明の黒を重ねて、中の文字やトレカを読みやすく調整
-                albumSection.innerHTML = `
-                    <div class="p-4 bg-black/60 border-b border-gray-900/40 relative z-10 backdrop-blur-xs">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-sm font-black tracking-tight text-white flex items-center gap-1.5 truncate">
-                                <span class="bg-gradient-to-br from-pink-400 to-purple-500 w-4 h-4 rounded flex items-center justify-center text-[10px] text-white">💿</span>
-                                ${album.name}
-                            </h2>
-                            <span class="text-[10px] font-bold text-pink-400 bg-pink-950/80 border border-pink-900/30 px-2 py-0.5 rounded-full">${albumCards.length}枚</span>
-                        </div>
-                    </div>
-                    <div class="p-3 space-y-4 relative z-10 bg-black/20">
-                        ${getCategoriesForAlbum(album.name).map(category => renderCategory(category, albumCards, album.name)).join('')}
-                    </div>
-                `;
-                
-                container.appendChild(albumSection);
-                
-                categories.forEach(category => {
-                    initSortable(album.name, category);
-                });
-            });
-        }
-
-        function renderCategory(category, albumCards, albumName) {
-            const cards = albumCards.filter(d => d.category === category);
-            const sortBy = document.getElementById("sortSelect").value;
-            
-            if (sortBy === "custom") {
-                cards.sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-            } else if (sortBy === "newest") {
-                cards.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
-            } else if (sortBy === "oldest") {
-                cards.sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
-            } else if (sortBy === "theme") {
-                cards.sort((a,b) => a.theme.localeCompare(b.theme, 'ja'));
-            }
-
-            const listId = `list-${btoa(encodeURIComponent(albumName)).replace(/=/g, '')}-${btoa(encodeURIComponent(category)).replace(/=/g, '')}`;
-            const icons = CATEGORY_ICONS;
+            const sortedCards = sortCards(filteredCards);
             const isViewer = (currentRole === "viewer");
 
-            return `
-                <div class="bg-black/40 p-2 rounded-xl border border-white/5 backdrop-blur-xs">
-                    <h3 class="text-[10px] font-bold text-gray-300 mb-2 flex items-center gap-1">
-                        <span>${icons[category] || "⚫"}</span>
-                        ${category} (${cards.length})
-                    </h3>
-                    <div id="${listId}" class="flex gap-2 overflow-x-auto pb-1.5 hide-scrollbar sortable-list min-h-[40px]" 
-                         data-album="${albumName}" data-category="${category}">
-                        ${cards.map(card => renderCard(card, isViewer)).join('')}
-                    </div>
-                </div>
-            `;
+            container.id = "galleryContainer";
+            container.dataset.album = currentAlbum;
+            container.innerHTML = sortedCards.map(card => renderCard(card, isViewer)).join('');
+
+            if (sortedCards.length === 0) {
+                container.innerHTML = `<div class="col-span-4 text-center text-gray-600 italic py-8 text-xs">登録されたトレカはありません</div>`;
+            }
+
+            initSortable();
+        }
+
+        // 並び順設定に応じてカード配列をソートする（カテゴリ分けがなくなったため、アルバム全体で1回ソートするだけでよい）
+        function sortCards(cards) {
+            const sortBy = document.getElementById("sortSelect").value;
+            const sorted = [...cards];
+            if (sortBy === "custom") {
+                sorted.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            } else if (sortBy === "newest") {
+                sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            } else if (sortBy === "oldest") {
+                sorted.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            } else if (sortBy === "theme") {
+                sorted.sort((a, b) => a.theme.localeCompare(b.theme, 'ja'));
+            }
+            return sorted;
         }
 
         function renderCard(card, isViewer) {
@@ -1108,20 +1133,20 @@
             const backBadgeHtml = card.imgUrlBack ? `
                 <div class="absolute top-1 right-1 z-20 bg-black/70 text-white text-[9px] rounded-full w-5 h-5 flex items-center justify-center" title="裏面あり">🔄</div>` : '';
 
-            // 横向きトレカは、縦長カードに無理に収めず、カード自体の幅とアスペクト比を横向き用に変える
+            // 1行4枚のグリッドではカード自体の幅はグリッドセルに合わせ、
+            // 横向きトレカは画像のアスペクト比だけ横長に変える
             const isLandscape = card.orientation === "landscape";
-            const cardWidthClass = isLandscape ? "w-[150px]" : "w-[100px]";
             const imgAspectClass = isLandscape ? "aspect-[3/2]" : "aspect-[2/3]";
 
             return `
-                <div data-id="${card.id}" class="${cardWidthClass} shrink-0 bg-gray-950/95 border border-gray-800 rounded-xl p-2 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
+                <div data-id="${card.id}" class="bg-gray-950/95 border border-gray-800 rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
                      onclick="${clickHandler}">
                     ${checkboxHtml}
                     ${backBadgeHtml}
-                    <div class="${imgAspectClass} bg-gray-900 rounded-lg mb-1.5 flex items-center justify-center border border-gray-800 overflow-hidden relative">
-                        ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-xl">📸</span>`}
+                    <div class="${imgAspectClass} bg-gray-900 rounded-lg mb-1 flex items-center justify-center border border-gray-800 overflow-hidden relative">
+                        ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-base">📸</span>`}
                     </div>
-                    <div class="text-white font-bold text-[10px] truncate w-full">${card.theme || '未指定'}</div>
+                    <div class="text-white font-bold text-[9px] truncate w-full">${card.theme || '未指定'}</div>
                     ${actionButtons}
                 </div>
             `;
@@ -1135,7 +1160,8 @@
             sortableInstances = [];
         }
 
-        function initSortable(albumName, category) {
+        // カテゴリ分けを廃止したため、ドラッグ並び替えはアルバム内の1つのグリッド全体が対象になる
+        function initSortable() {
             if (currentRole === "viewer" || document.getElementById("sortSelect").value !== "custom" || isMultiSelectMode) return;
 
             // SortableJSがCDNから読み込めていない場合は、並び替え機能だけ無効化し、
@@ -1145,12 +1171,10 @@
                 return;
             }
 
-            const listId = `list-${btoa(encodeURIComponent(albumName)).replace(/=/g, '')}-${btoa(encodeURIComponent(category)).replace(/=/g, '')}`;
-            const el = document.getElementById(listId);
+            const el = document.getElementById("galleryContainer");
             if (!el) return;
 
             const instance = Sortable.create(el, {
-                group: 'pcArchiveGroup',
                 animation: 180,
                 delay: 150,
                 delayOnTouchOnly: true,
@@ -1158,31 +1182,13 @@
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
                 onEnd: function (evt) {
-                    if (evt.from === evt.to) {
-                        saveOrder(evt.to);
-                    }
-                },
-                onAdd: async function (evt) {
-                    const newAlbum = evt.to.dataset.album;
-                    const newCategory = evt.to.dataset.category;
-                    const id = evt.item.dataset.id;
-                    const card = pcData.find(d => d.id === id);
-                    if (card) {
-                        card.album = newAlbum;
-                        card.category = newCategory;
-                        await saveCardToDB(card);
-                    }
-                    await saveOrder(evt.to);
-                    renderApp();
+                    saveOrder(evt.to);
                 }
             });
 
-            // 【修正5】生成したインスタンスをレジストリに登録し、次回renderGallery()で破棄できるようにする
             sortableInstances.push(instance);
         }
 
-        // 【修正3】forEach+asyncの「待たれない非同期処理」を、
-        // 1トランザクションにまとめたsaveCardsToDB()で確実に直列化する
         async function saveOrder(listEl) {
             const elements = listEl.querySelectorAll('.photocard-element');
             const updatedCards = [];
@@ -1203,8 +1209,7 @@
             document.getElementById("formTheme").value = "";
             document.getElementById("formTags").value = "";
             document.getElementById("formMember").value = currentMember;
-            updateFormCategoryOptions(); // 現在選択中のアルバムに合わせて種類の選択肢を絞り込む
-            document.getElementById("formCategory").value = "アルバム封入";
+            document.getElementById("formAlbum").value = currentAlbum;
             currentTempImageUrl = "";
             currentTempImageUrlBack = "";
             removeBackImageFlag = false;
@@ -1479,7 +1484,6 @@
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
             const member = document.getElementById("formMember").value;
             const album = document.getElementById("formAlbum").value;
-            const category = document.getElementById("formCategory").value;
             const editId = document.getElementById("editIndex").value;
             const tags = parseTagsInput(document.getElementById("formTags").value);
 
@@ -1495,7 +1499,6 @@
                         card.theme = theme;
                         card.member = member;
                         card.album = album;
-                        card.category = category;
                         card.tags = tags;
                         // 新しい画像が選ばれた場合のみ向きを更新（差し替えていなければ既存の向きを維持）
                         if (currentTempImageUrl) {
@@ -1519,7 +1522,6 @@
                         id: newId,
                         member: member,
                         album: album,
-                        category: category,
                         theme: theme,
                         tags: tags,
                         orientation: currentTempImageOrientation, // 表面の縦/横
@@ -1560,8 +1562,6 @@
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formMember").value = card.member;
             document.getElementById("formAlbum").value = card.album;
-            updateFormCategoryOptions(); // アルバムに応じて種類の選択肢を絞り込んでからカテゴリ値を設定する
-            document.getElementById("formCategory").value = card.category;
             document.getElementById("formTags").value = (card.tags || []).join(" ");
             
             currentTempImageUrl = "";
@@ -1620,7 +1620,6 @@
 
             document.getElementById("viewModalMember").innerText = card.member;
             document.getElementById("viewModalAlbum").innerText = card.album;
-            document.getElementById("viewModalCategory").innerText = card.category;
             document.getElementById("viewModalTheme").innerText = card.theme;
 
             const tagsRow = document.getElementById("viewModalTagsRow");
@@ -1690,7 +1689,8 @@
         function closeAlbumModal(skipHistory) {
             document.getElementById("albumModal").classList.add("hidden");
             updateFormSelectOptions();
-            renderApp();
+            renderAlbumTabs();
+            if (currentView === "gallery") renderApp();
             if (!skipHistory) history.back();
         }
 
@@ -1767,6 +1767,8 @@
             if (albums.some(a => a.name === name)) { alert("同名のアルバムが存在します"); return; }
             
             albums.push({ name, coverUrl: currentTempAlbumCoverUrl || "" });
+            // 固定6アルバムより後ろに来るよう並べ直す（新規アルバムは常に末尾に追加される）
+            albums = sortAlbumsByFixedOrder(albums);
             saveAlbums();
             
             document.getElementById("newAlbumName").value = "";
@@ -1877,13 +1879,11 @@
         async function confirmBulkMove() {
             const targetMember = document.getElementById("bulkMoveMember").value;
             const targetAlbum = document.getElementById("bulkMoveAlbum").value;
-            const targetCategory = document.getElementById("bulkMoveCategory").value;
 
             const targets = pcData.filter(d => selectedCardIds.has(d.id));
             targets.forEach(card => {
                 card.member = targetMember;
                 card.album = targetAlbum;
-                card.category = targetCategory;
             });
             await saveCardsToDB(targets);
 
@@ -1891,6 +1891,8 @@
             selectedCardIds.clear();
             toggleMultiSelectMode();
             currentMember = targetMember;
+            currentAlbum = targetAlbum;
+            document.getElementById("galleryViewTitle").innerText = `${targetAlbum} / ${targetMember}`;
             updateTabUI();
             await loadPCData();
             renderApp();
