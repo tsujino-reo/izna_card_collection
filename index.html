@@ -429,6 +429,7 @@
                 dbReady = true;
             } catch (err) {
                 console.error("DBの初期化に失敗しました:", err);
+                showFatalErrorOverlay("DB初期化失敗: " + (err && err.message ? err.message : err), "", "");
             }
 
             if (!dbReady || !db) {
@@ -454,6 +455,7 @@
                 await loadPCData();
             } catch (err) {
                 console.error("カードデータの読み込みに失敗しました:", err);
+                showFatalErrorOverlay("カードデータ読み込み失敗: " + (err && err.message ? err.message : err), "", "");
                 pcData = [];
             }
 
@@ -461,12 +463,14 @@
                 await loadAppBackground();
             } catch (err) {
                 console.warn("背景画像の読み込みに失敗しました:", err);
+                showFatalErrorOverlay("背景画像読み込み失敗: " + (err && err.message ? err.message : err), "", "");
             }
 
             try {
                 await loadMemberPhotos();
             } catch (err) {
                 console.warn("メンバー写真の読み込みに失敗しました:", err);
+                showFatalErrorOverlay("メンバー写真読み込み失敗: " + (err && err.message ? err.message : err), "", "");
             }
 
             // ここから先は画面表示に必須なので、何があっても必ず実行する
@@ -2028,12 +2032,4 @@
         // ══════════════════════════════════════════════════════════════
         function toggleMultiSelectMode() {
             isMultiSelectMode = !isMultiSelectMode;
-            selectedCardIds.clear();
-
-            const toggleBtn = document.getElementById("multiSelectToggleBtn");
-            const bar = document.getElementById("multiSelectBar");
-            const addBtn = document.getElementById("addBtn");
-            const albumBtn = document.getElementById("manageAlbumsBtn");
-
-            bar.classList.toggle("hidden", !isMultiSelectMode);
-            toggleBtn.classList.toggle("bg-purple-7
+          
