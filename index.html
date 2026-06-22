@@ -269,7 +269,11 @@
                 </div>
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">移動先アルバム</label>
-                    <select id="bulkMoveAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                    <select id="bulkMoveAlbum" onchange="updateBulkMoveCategoryOptions()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                </div>
+                <div id="bulkMoveCategoryWrap">
+                    <label class="text-gray-400 font-bold block mb-1">移動先の種類</label>
+                    <select id="bulkMoveCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
@@ -553,7 +557,7 @@
         function backToAlbumList(skipHistory) {
             currentAlbum = null;
             showView("albumList");
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         // 指定したアルバムで選択可能なメンバー一覧を返す。
@@ -1490,7 +1494,7 @@
         function closeModal(skipHistory) {
             document.getElementById("cardModal").classList.add("hidden");
             stopCameraStream(); // 念のため、カメラが起動したままになっていないか確認して停止
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         function previewImage(input) {
@@ -1621,7 +1625,7 @@
             stopCameraStream();
             document.getElementById("cameraModal").classList.add("hidden");
             document.getElementById("cameraModal").classList.remove("flex");
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         // 縦/横の切り替え：ガイド枠のアスペクト比を反転させる
@@ -1946,7 +1950,7 @@
             document.getElementById("previewModal").classList.add("hidden");
             currentPreviewCardId = null;
             isShowingBackFace = false;
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         function openAlbumModal() {
@@ -1962,7 +1966,7 @@
             updateFormSelectOptions();
             renderAlbumTabs();
             if (currentView === "gallery") renderApp();
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         // ── メンバー写真設定モーダル（トップ画面から開く） ──────────────────
@@ -1975,7 +1979,7 @@
         function closeMemberPhotoModal(skipHistory) {
             document.getElementById("memberPhotoModal").classList.add("hidden");
             if (currentView === "gallery") renderGalleryMemberSwitchBar();
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         function renderMemberPhotoList() {
@@ -2168,23 +2172,45 @@
             document.getElementById("bulkMoveMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
             document.getElementById("bulkMoveAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
             document.getElementById("bulkMoveMember").value = currentMember;
+            document.getElementById("bulkMoveAlbum").value = currentAlbum;
+            updateBulkMoveCategoryOptions();
             document.getElementById("bulkMoveModal").classList.remove("hidden");
             pushModalHistory("closeBulkMoveModal");
         }
 
+        // まとめて移動モーダルで、選択中のアルバムに応じて移動先カテゴリの選択肢を絞り込む
+        function updateBulkMoveCategoryOptions() {
+            const albumName = document.getElementById("bulkMoveAlbum").value;
+            const availableCategories = getCategoriesForAlbum(albumName);
+            const select = document.getElementById("bulkMoveCategory");
+            const wrap = document.getElementById("bulkMoveCategoryWrap");
+            if (availableCategories.length === 0) {
+                wrap.classList.add("hidden");
+                select.innerHTML = "";
+                return;
+            }
+            wrap.classList.remove("hidden");
+            select.innerHTML = availableCategories.map(c =>
+                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
+            ).join('');
+        }
+
         function closeBulkMoveModal(skipHistory) {
             document.getElementById("bulkMoveModal").classList.add("hidden");
-            if (!skipHistory) history.back();
+            if (!skipHistory) { popModalHistory(); history.back(); }
         }
 
         async function confirmBulkMove() {
             const targetMember = document.getElementById("bulkMoveMember").value;
             const targetAlbum = document.getElementById("bulkMoveAlbum").value;
+            const albumCats = getCategoriesForAlbum(targetAlbum);
+            const targetCategory = albumCats.length > 0 ? document.getElementById("bulkMoveCategory").value : null;
 
             const targets = pcData.filter(d => selectedCardIds.has(d.id));
             targets.forEach(card => {
                 card.member = targetMember;
                 card.album = targetAlbum;
+                card.category = targetCategory;
             });
             await saveCardsToDB(targets);
 
@@ -2431,6 +2457,15 @@
         function pushModalHistory(closeFnName) {
             openModalStack.push(closeFnName);
             history.pushState({ modal: closeFnName }, "");
+        }
+
+        // ボタン操作などでモーダルを閉じる際、history.back()を呼ぶと非同期にpopstateが発火し、
+        // そのタイミングでpopstateハンドラがもう一度close関数を呼んでしまい、
+        // 結果的に意図した1階層より多く戻ってしまうことがあった。
+        // そのため、ボタン操作起因の場合はスタックを直接pop（履歴は実際には戻さない）し、
+        // ブラウザの戻るボタン操作（popstate）の場合だけ実際にhistory.back()相当の遷移を行う設計にする。
+        function popModalHistory() {
+            if (openModalStack.length > 0) openModalStack.pop();
         }
 
         window.addEventListener("popstate", function(e) {
