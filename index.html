@@ -112,8 +112,14 @@
         <div id="albumListView">
             <div class="bg-gray-950/85 border border-gray-800/80 p-3 rounded-2xl mb-4 backdrop-blur-xl relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
+                <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
+                       class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors relative z-10 mb-3">
                 <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">ALBUM SELECT</label>
                 <div class="grid grid-cols-2 gap-2 relative z-10" id="albumTabs"></div>
+            </div>
+            <div id="topSearchResults" class="hidden mb-4 bg-pink-950/30 border border-pink-900/40 rounded-2xl p-3 backdrop-blur-md">
+                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
+                <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
             </div>
             <div class="flex justify-end mb-4">
                 <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
@@ -158,6 +164,8 @@
                     </div>
                 </div>
             </div>
+
+            <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar"></div>
 
             <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/80 p-2 rounded-xl border border-gray-800/60 backdrop-blur-md shadow-md">
                 <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
@@ -487,9 +495,42 @@
             currentMember = memberName;
             updateTabUI();
             document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
+            renderGalleryMemberSwitchBar();
             showView("gallery");
             renderApp();
             pushModalHistory("backToMemberList");
+        }
+
+        // ギャラリー画面の上に、現在のアルバム内で他のメンバーへ直接切り替えられる横並びタブを表示する
+        function renderGalleryMemberSwitchBar() {
+            const bar = document.getElementById("galleryMemberSwitchBar");
+            bar.innerHTML = memberData.map(m => {
+                const photoUrl = memberPhotoUrls[m.name];
+                const avatarHtml = photoUrl
+                    ? `<img src="${photoUrl}" class="w-6 h-6 rounded-full object-cover border border-gray-700 shrink-0">`
+                    : `<span class="text-sm">${m.icon}</span>`;
+                const isActive = m.name === currentMember;
+                return `
+                    <button onclick="switchGalleryMember('${m.name}')"
+                        class="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+                            isActive
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                            : 'bg-gray-900 border border-gray-800 text-gray-400'
+                        }">
+                        ${avatarHtml}
+                        <span>${m.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // ギャラリー画面内で別のメンバーへ切り替える（アルバム階層を遡らずに直接切り替える）
+        function switchGalleryMember(memberName) {
+            currentMember = memberName;
+            document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
+            renderGalleryMemberSwitchBar();
+            updateTabUI();
+            renderApp();
         }
 
         function backToMemberList(skipHistory) {
@@ -1088,12 +1129,52 @@
 
         // 検索結果のカードをタップしたら、そのメンバーのタブへジャンプする
         // 全メンバー横断検索の結果をタップした時、該当カードのアルバム×メンバーのギャラリーまで直接移動する
+        // トップ画面（アルバム一覧）の検索バー：全アルバム×全メンバーのカードを横断検索する
+        function renderTopSearch() {
+            const searchVal = document.getElementById("topSearchBar").value.toLowerCase().trim();
+            const resultsBox = document.getElementById("topSearchResults");
+            const listBox = document.getElementById("topSearchList");
+
+            if (!searchVal) {
+                resultsBox.classList.add("hidden");
+                return;
+            }
+
+            const matches = pcData.filter(card =>
+                card.theme.toLowerCase().includes(searchVal) ||
+                card.album.toLowerCase().includes(searchVal) ||
+                (card.tags || []).some(t => t.toLowerCase().includes(searchVal))
+            );
+
+            if (matches.length === 0) {
+                resultsBox.classList.remove("hidden");
+                listBox.innerHTML = `<div class="text-gray-500 italic text-[11px] text-center py-2">該当するトレカが見つかりません</div>`;
+                return;
+            }
+
+            resultsBox.classList.remove("hidden");
+            listBox.innerHTML = matches.slice(0, 30).map(card => {
+                const mob = memberData.find(m => m.name === card.member);
+                return `
+                    <div onclick="jumpToCard('${card.album}', '${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
+                        <span class="text-base shrink-0">${mob ? mob.icon : "👤"}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album}</p>
+                        </div>
+                        <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
         function jumpToCard(albumName, memberName) {
             currentAlbum = albumName;
             currentMember = memberName;
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${memberName}`;
             document.getElementById("searchBar").value = "";
             renderTabs();
+            renderGalleryMemberSwitchBar();
             showView("gallery");
             renderApp();
         }
@@ -1577,6 +1658,7 @@
             }
 
             try {
+                let newId = null;
                 if (editId) {
                     const card = pcData.find(d => d.id === editId);
                     if (card) {
@@ -1602,7 +1684,7 @@
                         }
                     }
                 } else {
-                    const newId = generateId();
+                    newId = generateId();
                     const newCard = {
                         id: newId,
                         member: member,
@@ -1621,10 +1703,17 @@
                     }
                 }
 
-                closeModal();
+                closeModal(true);
                 await loadPCData();
                 renderApp();
                 updateStorageEstimate();
+
+                // 新規登録の場合は、登録したトレカのプレビューをそのまま開く
+                if (!editId && newId) {
+                    openPreviewModal(newId);
+                } else {
+                    history.back(); // 編集時はモーダルを閉じる分の履歴を1つ戻す
+                }
             } catch (err) {
                 console.error("saveCard failed:", err);
                 alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
