@@ -438,6 +438,22 @@
             return (album && album.categories) ? album.categories : categories;
         }
 
+        // データ移行（カテゴリ機能の廃止→復活など）の影響で category が欠落・無効な値の
+        // カードが残っていることがあるため、起動時に一度だけ「その他」へ自動修復する。
+        // I-LAND2のようにカテゴリ自体を使わないアルバムのカードは対象外とする。
+        async function repairMissingCategories() {
+            const toFix = pcData.filter(card => {
+                const albumCats = getCategoriesForAlbum(card.album);
+                if (albumCats.length === 0) return false; // カテゴリなしアルバムは対象外
+                return !card.category || !albumCats.includes(card.category);
+            });
+            if (toFix.length === 0) return;
+
+            toFix.forEach(card => { card.category = "その他"; });
+            await saveCardsToDB(toFix);
+            console.log(`category欠落のため${toFix.length}枚を「その他」へ自動修復しました`);
+        }
+
         function updateFormCategoryOptions() {
             const albumName = document.getElementById("formAlbum").value;
             const availableCategories = getCategoriesForAlbum(albumName);
@@ -645,6 +661,7 @@
 
             try {
                 await loadPCData();
+                await repairMissingCategories();
             } catch (err) {
                 console.error("カードデータの読み込みに失敗しました:", err);
                 showFatalErrorOverlay("カードデータ読み込み失敗: " + (err && err.message ? err.message : err), "", "");
@@ -1252,10 +1269,20 @@
                     : `<div class="col-span-4 text-center text-gray-600 italic py-8 text-xs">登録されたトレカはありません</div>`;
                 initSortableForList(container);
             } else {
+                // category が未設定、または現在のアルバムで無効な値になっているカードは
+                // 「その他」に振り分けて表示する（過去のデータ移行などで category が
+                // 欠落していても、件数とカード自体が画面から消えないようにする安全策）。
+                const normalizedCards = filteredCards.map(card => {
+                    if (!card.category || !albumCategories.includes(card.category)) {
+                        return { ...card, category: "その他" };
+                    }
+                    return card;
+                });
+
                 // カテゴリごとに見出し付きのグリッドブロックを縦に並べる
                 container.className = "space-y-5 pb-10";
                 container.innerHTML = albumCategories.map(cat => {
-                    const catCards = sortCards(filteredCards.filter(d => d.category === cat));
+                    const catCards = sortCards(normalizedCards.filter(d => d.category === cat));
                     const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
                     const cardsHtml = catCards.length
                         ? catCards.map(card => renderCard(card, isViewer)).join('')
