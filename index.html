@@ -1793,16 +1793,20 @@
                     }
                 }
 
-                closeModal(true);
+                document.getElementById("cardModal").classList.add("hidden");
+                stopCameraStream();
+                popModalHistory(); // cardModalを閉じた分のスタックを先に整理する（履歴自体はまだ消費しない）
                 await loadPCData();
                 renderApp();
                 updateStorageEstimate();
 
-                // 新規登録の場合は、登録したトレカのプレビューをそのまま開く
+                // 新規登録の場合は、登録したトレカのプレビューをそのまま開く。
+                // cardModal用の履歴エントリは既に上で取り除いたので、ここでは新たにブラウザ履歴を
+                // 1つ進めずに（history.replaceStateで）置き換え、スタックの段数がズレないようにする。
                 if (!editId && newId) {
+                    history.replaceState({}, ""); // cardModal分のエントリを消費（戻ってもギャラリーに留まる）
                     openPreviewModal(newId);
                 } else {
-                    popModalHistory();
                     history.back(); // 編集時はモーダルを閉じる分の履歴を1つ戻す
                 }
             } catch (err) {
