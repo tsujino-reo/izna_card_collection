@@ -19,12 +19,20 @@
            専用要素に分離して確実に固定する方式に変更）。 */
         #appBackgroundLayer {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: -5vh; left: -5vw; right: -5vw; bottom: -5vh;
+            width: 110vw;
+            height: 110vh;
             z-index: -1;
             background-image: radial-gradient(circle at center, #1a1c2e 0%, #090a0f 100%);
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            /* スクロール中のモバイルブラウザでアドレスバーが伸縮すると、
+               position:fixed要素がビューポート変化に追従して一瞬カタつくことがある。
+               GPU合成レイヤーとして分離し、上下左右に余白(110vw/vh)を持たせることで
+               その境界の動きを画面外に逃がし、見た目上の震えを抑える。 */
+            transform: translateZ(0);
+            will-change: transform;
         }
         input, select, button { color: #ffffff !important; }
         input::placeholder { color: #64748b !important; }
