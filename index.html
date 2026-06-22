@@ -1802,6 +1802,7 @@
                 if (!editId && newId) {
                     openPreviewModal(newId);
                 } else {
+                    popModalHistory();
                     history.back(); // 編集時はモーダルを閉じる分の履歴を1つ戻す
                 }
             } catch (err) {
@@ -1861,6 +1862,7 @@
             }
 
             document.getElementById("cardModal").classList.remove("hidden");
+            pushModalHistory("closeModal");
         }
 
         async function deleteCard(id) {
