@@ -539,6 +539,7 @@
         }
 
         function selectAlbum(albumName) {
+            debugLog(`>> selectAlbum(${albumName})`);
             currentAlbum = albumName;
             // メンバー選択画面を経由せず、直接ギャラリー画面へ移動する。
             // メンバーが今のアルバムで選べない（getAllowedMembersForAlbum対象外）場合は先頭メンバーに切り替える。
@@ -555,6 +556,7 @@
         }
 
         function backToAlbumList(skipHistory) {
+            debugLog(`>> backToAlbumList(skipHistory=${skipHistory})`);
             currentAlbum = null;
             showView("albumList");
             if (!skipHistory) { popModalHistory(); history.back(); }
@@ -1455,6 +1457,7 @@
         }
 
         function openModal() {
+            debugLog(`>> openModal() (new card)`);
             document.getElementById("modalTitle").innerText = "トレカアーカイブ登録";
             document.getElementById("editIndex").value = "";
             document.getElementById("formTheme").value = "";
@@ -1734,6 +1737,7 @@
         }
 
         async function saveCard() {
+            debugLog(`>> saveCard() editId="${document.getElementById("editIndex").value}"`);
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
             const member = document.getElementById("formMember").value;
             const album = document.getElementById("formAlbum").value;
@@ -1804,9 +1808,11 @@
                 // cardModal用の履歴エントリは既に上で取り除いたので、ここでは新たにブラウザ履歴を
                 // 1つ進めずに（history.replaceStateで）置き換え、スタックの段数がズレないようにする。
                 if (!editId && newId) {
+                    debugLog(`saveCard: new card path -> replaceState + openPreviewModal(${newId})`);
                     history.replaceState({}, ""); // cardModal分のエントリを消費（戻ってもギャラリーに留まる）
                     openPreviewModal(newId);
                 } else {
+                    debugLog(`saveCard: edit path -> history.back()`);
                     history.back(); // 編集時はモーダルを閉じる分の履歴を1つ戻す
                 }
             } catch (err) {
@@ -1823,6 +1829,7 @@
         }
 
         async function editCard(id) {
+            debugLog(`>> editCard(${id})`);
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
@@ -1884,6 +1891,7 @@
         let isShowingBackFace = false;
 
         function openPreviewModal(id) {
+            debugLog(`>> openPreviewModal(${id})`);
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
@@ -1953,6 +1961,7 @@
         }
 
         function closePreviewModal(skipHistory) {
+            debugLog(`>> closePreviewModal(skipHistory=${skipHistory})`);
             document.getElementById("previewModal").classList.add("hidden");
             currentPreviewCardId = null;
             isShowingBackFace = false;
@@ -2454,6 +2463,26 @@
         }
 
         // ══════════════════════════════════════════════════════════════
+        // デバッグ用の画面上ログパネル（スマホで開発者ツールが開けないため）
+        // 履歴/モーダル関連のconsole.logをここにも同時に出す。
+        // ══════════════════════════════════════════════════════════════
+        function debugLog(msg) {
+            let panel = document.getElementById("debugLogPanel");
+            if (!panel) {
+                panel = document.createElement("div");
+                panel.id = "debugLogPanel";
+                panel.style.cssText = "position:fixed; bottom:0; left:0; right:0; z-index:99998; background:rgba(0,0,0,0.92); color:#22d3ee; font-size:9px; font-family:monospace; padding:6px; max-height:30vh; overflow-y:auto; white-space:pre-wrap; border-top:2px solid #22d3ee;";
+                document.body.appendChild(panel);
+            }
+            const line = document.createElement("div");
+            line.innerText = msg;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+            // ログが増えすぎないよう、古いものから間引く
+            while (panel.children.length > 60) panel.removeChild(panel.firstChild);
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // モーダルとブラウザの「戻る」ボタンの連携
         // モーダルを開くたびに履歴へ仮想エントリを積み、戻るボタンが押された時は
         // ページ自体から離脱せず、開いている最後のモーダルだけを閉じるようにする。
@@ -2463,24 +2492,25 @@
         function pushModalHistory(closeFnName) {
             openModalStack.push(closeFnName);
             history.pushState({ modal: closeFnName }, "");
+            debugLog(`PUSH ${closeFnName} | stack=[${openModalStack.join(',')}] | len=${history.length}`);
         }
 
-        // ボタン操作などでモーダルを閉じる際、history.back()を呼ぶと非同期にpopstateが発火し、
-        // そのタイミングでpopstateハンドラがもう一度close関数を呼んでしまい、
-        // 結果的に意図した1階層より多く戻ってしまうことがあった。
-        // そのため、ボタン操作起因の場合はスタックを直接pop（履歴は実際には戻さない）し、
-        // ブラウザの戻るボタン操作（popstate）の場合だけ実際にhistory.back()相当の遷移を行う設計にする。
         function popModalHistory() {
-            if (openModalStack.length > 0) openModalStack.pop();
+            const removed = openModalStack.pop();
+            debugLog(`POP(manual) ${removed} | stack=[${openModalStack.join(',')}] | len=${history.length}`);
         }
 
         window.addEventListener("popstate", function(e) {
+            debugLog(`POPSTATE fired | stack=[${openModalStack.join(',')}] | len=${history.length}`);
             if (openModalStack.length > 0) {
                 const closeFnName = openModalStack.pop();
+                debugLog(`POPSTATE closing ${closeFnName} | stackAfter=[${openModalStack.join(',')}]`);
                 const fn = window[closeFnName];
                 if (typeof fn === "function") {
                     fn(true); // skipHistory=true: 既にpopstateで履歴は消費済みなので、closeModal側で再度backしない
                 }
+            } else {
+                debugLog(`POPSTATE: stack was empty, nothing to close`);
             }
         });
 
