@@ -192,7 +192,7 @@
                 <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
             </div>
 
-            <div id="galleryContainer" class="grid grid-cols-4 gap-2 pb-10"></div>
+            <div id="galleryContainer" class="space-y-5 pb-10"></div>
         </div>
     </div>
 
@@ -295,7 +295,12 @@
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">アルバム</label>
-                    <select id="formAlbum" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                    <select id="formAlbum" onchange="updateFormCategoryOptions()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                </div>
+
+                <div id="formCategoryWrap">
+                    <label class="text-gray-400 font-bold block mb-1">種類</label>
+                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div>
@@ -328,6 +333,7 @@
             <div class="text-left space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800/80">
                 <div><span class="text-[9px] text-purple-400 font-bold tracking-widest block uppercase">MEMBER</span><p id="viewModalMember" class="text-xs font-black text-white"></p></div>
                 <div><span class="text-[9px] text-pink-400 font-bold tracking-widest block uppercase">ALBUM</span><p id="viewModalAlbum" class="text-[11px] font-bold text-gray-200 truncate"></p></div>
+                <div id="viewModalCategoryRow" class="hidden"><span class="text-[9px] text-rose-400 font-bold tracking-widest block uppercase">CATEGORY</span><p id="viewModalCategory" class="text-xs font-medium text-gray-300"></p></div>
                 <div><span class="text-[9px] text-emerald-400 font-bold tracking-widest block uppercase">THEME</span><p id="viewModalTheme" class="text-sm font-black text-white"></p></div>
                 <div id="viewModalTagsRow" class="hidden">
                     <span class="text-[9px] text-sky-400 font-bold tracking-widest block uppercase">TAGS</span>
@@ -375,18 +381,45 @@
             { name: "ココ", icon: "🐈‍⬛" },
             { name: "サラン", icon: "🐶" },
             { name: "ジョンウン", icon: "🐆" },
-            { name: "セビ", icon: "🐰" },
-            { name: "ユニット", icon: "✨" }
+            { name: "セビ", icon: "🐰" }
         ];
 
+        const categories = ["アルバム封入", "店舗特典・ラキドロ", "サノク", "その他"];
+        const CATEGORY_ICONS = { "アルバム封入": "💿", "店舗特典・ラキドロ": "🏪", "サノク": "🤝", "その他": "✨" };
+
         const DEFAULT_ALBUMS = [
-            { name: "I-LAND2", coverUrl: "" },
+            { name: "I-LAND2", coverUrl: "", categories: [] },
             { name: "N/a", coverUrl: "" },
-            { name: "SIGN", coverUrl: "" },
+            { name: "SIGN", coverUrl: "", categories: ["サノク", "その他"] },
             { name: "BEEP", coverUrl: "" },
             { name: "Not Just Pretty", coverUrl: "" },
             { name: "Set The Tempo", coverUrl: "" }
         ];
+
+        // 指定したアルバムで使用可能なカテゴリ一覧を返す。
+        // アルバムに categories の指定がなければ、デフォルトの全カテゴリを使う。
+        function getCategoriesForAlbum(albumName) {
+            const album = albums.find(a => a.name === albumName);
+            return (album && album.categories) ? album.categories : categories;
+        }
+
+        function updateFormCategoryOptions() {
+            const albumName = document.getElementById("formAlbum").value;
+            const availableCategories = getCategoriesForAlbum(albumName);
+            const select = document.getElementById("formCategory");
+            const prevValue = select.value;
+            const wrap = document.getElementById("formCategoryWrap");
+            if (availableCategories.length === 0) {
+                wrap.classList.add("hidden");
+                select.innerHTML = "";
+                return;
+            }
+            wrap.classList.remove("hidden");
+            select.innerHTML = availableCategories.map(c =>
+                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
+            ).join('');
+            if (availableCategories.includes(prevValue)) select.value = prevValue;
+        }
 
         const STORAGE_KEY_ALBUMS = "izna_albums_v3";
         
@@ -819,6 +852,19 @@
                     }
                 });
 
+                // 既存の「I-LAND2」「SIGN」に categories 指定が無い場合は付与する
+                // （カテゴリ機能を一度廃止して復活させた経緯があるため、移行データに対応）
+                const ilandAlbum = albums.find(a => a.name === "I-LAND2");
+                if (ilandAlbum && !ilandAlbum.categories) {
+                    ilandAlbum.categories = [];
+                    changed = true;
+                }
+                const signAlbum = albums.find(a => a.name === "SIGN");
+                if (signAlbum && !signAlbum.categories) {
+                    signAlbum.categories = ["サノク", "その他"];
+                    changed = true;
+                }
+
                 // 固定6アルバムを定義順に並べ、それ以外（手動追加分）は元の相対順序を保ったまま後ろに続ける
                 const reordered = sortAlbumsByFixedOrder(albums);
                 if (JSON.stringify(reordered) !== JSON.stringify(albums)) {
@@ -1061,8 +1107,6 @@
             const container = document.getElementById("galleryContainer");
             container.innerHTML = "";
 
-            // カテゴリ分けを廃止したため、選択中のアルバム×メンバーのカードをフラットな
-            // 1リストとして1行4枚のグリッドに表示する。
             const albumCards = pcData.filter(d => d.album === currentAlbum && d.member === currentMember);
             const searchVal = document.getElementById("searchBar").value.toLowerCase().trim();
 
@@ -1080,21 +1124,49 @@
                 ? `<img src="${currentPhotoUrl}" class="w-full h-full object-cover">`
                 : (currentTabMobData ? currentTabMobData.icon : "👤");
 
-            const sortedCards = sortCards(filteredCards);
             const isViewer = (currentRole === "viewer");
+            const albumCategories = getCategoriesForAlbum(currentAlbum);
 
-            container.id = "galleryContainer";
-            container.dataset.album = currentAlbum;
-            container.innerHTML = sortedCards.map(card => renderCard(card, isViewer)).join('');
+            if (albumCategories.length === 0) {
+                // I-LAND2のようにカテゴリ指定がないアルバムは、フラットな1行4枚グリッドで表示する
+                const sortedCards = sortCards(filteredCards);
+                container.className = "grid grid-cols-4 gap-2 pb-10";
+                container.dataset.album = currentAlbum;
+                container.innerHTML = sortedCards.length
+                    ? sortedCards.map(card => renderCard(card, isViewer)).join('')
+                    : `<div class="col-span-4 text-center text-gray-600 italic py-8 text-xs">登録されたトレカはありません</div>`;
+                initSortableForList(container);
+            } else {
+                // カテゴリごとに見出し付きのグリッドブロックを縦に並べる
+                container.className = "space-y-5 pb-10";
+                container.innerHTML = albumCategories.map(cat => {
+                    const catCards = sortCards(filteredCards.filter(d => d.category === cat));
+                    const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
+                    const cardsHtml = catCards.length
+                        ? catCards.map(card => renderCard(card, isViewer)).join('')
+                        : `<div class="col-span-4 text-gray-600 italic text-[10px] py-2">未登録</div>`;
+                    return `
+                        <div>
+                            <h3 class="text-[10px] font-bold text-gray-400 mb-2 border-l-2 border-purple-500 pl-2 tracking-widest uppercase flex items-center gap-1.5">
+                                <span>${CATEGORY_ICONS[cat] || "⚫"}</span>
+                                <span>${cat} (${catCards.length})</span>
+                            </h3>
+                            <div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">
+                                ${cardsHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
 
-            if (sortedCards.length === 0) {
-                container.innerHTML = `<div class="col-span-4 text-center text-gray-600 italic py-8 text-xs">登録されたトレカはありません</div>`;
+                albumCategories.forEach(cat => {
+                    const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
+                    const el = document.getElementById(listId);
+                    if (el) initSortableForList(el);
+                });
             }
-
-            initSortable();
         }
 
-        // 並び順設定に応じてカード配列をソートする（カテゴリ分けがなくなったため、アルバム全体で1回ソートするだけでよい）
+        // 並び順設定に応じてカード配列をソートする
         function sortCards(cards) {
             const sortBy = document.getElementById("sortSelect").value;
             const sorted = [...cards];
@@ -1160,21 +1232,18 @@
             sortableInstances = [];
         }
 
-        // カテゴリ分けを廃止したため、ドラッグ並び替えはアルバム内の1つのグリッド全体が対象になる
-        function initSortable() {
+        // 指定したグリッド要素にドラッグ並び替えを設定する。
+        // カテゴリがある場合は、異なるカテゴリ間でのドラッグ移動も許可する(group指定)。
+        function initSortableForList(el) {
             if (currentRole === "viewer" || document.getElementById("sortSelect").value !== "custom" || isMultiSelectMode) return;
 
-            // SortableJSがCDNから読み込めていない場合は、並び替え機能だけ無効化し、
-            // カードの登録・表示自体は問題なく動作させる
             if (typeof Sortable === "undefined") {
                 console.warn("SortableJSが読み込まれていないため、ドラッグ並び替えは無効です。");
                 return;
             }
 
-            const el = document.getElementById("galleryContainer");
-            if (!el) return;
-
             const instance = Sortable.create(el, {
+                group: 'pcArchiveGroup',
                 animation: 180,
                 delay: 150,
                 delayOnTouchOnly: true,
@@ -1182,7 +1251,19 @@
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
                 onEnd: function (evt) {
-                    saveOrder(evt.to);
+                    if (evt.from === evt.to) saveOrder(evt.to);
+                },
+                onAdd: async function (evt) {
+                    // カテゴリ間移動の場合、カードのcategoryを移動先に更新する
+                    const newCategory = evt.to.dataset.category;
+                    const id = evt.item.dataset.id;
+                    const card = pcData.find(d => d.id === id);
+                    if (card && newCategory) {
+                        card.category = newCategory;
+                        await saveCardToDB(card);
+                    }
+                    await saveOrder(evt.to);
+                    renderApp();
                 }
             });
 
@@ -1210,6 +1291,7 @@
             document.getElementById("formTags").value = "";
             document.getElementById("formMember").value = currentMember;
             document.getElementById("formAlbum").value = currentAlbum;
+            updateFormCategoryOptions();
             currentTempImageUrl = "";
             currentTempImageUrlBack = "";
             removeBackImageFlag = false;
@@ -1484,6 +1566,8 @@
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
             const member = document.getElementById("formMember").value;
             const album = document.getElementById("formAlbum").value;
+            const albumCats = getCategoriesForAlbum(album);
+            const category = albumCats.length > 0 ? document.getElementById("formCategory").value : null;
             const editId = document.getElementById("editIndex").value;
             const tags = parseTagsInput(document.getElementById("formTags").value);
 
@@ -1499,6 +1583,7 @@
                         card.theme = theme;
                         card.member = member;
                         card.album = album;
+                        card.category = category;
                         card.tags = tags;
                         // 新しい画像が選ばれた場合のみ向きを更新（差し替えていなければ既存の向きを維持）
                         if (currentTempImageUrl) {
@@ -1522,6 +1607,7 @@
                         id: newId,
                         member: member,
                         album: album,
+                        category: category,
                         theme: theme,
                         tags: tags,
                         orientation: currentTempImageOrientation, // 表面の縦/横
@@ -1562,6 +1648,8 @@
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formMember").value = card.member;
             document.getElementById("formAlbum").value = card.album;
+            updateFormCategoryOptions();
+            if (card.category) document.getElementById("formCategory").value = card.category;
             document.getElementById("formTags").value = (card.tags || []).join(" ");
             
             currentTempImageUrl = "";
@@ -1621,6 +1709,13 @@
             document.getElementById("viewModalMember").innerText = card.member;
             document.getElementById("viewModalAlbum").innerText = card.album;
             document.getElementById("viewModalTheme").innerText = card.theme;
+            const catRow = document.getElementById("viewModalCategoryRow");
+            if (card.category) {
+                catRow.classList.remove("hidden");
+                document.getElementById("viewModalCategory").innerText = card.category;
+            } else {
+                catRow.classList.add("hidden");
+            }
 
             const tagsRow = document.getElementById("viewModalTagsRow");
             const tagsBox = document.getElementById("viewModalTags");
