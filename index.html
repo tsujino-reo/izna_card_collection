@@ -559,7 +559,7 @@
             debugLog(`>> backToAlbumList(skipHistory=${skipHistory})`);
             currentAlbum = null;
             showView("albumList");
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         // 指定したアルバムで選択可能なメンバー一覧を返す。
@@ -1497,7 +1497,7 @@
         function closeModal(skipHistory) {
             document.getElementById("cardModal").classList.add("hidden");
             stopCameraStream(); // 念のため、カメラが起動したままになっていないか確認して停止
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         function previewImage(input) {
@@ -1628,7 +1628,7 @@
             stopCameraStream();
             document.getElementById("cameraModal").classList.add("hidden");
             document.getElementById("cameraModal").classList.remove("flex");
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         // 縦/横の切り替え：ガイド枠のアスペクト比を反転させる
@@ -1799,17 +1799,17 @@
 
                 document.getElementById("cardModal").classList.add("hidden");
                 stopCameraStream();
-                popModalHistory(); // cardModalを閉じた分のスタックを先に整理する（履歴自体はまだ消費しない）
                 await loadPCData();
                 renderApp();
                 updateStorageEstimate();
 
                 // 新規登録の場合は、登録したトレカのプレビューをそのまま開く。
-                // cardModal用の履歴エントリは既に上で取り除いたので、ここでは新たにブラウザ履歴を
-                // 1つ進めずに（history.replaceStateで）置き換え、スタックの段数がズレないようにする。
+                // history.back()は非同期にpopstateを発火させるため、スタックを手動操作せず、
+                // 実際にpopstateが発火してcloseModal用のエントリが正しく消費されるのを待ってから、
+                // 次のモーダル（プレビュー）の履歴を積む。これでスタックとhistory.lengthが常に一致する。
                 if (!editId && newId) {
-                    debugLog(`saveCard: new card path -> replaceState + openPreviewModal(${newId})`);
-                    history.replaceState({}, ""); // cardModal分のエントリを消費（戻ってもギャラリーに留まる）
+                    debugLog(`saveCard: new card path -> waiting for history.back() then openPreviewModal(${newId})`);
+                    await goBackAndWait();
                     openPreviewModal(newId);
                 } else {
                     debugLog(`saveCard: edit path -> history.back()`);
@@ -1819,6 +1819,22 @@
                 console.error("saveCard failed:", err);
                 alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
             }
+        }
+
+        // history.back()を呼び、対応するpopstateイベントが実際に発火するまで待つ。
+        // これにより「履歴を戻す→すぐ次のモーダルを開く」ような連続操作でも、
+        // ブラウザのhistory.lengthとopenModalStackの段数が常に一致する状態を保てる。
+        function goBackAndWait() {
+            return new Promise(resolve => {
+                const handler = () => {
+                    window.removeEventListener("popstate", handler, true);
+                    resolve();
+                };
+                // capture=trueで、メインのpopstateハンドラ（スタックpop処理）より先に実行されるようにする…
+                // のではなく、順序を保証するため一旦setTimeoutでメインハンドラの完了後にresolveする
+                window.addEventListener("popstate", () => setTimeout(handler, 0), { once: true });
+                history.back();
+            });
         }
 
         // "ウインク, ぬいぐるみ" のようなカンマ区切り入力を配列に変換する
@@ -1965,7 +1981,7 @@
             document.getElementById("previewModal").classList.add("hidden");
             currentPreviewCardId = null;
             isShowingBackFace = false;
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         function openAlbumModal() {
@@ -1981,7 +1997,7 @@
             updateFormSelectOptions();
             renderAlbumTabs();
             if (currentView === "gallery") renderApp();
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         // ── メンバー写真設定モーダル（トップ画面から開く） ──────────────────
@@ -1994,7 +2010,7 @@
         function closeMemberPhotoModal(skipHistory) {
             document.getElementById("memberPhotoModal").classList.add("hidden");
             if (currentView === "gallery") renderGalleryMemberSwitchBar();
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         function renderMemberPhotoList() {
@@ -2212,7 +2228,7 @@
 
         function closeBulkMoveModal(skipHistory) {
             document.getElementById("bulkMoveModal").classList.add("hidden");
-            if (!skipHistory) { popModalHistory(); history.back(); }
+            if (!skipHistory) history.back();
         }
 
         async function confirmBulkMove() {
@@ -2493,11 +2509,6 @@
             openModalStack.push(closeFnName);
             history.pushState({ modal: closeFnName }, "");
             debugLog(`PUSH ${closeFnName} | stack=[${openModalStack.join(',')}] | len=${history.length}`);
-        }
-
-        function popModalHistory() {
-            const removed = openModalStack.pop();
-            debugLog(`POP(manual) ${removed} | stack=[${openModalStack.join(',')}] | len=${history.length}`);
         }
 
         window.addEventListener("popstate", function(e) {
