@@ -147,6 +147,9 @@
                 <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
             </div>
             <div class="flex justify-end gap-2 mb-4">
+                <button id="resetAllDataBtn" onclick="confirmResetAllCards()" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                    🗑️ トレカ全削除
+                </button>
                 <button id="manageMemberPhotosBtn" onclick="openMemberPhotoModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     📷 メンバー写真設定
                 </button>
@@ -1087,6 +1090,27 @@
             }).join('');
             document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("manageMemberPhotosBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
+        }
+
+        // 枚数の不一致など、データ不整合が解消できない場合の最終手段として、
+        // 登録済みの全トレカ（メタデータ＋画像）を完全に削除する。アルバム・メンバー写真・背景は残す。
+        async function confirmResetAllCards() {
+            if (!confirm("登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？")) return;
+            if (!confirm("最終確認です。本当に全部削除してよろしいですか？")) return;
+
+            try {
+                await clearCardStore();
+                await clearImageStore();
+                pcData = [];
+                renderAlbumTabs();
+                if (currentView === "gallery") renderApp();
+                updateStorageEstimate();
+                alert("全てのトレカを削除しました。");
+            } catch (err) {
+                console.error("全削除に失敗しました:", err);
+                alert("削除に失敗しました。エラー: " + (err && err.message ? err.message : err));
+            }
         }
 
         // 管理者がタブの📷ボタンを押した時に、対象メンバーの顔写真選択を開始する
