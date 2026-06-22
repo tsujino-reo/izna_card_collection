@@ -158,6 +158,9 @@
                 <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     💿 アルバム管理
                 </button>
+                <button id="manageStoresBtn" onclick="openStoreModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                    🏪 店舗管理
+                </button>
             </div>
         </div>
 
@@ -334,7 +337,12 @@
 
                 <div id="formCategoryWrap">
                     <label class="text-gray-400 font-bold block mb-1">種類</label>
-                    <select id="formCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                    <select id="formCategory" onchange="updateFormStoreVisibility()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                </div>
+
+                <div id="formStoreWrap" class="hidden">
+                    <label class="text-gray-400 font-bold block mb-1">店舗</label>
+                    <select id="formStore" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div>
@@ -398,6 +406,22 @@
             </div>
             <div class="flex justify-end mt-4">
                 <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="storeModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏪 店舗管理</h3>
+            <p class="text-[10px] text-gray-500 mb-3">「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。</p>
+            <div id="storeList" class="space-y-2 mb-4 text-xs"></div>
+            <div class="border-t border-gray-800 pt-4 space-y-2">
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">新規店舗を追加</p>
+                <input type="text" id="newStoreName" placeholder="店舗名 (例: Ktown4u)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                <button onclick="addStore()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">＋ 追加</button>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button onclick="closeStoreModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
             </div>
         </div>
     </div>
@@ -472,6 +496,7 @@
             if (availableCategories.length === 0) {
                 wrap.classList.add("hidden");
                 select.innerHTML = "";
+                updateFormStoreVisibility();
                 return;
             }
             wrap.classList.remove("hidden");
@@ -479,6 +504,22 @@
                 `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
             ).join('');
             if (availableCategories.includes(prevValue)) select.value = prevValue;
+            updateFormStoreVisibility();
+        }
+
+        // 種類が「店舗特典・ラキドロ」の時だけ、店舗選択欄を表示する
+        function updateFormStoreVisibility() {
+            const category = document.getElementById("formCategory").value;
+            const wrap = document.getElementById("formStoreWrap");
+            const select = document.getElementById("formStore");
+            if (category === "店舗特典・ラキドロ") {
+                wrap.classList.remove("hidden");
+                const prevValue = select.value;
+                select.innerHTML = stores.map(s => `<option value="${s}">${s}</option>`).join('');
+                if (stores.includes(prevValue)) select.value = prevValue;
+            } else {
+                wrap.classList.add("hidden");
+            }
         }
 
         // 選択中のアルバムに応じて、formMemberの選択肢を制限する（例: ジユンはI-LAND2/N/a以外不可）
@@ -494,6 +535,19 @@
         }
 
         const STORAGE_KEY_ALBUMS = "izna_albums_v3";
+        const STORAGE_KEY_STORES = "izna_stores_v1";
+
+        // 「店舗特典・ラキドロ」カテゴリで選択できる店舗の初期一覧（アルファベット順）。
+        // I-LAND2以外の全アルバムで共通。管理者がアルバム管理から追加・削除できる。
+        const DEFAULT_STORES = [
+            "Aladdin", "Apop", "Apple Music", "EVERLINE", "Hellolive",
+            "HMV & BOOKS", "HOTTRACKS", "Kpop Fans", "KPOP NARA", "Ktown4u",
+            "MAKESTAR", "Mnet Plus", "MUSIC KOREA", "Musicplant", "OLIVEYOUNG",
+            "Playme", "Plus Chat", "Soundwave", "Sony Music Shop", "StarRiver",
+            "TOWER RECORDS", "UNIVERSAL MUSIC STORE", "WITHMUU", "Yizhiyu", "YES24"
+        ];
+        let stores = [];
+
         
         let pcData = [];
         let albums = [];
@@ -669,6 +723,7 @@
 
             loadSavedRole();
             loadAlbumsToApp();
+            loadStores();
 
             try {
                 await loadPCData();
@@ -1102,6 +1157,7 @@
             }).join('');
             document.getElementById("manageAlbumsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("manageMemberPhotosBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
         }
 
@@ -1318,7 +1374,15 @@
                 // カテゴリごとに見出し付きのグリッドブロックを縦に並べる
                 container.className = "space-y-5 pb-10";
                 container.innerHTML = albumCategories.map(cat => {
-                    const catCards = sortCards(normalizedCards.filter(d => d.category === cat));
+                    let catCards = normalizedCards.filter(d => d.category === cat);
+                    if (cat === "店舗特典・ラキドロ") {
+                        // 店舗特典・ラキドロは、並び順の設定に関わらず常に店舗名のアルファベット順で固定表示する
+                        catCards = catCards.slice().sort((a, b) =>
+                            (a.store || "").localeCompare(b.store || "", "en", { sensitivity: "base" })
+                        );
+                    } else {
+                        catCards = sortCards(catCards);
+                    }
                     const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
                     const cardsHtml = catCards.length
                         ? catCards.map(card => renderCard(card, isViewer)).join('')
@@ -1337,6 +1401,7 @@
                 }).join('');
 
                 albumCategories.forEach(cat => {
+                    if (cat === "店舗特典・ラキドロ") return; // 店舗名アルファベット順固定のため並び替え不可
                     const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
                     const el = document.getElementById(listId);
                     if (el) initSortableForList(el);
@@ -1749,6 +1814,7 @@
             const album = document.getElementById("formAlbum").value;
             const albumCats = getCategoriesForAlbum(album);
             const category = albumCats.length > 0 ? document.getElementById("formCategory").value : null;
+            const store = (category === "店舗特典・ラキドロ") ? document.getElementById("formStore").value : null;
             const editId = document.getElementById("editIndex").value;
             const tags = parseTagsInput(document.getElementById("formTags").value);
 
@@ -1766,6 +1832,7 @@
                         card.member = member;
                         card.album = album;
                         card.category = category;
+                        card.store = store;
                         card.tags = tags;
                         // 新しい画像が選ばれた場合のみ向きを更新（差し替えていなければ既存の向きを維持）
                         if (currentTempImageUrl) {
@@ -1790,6 +1857,7 @@
                         member: member,
                         album: album,
                         category: category,
+                        store: store,
                         theme: theme,
                         tags: tags,
                         orientation: currentTempImageOrientation, // 表面の縦/横
@@ -1863,7 +1931,11 @@
             updateFormMemberOptions();
             document.getElementById("formMember").value = card.member;
             updateFormCategoryOptions();
-            if (card.category) document.getElementById("formCategory").value = card.category;
+            if (card.category) {
+                document.getElementById("formCategory").value = card.category;
+                updateFormStoreVisibility();
+                if (card.store) document.getElementById("formStore").value = card.store;
+            }
             document.getElementById("formTags").value = (card.tags || []).join(" ");
             
             currentTempImageUrl = "";
@@ -2036,6 +2108,78 @@
             }).join('');
         }
 
+        // ── 店舗管理モーダル（店舗特典・ラキドロ用の店舗一覧） ──────────────
+        function openStoreModal() {
+            renderStoreList();
+            document.getElementById("storeModal").classList.remove("hidden");
+            pushModalHistory("closeStoreModal");
+        }
+
+        function closeStoreModal(skipHistory) {
+            document.getElementById("storeModal").classList.add("hidden");
+            if (currentView === "gallery") renderApp(); // formStoreの選択肢が変わっている可能性があるため再描画
+            if (!skipHistory) history.back();
+        }
+
+        function renderStoreList() {
+            const container = document.getElementById("storeList");
+            container.innerHTML = stores.map((s, i) => `
+                <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+                    <input type="text" value="${s}" onblur="renameStore(${i}, this.value)"
+                           class="flex-1 bg-transparent text-white text-xs font-bold focus:outline-none focus:bg-gray-800 rounded px-1 py-0.5 transition-colors min-w-0">
+                    <button onclick="deleteStore(${i})" class="text-rose-400 hover:text-rose-300 text-[10px] font-bold px-1 shrink-0">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function addStore() {
+            const name = document.getElementById("newStoreName").value.trim();
+            if (name === "") return;
+            if (stores.some(s => s.toLowerCase() === name.toLowerCase())) {
+                alert("同名の店舗が既に存在します");
+                return;
+            }
+            stores.push(name);
+            sortStoresAlphabetically(); // 追加してもアルファベット順を維持する
+            saveStores();
+            document.getElementById("newStoreName").value = "";
+            renderStoreList();
+        }
+
+        function renameStore(index, newName) {
+            newName = newName.trim();
+            const oldName = stores[index];
+            if (newName === "" || newName === oldName) { renderStoreList(); return; }
+            if (stores.some((s, i) => i !== index && s.toLowerCase() === newName.toLowerCase())) {
+                alert("同名の店舗が既に存在します");
+                renderStoreList();
+                return;
+            }
+            // 既存カードの店舗名も追従させる
+            pcData.forEach(card => { if (card.store === oldName) card.store = newName; });
+            saveCardsToDB(pcData.filter(card => card.store === newName));
+            stores[index] = newName;
+            sortStoresAlphabetically();
+            saveStores();
+            renderStoreList();
+        }
+
+        function deleteStore(index) {
+            const name = stores[index];
+            const cardCount = pcData.filter(d => d.store === name).length;
+            if (cardCount > 0) {
+                if (!confirm(`「${name}」には ${cardCount} 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？`)) return;
+                const affected = pcData.filter(d => d.store === name);
+                affected.forEach(card => { card.store = null; });
+                saveCardsToDB(affected);
+            } else {
+                if (!confirm(`「${name}」を削除しますか？`)) return;
+            }
+            stores.splice(index, 1);
+            saveStores();
+            renderStoreList();
+        }
+
         function renderAlbumListModal() {
             const container = document.getElementById("albumList");
             container.innerHTML = albums.map((a, i) => `
@@ -2140,6 +2284,26 @@
         }
 
         function saveAlbums() { localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums)); }
+
+        // ── 店舗一覧（店舗特典・ラキドロ用） ──────────────────────────────
+        function loadStores() {
+            const saved = localStorage.getItem(STORAGE_KEY_STORES);
+            if (saved) {
+                stores = JSON.parse(saved);
+            } else {
+                stores = [...DEFAULT_STORES];
+                saveStores();
+            }
+            sortStoresAlphabetically();
+        }
+
+        function saveStores() { localStorage.setItem(STORAGE_KEY_STORES, JSON.stringify(stores)); }
+
+        // 店舗名をアルファベット順（大文字・小文字を区別しない）に並べ替える
+        function sortStoresAlphabetically() {
+            stores.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+        }
+
         function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
 
         // ══════════════════════════════════════════════════════════════
