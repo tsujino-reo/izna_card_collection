@@ -94,27 +94,29 @@
             </div>
             
             <div class="flex items-center gap-1.5">
-                <label id="bgChangeLabel" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
-                    🏞️ 背景
-                    <input type="file" id="bgImageInput" accept="image/*" class="file-input-hidden" onchange="changeAppBackground(this)">
-                </label>
-                <button id="resetBgBtn" onclick="resetAppBackground()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold transition-colors" title="背景をリセット">↺</button>
                 <div class="relative">
-                    <button onclick="toggleExportMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold transition-colors">💾 出力</button>
-                    <div id="exportMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-44">
+                    <button onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
+                    <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
+                        <label id="bgChangeLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800 cursor-pointer">
+                            🏞️ 背景を変更
+                            <input type="file" id="bgImageInput" accept="image/*" class="file-input-hidden" onchange="changeAppBackground(this)">
+                        </label>
+                        <button id="resetBgBtn" onclick="resetAppBackground()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            ↺ 背景をリセット
+                        </button>
                         <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
-                        <button onclick="exportData(false)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors">
-                            📝 メタデータのみ（軽量）
+                        <button onclick="exportData(false)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            📝 メタデータのみ出力
                         </button>
+                        <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer">
+                            📥 読込
+                            <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
+                        </label>
                     </div>
                 </div>
-                <label id="importLabel" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold cursor-pointer transition-colors">
-                    📥 読込
-                    <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
-                </label>
-                
+
                 <select id="roleSelect" onchange="changeRole()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">
                     <option value="admin">👑 管理</option>
                     <option value="editor">✍️ 編集</option>
@@ -880,6 +882,7 @@
                 alert("背景画像の保存に失敗しました。");
             }
             input.value = "";
+            document.getElementById("headerMenu").classList.add("hidden");
         }
 
         async function resetAppBackground() {
@@ -897,6 +900,7 @@
             } catch (err) {
                 console.error("背景画像のリセットに失敗:", err);
             }
+            document.getElementById("headerMenu").classList.add("hidden");
         }
 
         // カードオブジェクトから imgUrl（base64 / ObjectURL）を除いたメタデータだけを取り出す
@@ -2308,15 +2312,15 @@
             updateStorageEstimate();
         }
 
-        function toggleExportMenu() {
-            document.getElementById("exportMenu").classList.toggle("hidden");
+        function toggleHeaderMenu() {
+            document.getElementById("headerMenu").classList.toggle("hidden");
         }
         // メニュー外をタップしたら閉じる
         document.addEventListener("click", function(e) {
-            const menu = document.getElementById("exportMenu");
+            const menu = document.getElementById("headerMenu");
             const btn = e.target.closest("button");
             if (menu && !menu.classList.contains("hidden")) {
-                const clickedToggle = btn && btn.getAttribute("onclick") === "toggleExportMenu()";
+                const clickedToggle = btn && btn.getAttribute("onclick") === "toggleHeaderMenu()";
                 if (!menu.contains(e.target) && !clickedToggle) menu.classList.add("hidden");
             }
         });
@@ -2332,7 +2336,7 @@
         }
 
         async function exportData(includeImages) {
-            document.getElementById("exportMenu").classList.add("hidden");
+            document.getElementById("headerMenu").classList.add("hidden");
 
             let exportAlbums = albums;
             let exportCards;
@@ -2381,6 +2385,7 @@
         function importData(input) {
             const file = input.files[0];
             if (!file) return;
+            document.getElementById("headerMenu").classList.add("hidden");
 
             const reader = new FileReader();
             reader.onload = async function(e) {
@@ -2482,20 +2487,10 @@
         // デバッグ用の画面上ログパネル（スマホで開発者ツールが開けないため）
         // 履歴/モーダル関連のconsole.logをここにも同時に出す。
         // ══════════════════════════════════════════════════════════════
+        // デバッグ用の画面上ログ表示は調査が完了したため無効化（no-op）。
+        // 呼び出し箇所のコードは残っているが、何も表示しない。
         function debugLog(msg) {
-            let panel = document.getElementById("debugLogPanel");
-            if (!panel) {
-                panel = document.createElement("div");
-                panel.id = "debugLogPanel";
-                panel.style.cssText = "position:fixed; bottom:0; left:0; right:0; z-index:99998; background:rgba(0,0,0,0.92); color:#22d3ee; font-size:9px; font-family:monospace; padding:6px; max-height:30vh; overflow-y:auto; white-space:pre-wrap; border-top:2px solid #22d3ee;";
-                document.body.appendChild(panel);
-            }
-            const line = document.createElement("div");
-            line.innerText = msg;
-            panel.appendChild(line);
-            panel.scrollTop = panel.scrollHeight;
-            // ログが増えすぎないよう、古いものから間引く
-            while (panel.children.length > 60) panel.removeChild(panel.firstChild);
+            // 無効化済み
         }
 
         // ══════════════════════════════════════════════════════════════
