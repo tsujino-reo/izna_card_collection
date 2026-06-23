@@ -437,14 +437,20 @@
 
     <script>
         const memberData = [
-            { name: "マイ", icon: "🦊" },
-            { name: "ジミン", icon: "🐻" },
-            { name: "ジユン", icon: "🐻‍❄️" },
-            { name: "ココ", icon: "🐈‍⬛" },
-            { name: "サラン", icon: "🐶" },
-            { name: "ジョンウン", icon: "🐆" },
-            { name: "セビ", icon: "🐰" }
+            { name: "MAI", icon: "🦊" },
+            { name: "JEEMIN", icon: "🐻" },
+            { name: "JIYOON", icon: "🐻‍❄️" },
+            { name: "KOKO", icon: "🐈‍⬛" },
+            { name: "SARANG", icon: "🐶" },
+            { name: "JUNGEUN", icon: "🐆" },
+            { name: "SAEBI", icon: "🐰" }
         ];
+
+        // 旧カタカナ表記 → 新英語表記への対応表（既存データの自動移行用）
+        const MEMBER_NAME_MIGRATION = {
+            "マイ": "MAI", "ジミン": "JEEMIN", "ジユン": "JIYOON", "ココ": "KOKO",
+            "サラン": "SARANG", "ジョンウン": "JUNGEUN", "セビ": "SAEBI"
+        };
 
         const categories = ["アルバム封入", "店舗特典・ラキドロ", "サノク", "その他"];
         const CATEGORY_ICONS = { "アルバム封入": "💿", "店舗特典・ラキドロ": "🏪", "サノク": "🤝", "その他": "✨" };
@@ -455,7 +461,8 @@
             { name: "SIGN", coverUrl: "", categories: ["サノク", "その他"] },
             { name: "BEEP", coverUrl: "" },
             { name: "Not Just Pretty", coverUrl: "" },
-            { name: "Set The Tempo", coverUrl: "" }
+            { name: "Set The Tempo", coverUrl: "" },
+            { name: "その他特典", coverUrl: "", categories: [] }
         ];
 
         // 指定したアルバムで使用可能なカテゴリ一覧を返す。
@@ -463,6 +470,43 @@
         function getCategoriesForAlbum(albumName) {
             const album = albums.find(a => a.name === albumName);
             return (album && album.categories) ? album.categories : categories;
+        }
+
+        // メンバー名をカタカナ表記から英語表記に変更した際の移行処理。
+        // 1) 既存トレカの member フィールドを新表記に書き換える
+        // 2) メンバー写真の保存キー（member_<名前>）も旧名から新名に付け替える
+        // localStorageにフラグを立て、一度実行したら二度と走らないようにする。
+        async function migrateMemberNamesToEnglish() {
+            const FLAG_KEY = "izna_member_name_migrated_v1";
+            if (localStorage.getItem(FLAG_KEY)) return;
+
+            // 1) トレカデータのmemberフィールドを変換
+            const toFix = pcData.filter(card => MEMBER_NAME_MIGRATION[card.member]);
+            if (toFix.length > 0) {
+                toFix.forEach(card => { card.member = MEMBER_NAME_MIGRATION[card.member]; });
+                await saveCardsToDB(toFix);
+                console.log(`メンバー名移行のため${toFix.length}枚のmemberフィールドを更新しました`);
+            }
+
+            // 2) メンバー写真のキーを旧名(member_マイ等)から新名(member_MAI等)に付け替える
+            for (const [oldName, newName] of Object.entries(MEMBER_NAME_MIGRATION)) {
+                try {
+                    const oldBlob = await getImageBlob("member_" + oldName);
+                    if (oldBlob) {
+                        await new Promise((resolve, reject) => {
+                            const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
+                            tx.objectStore(IMAGE_STORE_NAME).put({ id: "member_" + newName, blob: oldBlob });
+                            tx.oncomplete = () => resolve();
+                            tx.onerror = (e) => reject(e.target.error);
+                        });
+                        await deleteImageBlob("member_" + oldName);
+                    }
+                } catch (err) {
+                    // 該当する旧キーの写真が無い場合は失敗するのが正常なので、無視して続行する
+                }
+            }
+
+            localStorage.setItem(FLAG_KEY, "true");
         }
 
         // データ移行（カテゴリ機能の廃止→復活など）の影響で category が欠落・無効な値の
@@ -516,7 +560,7 @@
             }
         }
 
-        // 選択中のアルバムに応じて、formMemberの選択肢を制限する（例: ジユンはI-LAND2/N/a以外不可）
+        // 選択中のアルバムに応じて、formMemberの選択肢を制限する（例: JIYOONはI-LAND2/N/a以外不可）
         function updateFormMemberOptions() {
             const albumName = document.getElementById("formAlbum").value;
             const allowed = getAllowedMembersForAlbum(albumName);
@@ -545,7 +589,7 @@
         
         let pcData = [];
         let albums = [];
-        let currentMember = "マイ";
+        let currentMember = "MAI";
         let currentRole = "admin";
         let currentView = "albumList"; // "albumList" | "gallery"
         let currentAlbum = null; // 選択中のアルバム名
@@ -613,10 +657,10 @@
         }
 
         // 指定したアルバムで選択可能なメンバー一覧を返す。
-        // ジユンはI-LAND2とN/a以外のアルバムでは選べない（出演作品の都合等の理由を想定）。
+        // JIYOONはI-LAND2とN/a以外のアルバムでは選べない（出演作品の都合等の理由を想定）。
         function getAllowedMembersForAlbum(albumName) {
             if (albumName !== "I-LAND2" && albumName !== "N/a") {
-                return memberData.filter(m => m.name !== "ジユン");
+                return memberData.filter(m => m.name !== "JIYOON");
             }
             return memberData;
         }
@@ -721,6 +765,7 @@
 
             try {
                 await loadPCData();
+                await migrateMemberNamesToEnglish();
                 await repairMissingCategories();
             } catch (err) {
                 console.error("カードデータの読み込みに失敗しました:", err);
@@ -1029,7 +1074,7 @@
 
         // デフォルトの6アルバムは常にこの順序で固定表示する（並べ替え機能は提供しない）。
         // それ以外に管理者が手動追加したアルバムは、常にこのリストの後ろに追加される。
-        const FIXED_ALBUM_ORDER = ["I-LAND2", "N/a", "SIGN", "BEEP", "Not Just Pretty", "Set The Tempo"];
+        const FIXED_ALBUM_ORDER = ["I-LAND2", "N/a", "SIGN", "BEEP", "Not Just Pretty", "Set The Tempo", "その他特典"];
 
         function loadAlbumsToApp() {
             const savedAlbums = localStorage.getItem(STORAGE_KEY_ALBUMS);
@@ -1037,10 +1082,11 @@
                 albums = JSON.parse(savedAlbums);
                 let changed = false;
 
-                // 固定6アルバムのうち、存在しないものを追加する（既存のcoverUrl等は壊さない）
+                // 固定アルバムのうち、存在しないものを追加する（既存のcoverUrl等は壊さない）
                 FIXED_ALBUM_ORDER.forEach(name => {
                     if (!albums.some(a => a.name === name)) {
-                        albums.push({ name, coverUrl: "" });
+                        const defaultDef = DEFAULT_ALBUMS.find(a => a.name === name);
+                        albums.push(defaultDef ? { ...defaultDef } : { name, coverUrl: "" });
                         changed = true;
                     }
                 });
@@ -1074,12 +1120,17 @@
 
         // 固定6アルバムを FIXED_ALBUM_ORDER の順に並べ、それ以外のアルバム（手動追加分）は
         // 元のリスト内での相対順序を保ったまま、固定6アルバムの後ろに続けて並べる。
+        // 固定アルバムをFIXED_ALBUM_ORDERの順に並べ、手動追加分はその後ろに続ける。
+        // ただし「その他特典」は常に配列の一番最後（手動追加分よりも後ろ）に来るよう特別扱いする。
+        const ALWAYS_LAST_ALBUM = "その他特典";
         function sortAlbumsByFixedOrder(albumList) {
-            const fixedOnes = FIXED_ALBUM_ORDER
+            const fixedNamesExceptLast = FIXED_ALBUM_ORDER.filter(name => name !== ALWAYS_LAST_ALBUM);
+            const fixedOnes = fixedNamesExceptLast
                 .map(name => albumList.find(a => a.name === name))
                 .filter(Boolean);
+            const lastAlbum = albumList.find(a => a.name === ALWAYS_LAST_ALBUM);
             const others = albumList.filter(a => !FIXED_ALBUM_ORDER.includes(a.name));
-            return [...fixedOnes, ...others];
+            return lastAlbum ? [...fixedOnes, ...others, lastAlbum] : [...fixedOnes, ...others];
         }
 
         function updateFormSelectOptions() {
