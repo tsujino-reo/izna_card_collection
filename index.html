@@ -272,7 +272,11 @@
                 </div>
                 <div id="bulkMoveCategoryWrap">
                     <label class="text-gray-400 font-bold block mb-1">移動先の種類</label>
-                    <select id="bulkMoveCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                    <select id="bulkMoveCategory" onchange="updateBulkMoveStoreVisibility()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                </div>
+                <div id="bulkMoveStoreWrap" class="hidden">
+                    <label class="text-gray-400 font-bold block mb-1">移動先の店舗</label>
+                    <select id="bulkMoveStore" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
@@ -455,6 +459,123 @@
         const categories = ["アルバム封入", "店舗特典・ラキドロ", "サノク", "その他"];
         const CATEGORY_ICONS = { "アルバム封入": "💿", "店舗特典・ラキドロ": "🏪", "サノク": "🤝", "その他": "✨" };
 
+        // ══════════════════════════════════════════════════════════════
+        // 検索の表記揺れ吸収（ひらがな⇄カタカナ、ローマ字⇄カタカナ）
+        // テーマ名・タグ等は日本語のひらがな/カタカナ表記が混在しやすく、
+        // 検索語が「うぃんく」でも「ウインク」でも同じ結果が出るようにする。
+        // ローマ字入力（"wink"等）にもヘボン式相当の簡易変換で対応する。
+        // ══════════════════════════════════════════════════════════════
+
+        // ひらがな → カタカナ（Unicodeのコードポイントは平仮名とカタカナで一定のオフセットがある）
+        function hiraganaToKatakana(str) {
+            return str.replace(/[\u3041-\u3096]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+        }
+
+        // ローマ字（簡易ヘボン式）→ カタカナ変換テーブル。長い綴りから先にマッチさせる必要があるため、
+        // キーの長さの降順でソートして使う。
+        const ROMAJI_TO_KANA_MAP = {
+            kya:"キャ", kyu:"キュ", kyo:"キョ", sha:"シャ", shu:"シュ", sho:"ショ",
+            cha:"チャ", chu:"チュ", cho:"チョ", nya:"ニャ", nyu:"ニュ", nyo:"ニョ",
+            hya:"ヒャ", hyu:"ヒュ", hyo:"ヒョ", mya:"ミャ", myu:"ミュ", myo:"ミョ",
+            rya:"リャ", ryu:"リュ", ryo:"リョ", gya:"ギャ", gyu:"ギュ", gyo:"ギョ",
+            ja:"ジャ", ju:"ジュ", jo:"ジョ", bya:"ビャ", byu:"ビュ", byo:"ビョ",
+            pya:"ピャ", pyu:"ピュ", pyo:"ピョ", dya:"ヂャ", dyu:"ヂュ", dyo:"ヂョ",
+            shi:"シ", chi:"チ", tsu:"ツ", fu:"フ",
+            ka:"カ", ki:"キ", ku:"ク", ke:"ケ", ko:"コ",
+            sa:"サ", su:"ス", se:"セ", so:"ソ",
+            ta:"タ", te:"テ", to:"ト",
+            na:"ナ", ni:"ニ", nu:"ヌ", ne:"ネ", no:"ノ",
+            ha:"ハ", hi:"ヒ", he:"ヘ", ho:"ホ",
+            ma:"マ", mi:"ミ", mu:"ム", me:"メ", mo:"モ",
+            ya:"ヤ", yu:"ユ", yo:"ヨ",
+            ra:"ラ", ri:"リ", ru:"ル", re:"レ", ro:"ロ",
+            wa:"ワ", wo:"ヲ", wi:"ウィ", we:"ウェ",
+            ga:"ガ", gi:"ギ", gu:"グ", ge:"ゲ", go:"ゴ",
+            za:"ザ", ji:"ジ", zu:"ズ", ze:"ゼ", zo:"ゾ",
+            da:"ダ", di:"ヂ", du:"ヅ", de:"デ", do:"ド",
+            ba:"バ", bi:"ビ", bu:"ブ", be:"ベ", bo:"ボ",
+            pa:"パ", pi:"ピ", pu:"プ", pe:"ペ", po:"ポ",
+            a:"ア", i:"イ", u:"ウ", e:"エ", o:"オ",
+            n:"ン"
+        };
+        const ROMAJI_KEYS_BY_LENGTH = Object.keys(ROMAJI_TO_KANA_MAP).sort((a, b) => b.length - a.length);
+
+        // 検索語がローマ字（a-z）だけで構成されている場合に、カタカナへ変換する。
+        // 変換できない残りの文字がある場合は元の文字列をそのまま返す（変換失敗として扱う）。
+        function romajiToKatakana(str) {
+            const lower = str.toLowerCase();
+            if (!/^[a-z]+$/.test(lower)) return null; // ローマ字以外の文字を含む場合は対象外
+            return romajiToKatakanaInner(lower) || romajiToKatakanaInner(appendUIfTrailingConsonant(lower));
+        }
+
+        // 外来語表記でよくある「子音で終わる単語」(wink, cut等)に対応するため、
+        // 末尾が子音1文字で終わっている場合は "u" を補って再試行できるようにする
+        // （wink -> winku -> ウィンク、cut -> cutu -> カツ、ではなく実際はcuts等の固有ルールもあるが、
+        //  ここでは末尾子音+u付与という単純なヒューリスティックのみ対応する）。
+        function appendUIfTrailingConsonant(str) {
+            const lastChar = str[str.length - 1];
+            if (lastChar && !"aiueon".includes(lastChar)) return str + "u";
+            return str;
+        }
+
+        function romajiToKatakanaInner(lower) {
+            let result = "";
+            let i = 0;
+            while (i < lower.length) {
+                // 促音（っ）: 同じ子音が連続する場合（kk, ssなど）
+                if (i + 1 < lower.length && lower[i] === lower[i + 1] && !"aiueon".includes(lower[i])) {
+                    result += "ッ";
+                    i += 1;
+                    continue;
+                }
+                let matched = false;
+                for (const key of ROMAJI_KEYS_BY_LENGTH) {
+                    if (lower.startsWith(key, i)) {
+                        result += ROMAJI_TO_KANA_MAP[key];
+                        i += key.length;
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) return null; // 変換できない綴りがあれば諦める
+            }
+            return result;
+        }
+
+        // 検索語を「そのまま」「ひらがな→カタカナ変換」「ローマ字→カタカナ変換」の
+        // 複数パターンに展開する。いずれかがテキストに含まれていればマッチとみなす。
+        function expandSearchVariants(searchVal) {
+            const variants = new Set([searchVal]);
+            const katakanaVariant = hiraganaToKatakana(searchVal);
+            if (katakanaVariant !== searchVal) variants.add(katakanaVariant);
+            const romajiVariant = romajiToKatakana(searchVal);
+            if (romajiVariant) variants.add(romajiVariant.toLowerCase());
+            return [...variants];
+        }
+
+        // テキスト（テーマ名やタグなど）が検索語にマッチするかを判定する統一関数。
+        // 大文字小文字・ひらがな/カタカナ・ローマ字入力の表記揺れを吸収する。
+        // 小書き文字（ァィゥェォ）の有無による表記揺れを吸収するため、
+        // 小書き文字を対応する通常サイズの仮名に変換した、緩い比較用の文字列も作る
+        // （「ウィンク」→「ウインク」、「ウインク」はそのまま→どちらも「ウインク」になり同一視できる）。
+        const SMALL_KANA_NORMALIZE_MAP = { "ァ":"ア", "ィ":"イ", "ゥ":"ウ", "ェ":"エ", "ォ":"オ" };
+        function normalizeSmallKana(str) {
+            return str.replace(/[ァィゥェォ]/g, ch => SMALL_KANA_NORMALIZE_MAP[ch]);
+        }
+
+        function textMatchesSearch(text, searchVal) {
+            if (!searchVal) return true;
+            if (!text) return false;
+            const targetLower = text.toLowerCase();
+            const targetKatakana = hiraganaToKatakana(targetLower);
+            const targetKatakanaLoose = normalizeSmallKana(targetKatakana);
+            const variants = expandSearchVariants(searchVal.toLowerCase());
+            return variants.some(v => {
+                const vLoose = normalizeSmallKana(v);
+                return targetLower.includes(v) || targetKatakana.includes(v) || targetKatakanaLoose.includes(vLoose);
+            });
+        }
+
         const DEFAULT_ALBUMS = [
             { name: "I-LAND2", coverUrl: "", categories: [] },
             { name: "N/a", coverUrl: "" },
@@ -512,17 +633,34 @@
         // データ移行（カテゴリ機能の廃止→復活など）の影響で category が欠落・無効な値の
         // カードが残っていることがあるため、起動時に一度だけ「その他」へ自動修復する。
         // I-LAND2のようにカテゴリ自体を使わないアルバムのカードは対象外とする。
-        async function repairMissingCategories() {
-            const toFix = pcData.filter(card => {
-                const albumCats = getCategoriesForAlbum(card.album);
-                if (albumCats.length === 0) return false; // カテゴリなしアルバムは対象外
-                return !card.category || !albumCats.includes(card.category);
-            });
-            if (toFix.length === 0) return;
+        // category フィールドの値を全カードで統一する。
+        // - カテゴリを使うアルバム: 有効なカテゴリ値（欠落・無効なら「その他」）
+        // - カテゴリを使わないアルバム（I-LAND2、その他特典）: 明示的に null
+        // これにより、データ移行の経緯で生まれていた「categoryがundefinedのカード」と
+        // 「categoryがnullのカード」の混在を解消し、常に null か 有効な文字列のどちらかに統一する。
+        async function normalizeCardCategories() {
+            const toFix = [];
 
-            toFix.forEach(card => { card.category = "その他"; });
+            pcData.forEach(card => {
+                const albumCats = getCategoriesForAlbum(card.album);
+                if (albumCats.length === 0) {
+                    // カテゴリなしアルバムなのに category が null 以外（undefinedや古い値）なら null に統一
+                    if (card.category !== null) {
+                        card.category = null;
+                        toFix.push(card);
+                    }
+                } else {
+                    // カテゴリありアルバムなのに category が欠落・無効なら「その他」に統一
+                    if (!card.category || !albumCats.includes(card.category)) {
+                        card.category = "その他";
+                        toFix.push(card);
+                    }
+                }
+            });
+
+            if (toFix.length === 0) return;
             await saveCardsToDB(toFix);
-            console.log(`category欠落のため${toFix.length}枚を「その他」へ自動修復しました`);
+            console.log(`category統一のため${toFix.length}枚を修復しました`);
         }
 
         function updateFormCategoryOptions() {
@@ -633,7 +771,6 @@
         }
 
         function selectAlbum(albumName) {
-            debugLog(`>> selectAlbum(${albumName})`);
             currentAlbum = albumName;
             // メンバー選択画面を経由せず、直接ギャラリー画面へ移動する。
             // メンバーが今のアルバムで選べない（getAllowedMembersForAlbum対象外）場合は先頭メンバーに切り替える。
@@ -650,7 +787,6 @@
         }
 
         function backToAlbumList(skipHistory) {
-            debugLog(`>> backToAlbumList(skipHistory=${skipHistory})`);
             currentAlbum = null;
             showView("albumList");
             if (!skipHistory) history.back();
@@ -766,7 +902,7 @@
             try {
                 await loadPCData();
                 await migrateMemberNamesToEnglish();
-                await repairMissingCategories();
+                await normalizeCardCategories();
             } catch (err) {
                 console.error("カードデータの読み込みに失敗しました:", err);
                 showFatalErrorOverlay("カードデータ読み込み失敗: " + (err && err.message ? err.message : err), "", "");
@@ -1289,9 +1425,10 @@
             }
 
             const matches = pcData.filter(card =>
-                card.theme.toLowerCase().includes(searchVal) ||
-                card.album.toLowerCase().includes(searchVal) ||
-                (card.tags || []).some(t => t.toLowerCase().includes(searchVal))
+                textMatchesSearch(card.theme, searchVal) ||
+                textMatchesSearch(card.album, searchVal) ||
+                textMatchesSearch(card.store, searchVal) ||
+                (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
             if (matches.length === 0) {
@@ -1329,9 +1466,10 @@
             }
 
             const matches = pcData.filter(card =>
-                card.theme.toLowerCase().includes(searchVal) ||
-                card.album.toLowerCase().includes(searchVal) ||
-                (card.tags || []).some(t => t.toLowerCase().includes(searchVal))
+                textMatchesSearch(card.theme, searchVal) ||
+                textMatchesSearch(card.album, searchVal) ||
+                textMatchesSearch(card.store, searchVal) ||
+                (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
             if (matches.length === 0) {
@@ -1381,9 +1519,10 @@
 
             const filteredCards = albumCards.filter(card => {
                 if (!searchVal) return true;
-                return card.theme.toLowerCase().includes(searchVal) ||
-                       card.album.toLowerCase().includes(searchVal) ||
-                       (card.tags || []).some(t => t.toLowerCase().includes(searchVal));
+                return textMatchesSearch(card.theme, searchVal) ||
+                       textMatchesSearch(card.album, searchVal) ||
+                       textMatchesSearch(card.store, searchVal) ||
+                       (card.tags || []).some(t => textMatchesSearch(t, searchVal));
             });
 
             document.getElementById("statsCount").innerText = `${filteredCards.length}枚`;
@@ -1573,7 +1712,6 @@
         }
 
         function openModal() {
-            debugLog(`>> openModal() (new card)`);
             document.getElementById("modalTitle").innerText = "トレカアーカイブ登録";
             document.getElementById("editIndex").value = "";
             document.getElementById("formTheme").value = "";
@@ -1853,7 +1991,6 @@
         }
 
         async function saveCard() {
-            debugLog(`>> saveCard() editId="${document.getElementById("editIndex").value}"`);
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
             const member = document.getElementById("formMember").value;
             const album = document.getElementById("formAlbum").value;
@@ -1927,11 +2064,9 @@
                 // 実際にpopstateが発火してcloseModal用のエントリが正しく消費されるのを待ってから、
                 // 次のモーダル（プレビュー）の履歴を積む。これでスタックとhistory.lengthが常に一致する。
                 if (!editId && newId) {
-                    debugLog(`saveCard: new card path -> waiting for history.back() then openPreviewModal(${newId})`);
                     await goBackAndWait();
                     openPreviewModal(newId);
                 } else {
-                    debugLog(`saveCard: edit path -> history.back()`);
                     history.back(); // 編集時はモーダルを閉じる分の履歴を1つ戻す
                 }
             } catch (err) {
@@ -1964,7 +2099,6 @@
         }
 
         async function editCard(id) {
-            debugLog(`>> editCard(${id})`);
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
@@ -2030,7 +2164,6 @@
         let isShowingBackFace = false;
 
         function openPreviewModal(id) {
-            debugLog(`>> openPreviewModal(${id})`);
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
@@ -2100,7 +2233,6 @@
         }
 
         function closePreviewModal(skipHistory) {
-            debugLog(`>> closePreviewModal(skipHistory=${skipHistory})`);
             document.getElementById("previewModal").classList.add("hidden");
             currentPreviewCardId = null;
             isShowingBackFace = false;
@@ -2433,12 +2565,27 @@
             if (availableCategories.length === 0) {
                 wrap.classList.add("hidden");
                 select.innerHTML = "";
+                updateBulkMoveStoreVisibility();
                 return;
             }
             wrap.classList.remove("hidden");
             select.innerHTML = availableCategories.map(c =>
                 `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
             ).join('');
+            updateBulkMoveStoreVisibility();
+        }
+
+        // まとめて移動の移動先カテゴリが「店舗特典・ラキドロ」の時だけ、移動先店舗の選択欄を表示する
+        function updateBulkMoveStoreVisibility() {
+            const category = document.getElementById("bulkMoveCategory").value;
+            const wrap = document.getElementById("bulkMoveStoreWrap");
+            const select = document.getElementById("bulkMoveStore");
+            if (category === "店舗特典・ラキドロ") {
+                wrap.classList.remove("hidden");
+                select.innerHTML = stores.map(s => `<option value="${s}">${s}</option>`).join('');
+            } else {
+                wrap.classList.add("hidden");
+            }
         }
 
         function closeBulkMoveModal(skipHistory) {
@@ -2451,12 +2598,14 @@
             const targetAlbum = document.getElementById("bulkMoveAlbum").value;
             const albumCats = getCategoriesForAlbum(targetAlbum);
             const targetCategory = albumCats.length > 0 ? document.getElementById("bulkMoveCategory").value : null;
+            const targetStore = (targetCategory === "店舗特典・ラキドロ") ? document.getElementById("bulkMoveStore").value : null;
 
             const targets = pcData.filter(d => selectedCardIds.has(d.id));
             targets.forEach(card => {
                 card.member = targetMember;
                 card.album = targetAlbum;
                 card.category = targetCategory;
+                card.store = targetStore;
             });
             await saveCardsToDB(targets);
 
@@ -2482,6 +2631,9 @@
             for (const card of cardsToDelete) {
                 const blob = await getImageBlob(card.id);
                 if (blob) imagesMap.set(card.id, await blobToDataUrl(blob));
+                // 裏面画像（存在する場合のみ）も復元できるよう取得しておく
+                const backBlob = await getImageBlob(card.id + "_back").catch(() => null);
+                if (backBlob) imagesMap.set(card.id + "_back", await blobToDataUrl(backBlob));
             }
             lastDeletedSnapshot = {
                 cards: cardsToDelete.map(c => ({ ...stripImgUrl(c) })),
@@ -2510,6 +2662,8 @@
             for (const card of cards) {
                 const dataUrl = images.get(card.id);
                 if (dataUrl) await saveImageBlob(card.id, dataUrl);
+                const backDataUrl = images.get(card.id + "_back");
+                if (backDataUrl) await saveImageBlob(card.id + "_back", backDataUrl);
             }
 
             lastDeletedSnapshot = null;
@@ -2700,10 +2854,6 @@
         // ══════════════════════════════════════════════════════════════
         // デバッグ用の画面上ログ表示は調査が完了したため無効化（no-op）。
         // 呼び出し箇所のコードは残っているが、何も表示しない。
-        function debugLog(msg) {
-            // 無効化済み
-        }
-
         // ══════════════════════════════════════════════════════════════
         // モーダルとブラウザの「戻る」ボタンの連携
         // モーダルを開くたびに履歴へ仮想エントリを積み、戻るボタンが押された時は
@@ -2714,20 +2864,16 @@
         function pushModalHistory(closeFnName) {
             openModalStack.push(closeFnName);
             history.pushState({ modal: closeFnName }, "");
-            debugLog(`PUSH ${closeFnName} | stack=[${openModalStack.join(',')}] | len=${history.length}`);
         }
 
         window.addEventListener("popstate", function(e) {
-            debugLog(`POPSTATE fired | stack=[${openModalStack.join(',')}] | len=${history.length}`);
             if (openModalStack.length > 0) {
                 const closeFnName = openModalStack.pop();
-                debugLog(`POPSTATE closing ${closeFnName} | stackAfter=[${openModalStack.join(',')}]`);
                 const fn = window[closeFnName];
                 if (typeof fn === "function") {
                     fn(true); // skipHistory=true: 既にpopstateで履歴は消費済みなので、closeModal側で再度backしない
                 }
             } else {
-                debugLog(`POPSTATE: stack was empty, nothing to close`);
             }
         });
 
