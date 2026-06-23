@@ -1455,7 +1455,7 @@
                     <div class="${imgAspectClass} bg-gray-900 rounded-lg mb-1 flex items-center justify-center border border-gray-800 overflow-hidden relative">
                         ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-base">📸</span>`}
                     </div>
-                    <div class="text-white font-bold text-[9px] truncate w-full">${card.theme || '未指定'}</div>
+                    <div class="text-white font-bold text-[9px] truncate w-full">${(card.category === "店舗特典・ラキドロ") ? (card.store || '店舗未設定') : (card.theme || '未指定')}</div>
                     ${actionButtons}
                 </div>
             `;
