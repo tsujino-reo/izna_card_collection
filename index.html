@@ -167,7 +167,7 @@
         <!-- ③ ギャラリー画面：アルバム×メンバーのトレカ一覧 -->
         <div id="galleryView" class="hidden">
             <div class="flex items-center gap-2 mb-3">
-                <button onclick="backToAlbumList()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">⬅ アルバム一覧</button>
+                <button onclick="backToAlbumList()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">⬅ TOP</button>
                 <span id="galleryViewTitle" class="text-sm font-black text-white truncate"></span>
             </div>
 
@@ -178,15 +178,9 @@
                 <div class="space-y-2 relative z-10">
                     <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
                            class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
-                    <div class="flex items-center justify-between gap-2 pt-1">
-                        <label class="text-[9px] text-gray-500 font-black uppercase tracking-wider">SORT ORDER</label>
-                        <select id="sortSelect" onchange="renderApp()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 text-gray-300">
-                            <option value="custom">↕ 並び順 (ドラッグ可)</option>
-                            <option value="newest">📅 新しい順</option>
-                            <option value="oldest">📅 古い順</option>
-                            <option value="theme">🔤 テーマ名順</option>
-                        </select>
-                    </div>
+                    <select id="sortSelect" class="hidden">
+                        <option value="custom" selected>↕ 並び順 (ドラッグ可)</option>
+                    </select>
                 </div>
             </div>
 
