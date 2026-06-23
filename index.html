@@ -44,9 +44,9 @@
         .card-shadow { box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.2), 0 8px 10px -6px rgba(236, 72, 153, 0.2); }
         #imgLabel { border: 2px dashed #4b5563; transition: all 0.3s; }
 
-        /* トリミング調整画面で長押しすると「画像を保存」等のブラウザ標準メニューが
-           出てしまうのを防ぐ。select-noneだけでは防げないため明示的に指定する。 */
-        #cameraVideo {
+        /* トリミング調整画面・トレカ一覧の画像で長押しすると「画像を保存」「Googleレンズで検索」等の
+           ブラウザ標準メニューが出てしまうのを防ぐ。select-noneだけでは防げないため明示的に指定する。 */
+        #cameraVideo, .photocard-img {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
@@ -141,12 +141,12 @@
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
                 <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
                        class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors relative z-10 mb-3">
+                <div id="topSearchResults" class="hidden mb-3 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3 relative z-10">
+                    <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
+                    <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
+                </div>
                 <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">ALBUM SELECT</label>
                 <div class="grid grid-cols-2 gap-2 relative z-10" id="albumTabs"></div>
-            </div>
-            <div id="topSearchResults" class="hidden mb-4 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3">
-                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
-                <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
             </div>
             <div class="flex justify-end gap-2 mb-4">
                 <button id="resetAllDataBtn" onclick="confirmResetAllCards()" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
@@ -184,6 +184,11 @@
                 </div>
             </div>
 
+            <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3">
+                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
+                <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
+            </div>
+
             <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar"></div>
 
             <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/95 p-2 rounded-xl border border-gray-800/60 shadow-md">
@@ -212,11 +217,6 @@
                     <button onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
                     <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
                 </div>
-            </div>
-
-            <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3">
-                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
-                <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
             </div>
 
             <div id="galleryContainer" class="space-y-5 pb-10"></div>
@@ -366,7 +366,7 @@
     <div id="previewModal" class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center hidden p-4 z-50" onclick="closePreviewModal()">
         <div class="bg-gray-950/95 border border-purple-900/50 rounded-2xl max-w-xs w-full p-4 card-shadow text-center space-y-4" onclick="event.stopPropagation()">
             <div id="viewModalImgWrap" onclick="toggleViewModalFace()" class="w-full aspect-[2/3] max-w-[200px] mx-auto bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow-2xl flex items-center justify-center relative cursor-pointer">
-                <img id="viewModalImg" src="" class="w-full h-full object-cover hidden">
+                <img id="viewModalImg" src="" draggable="false" oncontextmenu="return false" class="photocard-img w-full h-full object-cover hidden">
                 <span id="viewModalNoImgIcon" class="text-4xl text-gray-700 hidden">📸</span>
                 <div id="viewModalFlipHint" class="hidden absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] font-bold px-2 py-1 rounded-full">🔄 タップして裏面</div>
             </div>
@@ -1320,7 +1320,7 @@
             container.innerHTML = albums.map(a => {
                 const hasCover = a.coverUrl && a.coverUrl.trim() !== "";
                 const imgHtml = hasCover
-                    ? `<img src="${a.coverUrl}" class="absolute inset-0 w-full h-full object-cover">`
+                    ? `<img src="${a.coverUrl}" draggable="false" oncontextmenu="return false" class="photocard-img absolute inset-0 w-full h-full object-cover">`
                     : `<div class="absolute inset-0 flex items-center justify-center text-4xl">💿</div>`;
                 const count = pcData.filter(d => d.album === a.name).length;
                 return `
@@ -1643,7 +1643,7 @@
                     ${checkboxHtml}
                     ${backBadgeHtml}
                     <div class="${imgAspectClass} bg-gray-900 rounded-lg mb-1 flex items-center justify-center border border-gray-800 overflow-hidden relative">
-                        ${card.imgUrl ? `<img src="${card.imgUrl}" class="absolute inset-0 w-full h-full object-cover">` : `<span class="text-base">📸</span>`}
+                        ${card.imgUrl ? `<img src="${card.imgUrl}" draggable="false" oncontextmenu="return false" class="photocard-img absolute inset-0 w-full h-full object-cover">` : `<span class="text-base">📸</span>`}
                     </div>
                     <div class="text-white font-bold text-[9px] truncate w-full">${(card.category === "店舗特典・ラキドロ") ? (card.store || '店舗未設定') : (card.theme || '未指定')}</div>
                     ${actionButtons}
@@ -2687,6 +2687,14 @@
             if (menu && !menu.classList.contains("hidden")) {
                 const clickedToggle = btn && btn.getAttribute("onclick") === "toggleHeaderMenu()";
                 if (!menu.contains(e.target) && !clickedToggle) menu.classList.add("hidden");
+            }
+        });
+
+        // トレカ画像・アルバムカバー画像の長押しで、ブラウザ標準の「画像を保存」「Googleレンズで検索」等の
+        // コンテキストメニューが出てしまうのを防ぐ（イベントデリゲーションで動的生成された画像にも効かせる）。
+        document.addEventListener("contextmenu", function(e) {
+            if (e.target.classList && e.target.classList.contains("photocard-img")) {
+                e.preventDefault();
             }
         });
 
