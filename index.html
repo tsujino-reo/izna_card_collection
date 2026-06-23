@@ -139,7 +139,7 @@
         <div id="albumListView">
             <div class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
-                <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
+                <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
                        class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors relative z-10 mb-3">
                 <div id="topSearchResults" class="hidden mb-3 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3 relative z-10">
                     <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
@@ -176,7 +176,7 @@
             <div id="filterSection" class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
                 <div class="space-y-2 relative z-10">
-                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 テーマ、アルバム名、検索タグで検索..." 
+                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
                            class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
                     <select id="sortSelect" class="hidden">
                         <option value="custom" selected>↕ 並び順 (ドラッグ可)</option>
@@ -1428,6 +1428,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
+                textMatchesSearch(card.member, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -1469,6 +1470,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
+                textMatchesSearch(card.member, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -1522,6 +1524,7 @@
                 return textMatchesSearch(card.theme, searchVal) ||
                        textMatchesSearch(card.album, searchVal) ||
                        textMatchesSearch(card.store, searchVal) ||
+                       textMatchesSearch(card.member, searchVal) ||
                        (card.tags || []).some(t => textMatchesSearch(t, searchVal));
             });
 
