@@ -1301,6 +1301,24 @@
         // ══════════════════════════════════════════════════════════════
         const albumColorCache = new Map();
 
+        // RGB → HSL変換（色相でグルーピングするために使う）
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = 0; s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+                else if (max === g) h = ((b - r) / d + 2);
+                else h = ((r - g) / d + 4);
+                h *= 60;
+            }
+            return { h, s, l };
+        }
+
         function extractDominantColor(imgUrl) {
             return new Promise((resolve) => {
                 if (albumColorCache.has(imgUrl)) {
@@ -1311,8 +1329,8 @@
                 img.crossOrigin = "anonymous";
                 img.onload = () => {
                     try {
-                        // 縮小したcanvasにまとめて描画し、軽い計算量で平均色を求める
-                        const SIZE = 24;
+                        // 縮小したcanvasにまとめて描画し、軽い計算量でピクセルを取得する
+                        const SIZE = 32;
                         const canvas = document.createElement("canvas");
                         canvas.width = SIZE;
                         canvas.height = SIZE;
@@ -1320,18 +1338,57 @@
                         ctx.drawImage(img, 0, 0, SIZE, SIZE);
                         const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
 
-                        let r = 0, g = 0, b = 0, count = 0;
+                        // 色相(Hue)を12分割(30度ずつ)したビンに分け、各ビンの「印象的な色らしさ」を積算する。
+                        // 単純平均だと複数の鮮やかな色が混ざって濁った中間色になってしまうため、
+                        // 代わりに「最も多くのピクセルが集まる色相の塊」を支配色として選ぶ。
+                        const HUE_BINS = 12;
+                        const binWeight = new Array(HUE_BINS).fill(0);
+                        const binColorSum = Array.from({ length: HUE_BINS }, () => ({ r: 0, g: 0, b: 0, count: 0 }));
+                        let grayFallbackSum = { r: 0, g: 0, b: 0, count: 0 };
+
                         for (let i = 0; i < data.length; i += 4) {
-                            // 極端に暗い/明るいピクセル（背景の黒帯や白飛びなど）は平均色を濁らせやすいため軽く除外する
-                            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                            if (brightness < 15 || brightness > 245) continue;
-                            r += data[i]; g += data[i + 1]; b += data[i + 2];
-                            count++;
+                            const r = data[i], g = data[i + 1], b = data[i + 2];
+                            const brightness = (r + g + b) / 3;
+                            if (brightness < 15 || brightness > 245) continue; // 黒帯・白飛びは除外
+
+                            const { h, s, l } = rgbToHsl(r, g, b);
+
+                            // 彩度が低い（グレーに近い）ピクセルは「印象的な色」にはなりにくいので、
+                            // 色相ビンには加えず、フォールバック用の平均にのみ加算する
+                            if (s < 0.15) {
+                                grayFallbackSum.r += r; grayFallbackSum.g += g; grayFallbackSum.b += b;
+                                grayFallbackSum.count++;
+                                continue;
+                            }
+
+                            const bin = Math.floor(h / (360 / HUE_BINS)) % HUE_BINS;
+                            // 彩度が高いピクセルほど「印象的な色」としての重みを大きくする
+                            binWeight[bin] += s;
+                            binColorSum[bin].r += r; binColorSum[bin].g += g; binColorSum[bin].b += b;
+                            binColorSum[bin].count++;
                         }
-                        if (count === 0) { count = 1; } // 全ピクセル除外時のフォールバック
-                        const avg = { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) };
-                        albumColorCache.set(imgUrl, avg);
-                        resolve(avg);
+
+                        let bestBin = -1, bestWeight = 0;
+                        for (let i = 0; i < HUE_BINS; i++) {
+                            if (binWeight[i] > bestWeight) { bestWeight = binWeight[i]; bestBin = i; }
+                        }
+
+                        let result;
+                        if (bestBin >= 0 && binColorSum[bestBin].count > 0) {
+                            const c = binColorSum[bestBin];
+                            result = { r: Math.round(c.r / c.count), g: Math.round(c.g / c.count), b: Math.round(c.b / c.count) };
+                        } else if (grayFallbackSum.count > 0) {
+                            result = {
+                                r: Math.round(grayFallbackSum.r / grayFallbackSum.count),
+                                g: Math.round(grayFallbackSum.g / grayFallbackSum.count),
+                                b: Math.round(grayFallbackSum.b / grayFallbackSum.count)
+                            };
+                        } else {
+                            result = { r: 60, g: 60, b: 70 }; // 完全なフォールバック
+                        }
+
+                        albumColorCache.set(imgUrl, result);
+                        resolve(result);
                     } catch (err) {
                         // Blob URLはローカル生成のため通常CORSエラーは起きないが、念のためフォールバックする
                         console.warn("色抽出に失敗しました:", err);
