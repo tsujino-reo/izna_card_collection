@@ -895,6 +895,8 @@
         }
 
         async function init() {
+            loadAlbumColorCacheFromStorage();
+
             let dbReady = false;
             try {
                 await openDB();
@@ -1300,6 +1302,39 @@
         // 同じ画像URLに対する計算結果はキャッシュして再計算を避ける。
         // ══════════════════════════════════════════════════════════════
         const albumColorCache = new Map();
+        const ALBUM_COLOR_STORAGE_KEY = "izna_album_color_cache_v1";
+
+        // ページ再読み込み後も色抽出結果を再利用できるよう、localStorageから復元する。
+        // キーがcoverUrl自体なので、カバー画像が変われば自動的に別キーになり、
+        // 古い画像に対する色情報が誤って使われることはない。
+        function loadAlbumColorCacheFromStorage() {
+            try {
+                const saved = localStorage.getItem(ALBUM_COLOR_STORAGE_KEY);
+                if (!saved) return;
+                const parsed = JSON.parse(saved);
+                Object.entries(parsed).forEach(([url, color]) => albumColorCache.set(url, color));
+            } catch (err) {
+                console.warn("色キャッシュの読み込みに失敗しました:", err);
+            }
+        }
+
+        // localStorageの容量を抑えるため、保存件数が多すぎる場合は古いものから間引く。
+        // （coverUrlがBlob URLの場合、再読み込み後は無効になるため自然に使われなくなるが、
+        //  念のため一定件数を超えたら整理する）
+        const ALBUM_COLOR_CACHE_MAX_ENTRIES = 100;
+        function saveAlbumColorCacheToStorage() {
+            try {
+                let entries = [...albumColorCache.entries()];
+                if (entries.length > ALBUM_COLOR_CACHE_MAX_ENTRIES) {
+                    entries = entries.slice(entries.length - ALBUM_COLOR_CACHE_MAX_ENTRIES);
+                }
+                const obj = Object.fromEntries(entries);
+                localStorage.setItem(ALBUM_COLOR_STORAGE_KEY, JSON.stringify(obj));
+            } catch (err) {
+                console.warn("色キャッシュの保存に失敗しました:", err);
+            }
+        }
+
 
         // RGB → HSL変換（色相でグルーピングするために使う）
         function rgbToHsl(r, g, b) {
@@ -1388,6 +1423,7 @@
                         }
 
                         albumColorCache.set(imgUrl, result);
+                        saveAlbumColorCacheToStorage();
                         resolve(result);
                     } catch (err) {
                         // Blob URLはローカル生成のため通常CORSエラーは起きないが、念のためフォールバックする
