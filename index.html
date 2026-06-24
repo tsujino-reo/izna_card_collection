@@ -576,6 +576,26 @@
             });
         }
 
+        // メンバー名での検索は、card.memberが英語表記（MAI等）で保存されているため、
+        // 検索語が日本語のメンバー名（マイ、ジミン等）であれば対応する英語名に変換してから比較する。
+        // 通常のtextMatchesSearch（英語名そのものでの検索）にも対応する。
+        function memberMatchesSearch(memberName, searchVal) {
+            if (!searchVal) return true;
+            if (!memberName) return false;
+            if (textMatchesSearch(memberName, searchVal)) return true;
+
+            // 検索語（ひらがな/カタカナ表記揺れ含む）が、日本語メンバー名のいずれかに部分一致するか確認し、
+            // 一致したらその対応する英語名がmemberNameと一致するかを見る
+            const searchKatakana = normalizeSmallKana(hiraganaToKatakana(searchVal.toLowerCase()));
+            for (const [japaneseName, englishName] of Object.entries(MEMBER_NAME_MIGRATION)) {
+                const japaneseKatakana = normalizeSmallKana(japaneseName);
+                if (japaneseKatakana.includes(searchKatakana) || searchKatakana.includes(japaneseKatakana)) {
+                    if (memberName.toUpperCase() === englishName) return true;
+                }
+            }
+            return false;
+        }
+
         const DEFAULT_ALBUMS = [
             { name: "I-LAND2", coverUrl: "", categories: [] },
             { name: "N/a", coverUrl: "" },
@@ -1428,7 +1448,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
-                textMatchesSearch(card.member, searchVal) ||
+                memberMatchesSearch(card.member, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -1470,7 +1490,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
-                textMatchesSearch(card.member, searchVal) ||
+                memberMatchesSearch(card.member, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -1524,7 +1544,7 @@
                 return textMatchesSearch(card.theme, searchVal) ||
                        textMatchesSearch(card.album, searchVal) ||
                        textMatchesSearch(card.store, searchVal) ||
-                       textMatchesSearch(card.member, searchVal) ||
+                       memberMatchesSearch(card.member, searchVal) ||
                        (card.tags || []).some(t => textMatchesSearch(t, searchVal));
             });
 
