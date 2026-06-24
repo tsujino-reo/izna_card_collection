@@ -1405,8 +1405,11 @@
             if (!color) return "linear-gradient(135deg, #1f2937, #111827)";
             const lighten = (v, amt) => Math.min(255, Math.round(v + (255 - v) * amt));
             const darken = (v, amt) => Math.max(0, Math.round(v * (1 - amt)));
-            const c1 = `rgb(${lighten(color.r, 0.15)}, ${lighten(color.g, 0.15)}, ${lighten(color.b, 0.15)})`;
-            const c2 = `rgb(${darken(color.r, 0.55)}, ${darken(color.g, 0.55)}, ${darken(color.b, 0.55)})`;
+            // 以前は暗い側を45%程度まで落としていたため、全体的に暗く濁って見えていた。
+            // 明るい側をより明るく、暗い側も控えめにすることで、抽出した色そのものの
+            // 印象（例: BEEPの水色）が伝わりやすい、明るめのグラデーションにする。
+            const c1 = `rgb(${lighten(color.r, 0.35)}, ${lighten(color.g, 0.35)}, ${lighten(color.b, 0.35)})`;
+            const c2 = `rgb(${darken(color.r, 0.25)}, ${darken(color.g, 0.25)}, ${darken(color.b, 0.25)})`;
             return `linear-gradient(135deg, ${c1}, ${c2})`;
         }
 
