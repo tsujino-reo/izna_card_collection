@@ -168,7 +168,10 @@
         <div id="galleryView" class="hidden">
             <div class="flex items-center gap-2 mb-3">
                 <button onclick="backToAlbumList()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">⬅ TOP</button>
-                <span id="galleryViewTitle" class="text-sm font-black text-white truncate"></span>
+            </div>
+
+            <div id="galleryTitleBanner" class="rounded-2xl p-4 mb-3 relative overflow-hidden transition-all duration-500" style="background: linear-gradient(135deg, #1f2937, #111827);">
+                <span id="galleryViewTitle" class="text-base font-black text-white drop-shadow-lg truncate relative z-10"></span>
             </div>
 
             <div id="galleryAlbumSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-2 hide-scrollbar"></div>
@@ -799,6 +802,7 @@
                 currentMember = allowed[0] ? allowed[0].name : currentMember;
             }
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${currentMember}`;
+            updateGalleryTitleBannerColor();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
             showView("gallery");
@@ -852,6 +856,7 @@
                 currentMember = allowed[0] ? allowed[0].name : currentMember;
             }
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${currentMember}`;
+            updateGalleryTitleBannerColor();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
             renderApp();
@@ -1289,6 +1294,88 @@
             return lastAlbum ? [...fixedOnes, ...others, lastAlbum] : [...fixedOnes, ...others];
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // アルバムカバー画像から主要色を抽出し、ギャラリー画面のタイトルバナーを
+        // そのアルバムの雰囲気に合わせたグラデーション背景にする。
+        // 同じ画像URLに対する計算結果はキャッシュして再計算を避ける。
+        // ══════════════════════════════════════════════════════════════
+        const albumColorCache = new Map();
+
+        function extractDominantColor(imgUrl) {
+            return new Promise((resolve) => {
+                if (albumColorCache.has(imgUrl)) {
+                    resolve(albumColorCache.get(imgUrl));
+                    return;
+                }
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => {
+                    try {
+                        // 縮小したcanvasにまとめて描画し、軽い計算量で平均色を求める
+                        const SIZE = 24;
+                        const canvas = document.createElement("canvas");
+                        canvas.width = SIZE;
+                        canvas.height = SIZE;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+                        const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+
+                        let r = 0, g = 0, b = 0, count = 0;
+                        for (let i = 0; i < data.length; i += 4) {
+                            // 極端に暗い/明るいピクセル（背景の黒帯や白飛びなど）は平均色を濁らせやすいため軽く除外する
+                            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                            if (brightness < 15 || brightness > 245) continue;
+                            r += data[i]; g += data[i + 1]; b += data[i + 2];
+                            count++;
+                        }
+                        if (count === 0) { count = 1; } // 全ピクセル除外時のフォールバック
+                        const avg = { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) };
+                        albumColorCache.set(imgUrl, avg);
+                        resolve(avg);
+                    } catch (err) {
+                        // Blob URLはローカル生成のため通常CORSエラーは起きないが、念のためフォールバックする
+                        console.warn("色抽出に失敗しました:", err);
+                        resolve(null);
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = imgUrl;
+            });
+        }
+
+        // 抽出した色を少し明るく/濃くした2色で斜めグラデーションのCSSを作る
+        function buildGradientFromColor(color) {
+            if (!color) return "linear-gradient(135deg, #1f2937, #111827)";
+            const lighten = (v, amt) => Math.min(255, Math.round(v + (255 - v) * amt));
+            const darken = (v, amt) => Math.max(0, Math.round(v * (1 - amt)));
+            const c1 = `rgb(${lighten(color.r, 0.15)}, ${lighten(color.g, 0.15)}, ${lighten(color.b, 0.15)})`;
+            const c2 = `rgb(${darken(color.r, 0.55)}, ${darken(color.g, 0.55)}, ${darken(color.b, 0.55)})`;
+            return `linear-gradient(135deg, ${c1}, ${c2})`;
+        }
+
+        // ギャラリー画面のタイトルバナーの背景を、現在のアルバムカバー画像の色に更新する
+        async function updateGalleryTitleBannerColor() {
+            const banner = document.getElementById("galleryTitleBanner");
+            if (!banner) return;
+
+            // 「その他特典」はカバー画像が変わりやすい想定のため、色抽出せずシンプルな固定デザインで目立たせる
+            if (currentAlbum === "その他特典") {
+                banner.style.background = "linear-gradient(135deg, #525252, #262626)";
+                banner.style.border = "1px solid rgba(255,255,255,0.15)";
+                return;
+            }
+            banner.style.border = "none";
+
+            const album = albums.find(a => a.name === currentAlbum);
+            if (!album || !album.coverUrl) {
+                banner.style.background = "linear-gradient(135deg, #1f2937, #111827)";
+                return;
+            }
+
+            const color = await extractDominantColor(album.coverUrl);
+            banner.style.background = buildGradientFromColor(color);
+        }
+
         function updateFormSelectOptions() {
             document.getElementById("formAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
             document.getElementById("formMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
@@ -1520,6 +1607,7 @@
             currentAlbum = albumName;
             currentMember = memberName;
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${memberName}`;
+            updateGalleryTitleBannerColor();
             document.getElementById("searchBar").value = "";
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
@@ -2638,6 +2726,7 @@
             currentMember = targetMember;
             currentAlbum = targetAlbum;
             document.getElementById("galleryViewTitle").innerText = `${targetAlbum} / ${targetMember}`;
+            updateGalleryTitleBannerColor();
             renderGalleryMemberSwitchBar();
             renderGalleryAlbumSwitchBar();
             await loadPCData();
