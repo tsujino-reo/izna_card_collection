@@ -97,12 +97,8 @@
                 <div class="relative">
                     <button onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
-                        <label id="bgChangeLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800 cursor-pointer">
-                            🏞️ 背景を変更
-                            <input type="file" id="bgImageInput" accept="image/*" class="file-input-hidden" onchange="changeAppBackground(this)">
-                        </label>
-                        <button id="resetBgBtn" onclick="resetAppBackground()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            ↺ 背景をリセット
+                        <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🏞️ 背景設定
                         </button>
                         <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
@@ -423,6 +419,56 @@
             </div>
             <div class="flex justify-end mt-4">
                 <button onclick="closeStoreModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="backgroundModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏞️ 背景設定</h3>
+            <p class="text-[10px] text-gray-500 mb-4">表示の優先順位: ①メンバー×アルバムの組み合わせ → ②メンバー単位 → ③全体共通。設定したい範囲だけでOKです（未設定は自動でひとつ下にフォールバックします）。</p>
+
+            <div class="flex gap-1.5 mb-4">
+                <button id="bgTabGlobalBtn" onclick="switchBgModalTab('global')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gradient-to-r from-purple-600 to-pink-600 text-white">①全体共通</button>
+                <button id="bgTabMemberBtn" onclick="switchBgModalTab('member')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">②メンバー別</button>
+                <button id="bgTabComboBtn" onclick="switchBgModalTab('combo')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">③組み合わせ</button>
+            </div>
+
+            <!-- ①全体共通の背景 -->
+            <div id="bgTabGlobal" class="space-y-3">
+                <div id="bgGlobalPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
+                    🏞️ 画像を選択して設定
+                    <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'global')">
+                </label>
+                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+            </div>
+
+            <!-- ②メンバー別の背景 -->
+            <div id="bgTabMember" class="hidden space-y-3">
+                <select id="bgMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
+                <div id="bgMemberPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
+                    🏞️ 画像を選択して設定
+                    <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'member')">
+                </label>
+                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+            </div>
+
+            <!-- ③メンバー×アルバムの組み合わせの背景 -->
+            <div id="bgTabCombo" class="hidden space-y-3">
+                <select id="bgComboMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
+                <select id="bgComboAlbumSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
+                <div id="bgComboPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
+                    🏞️ 画像を選択して設定
+                    <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'combo')">
+                </label>
+                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+            </div>
+
+            <div class="flex justify-end mt-4">
+                <button onclick="closeBackgroundModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
             </div>
         </div>
     </div>
@@ -803,6 +849,7 @@
             }
             document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
             updateGalleryTitleBannerColor();
+            updateBackgroundForCurrentContext();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
             showView("gallery");
@@ -864,6 +911,7 @@
             currentAlbum = albumName;
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${currentMember}`;
             updateGalleryTitleBannerColor();
+            updateBackgroundForCurrentContext();
             renderGalleryAlbumSwitchBar();
             renderApp();
         }
@@ -901,6 +949,7 @@
             }
             document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
             updateGalleryTitleBannerColor();
+            updateBackgroundForCurrentContext();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
             renderApp();
@@ -1118,16 +1167,53 @@
         }
 
         // 起動時に保存済みの背景画像を読み込んで適用する
+        // ══════════════════════════════════════════════════════════════
+        // 画面全体の背景画像（メンバー別・メンバー×アルバム別の設定に対応）
+        // 優先順位: ①メンバー×アルバムの組み合わせ専用の背景 → ②メンバー単位の背景 → ③全体共通の背景
+        // 設定したい範囲だけ登録すればよく、未設定の場合は自動的に1段階下にフォールバックする。
+        // ══════════════════════════════════════════════════════════════
+        function bgKeyForCombo(memberName, albumName) {
+            return `bg_member_${memberName}_album_${albumName}`;
+        }
+        function bgKeyForMember(memberName) {
+            return `bg_member_${memberName}`;
+        }
+        const BG_KEY_DEFAULT = "appBackground";
+
         async function loadAppBackground() {
             try {
-                const blob = await getSettingBlob("appBackground");
-                if (blob) {
-                    applyBackgroundBlob(blob);
-                    document.getElementById("resetBgBtn").classList.remove("hidden");
-                }
+                await updateBackgroundForCurrentContext();
             } catch (e) {
                 console.warn("背景画像の読み込みに失敗しました:", e);
             }
+        }
+
+        // 現在のメンバー・アルバムに応じて、表示すべき背景を優先順位通りに探して適用する
+        async function updateBackgroundForCurrentContext() {
+            const comboBlob = await getSettingBlob(bgKeyForCombo(currentMember, currentAlbum)).catch(() => null);
+            if (comboBlob) {
+                applyBackgroundBlob(comboBlob);
+                return;
+            }
+            const memberBlob = await getSettingBlob(bgKeyForMember(currentMember)).catch(() => null);
+            if (memberBlob) {
+                applyBackgroundBlob(memberBlob);
+                return;
+            }
+            const defaultBlob = await getSettingBlob(BG_KEY_DEFAULT).catch(() => null);
+            if (defaultBlob) {
+                applyBackgroundBlob(defaultBlob);
+            } else {
+                clearBackgroundLayer();
+            }
+        }
+
+        function clearBackgroundLayer() {
+            if (currentBgObjectUrl) {
+                URL.revokeObjectURL(currentBgObjectUrl);
+                currentBgObjectUrl = null;
+            }
+            document.getElementById("appBackgroundLayer").style.backgroundImage = "";
         }
 
         function applyBackgroundBlob(blob) {
@@ -1137,15 +1223,26 @@
             layer.style.backgroundImage = `url('${currentBgObjectUrl}')`;
         }
 
+        // 背景設定モーダルから呼ばれる: 指定したキー（全体/メンバー/組み合わせ）に背景画像を保存する
+        async function saveBackgroundForKey(key, file) {
+            await saveSettingBlob(key, file);
+            await updateBackgroundForCurrentContext();
+            updateStorageEstimate();
+        }
+
+        // 背景設定モーダルから呼ばれる: 指定したキーの背景設定を削除する
+        async function deleteBackgroundForKey(key) {
+            await deleteSettingBlob(key);
+            await updateBackgroundForCurrentContext();
+            updateStorageEstimate();
+        }
+
         async function changeAppBackground(input) {
             const file = input.files[0];
             if (!file) return;
 
             try {
-                await saveSettingBlob("appBackground", file);
-                applyBackgroundBlob(file);
-                document.getElementById("resetBgBtn").classList.remove("hidden");
-                updateStorageEstimate();
+                await saveBackgroundForKey(BG_KEY_DEFAULT, file);
             } catch (err) {
                 console.error("背景画像の保存に失敗:", err);
                 alert("背景画像の保存に失敗しました。");
@@ -1155,17 +1252,9 @@
         }
 
         async function resetAppBackground() {
-            if (!confirm("背景画像を元のデフォルトに戻しますか？")) return;
+            if (!confirm("全体の共通背景画像を削除しますか？（メンバー別・組み合わせ別の背景は別途削除が必要です）")) return;
             try {
-                await deleteSettingBlob("appBackground");
-                if (currentBgObjectUrl) {
-                    URL.revokeObjectURL(currentBgObjectUrl);
-                    currentBgObjectUrl = null;
-                }
-                const layer = document.getElementById("appBackgroundLayer");
-                layer.style.backgroundImage = "";
-                document.getElementById("resetBgBtn").classList.add("hidden");
-                updateStorageEstimate();
+                await deleteBackgroundForKey(BG_KEY_DEFAULT);
             } catch (err) {
                 console.error("背景画像のリセットに失敗:", err);
             }
@@ -1622,8 +1711,7 @@
             document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
             document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
             // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
-            document.getElementById("bgChangeLabel").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("resetBgBtn").classList.toggle("hidden", currentRole !== "admin" || !currentBgObjectUrl);
+            document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             renderGlobalSearch();
             renderGallery();
@@ -1717,6 +1805,7 @@
             currentMember = memberName;
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${memberName}`;
             updateGalleryTitleBannerColor();
+            updateBackgroundForCurrentContext();
             document.getElementById("searchBar").value = "";
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
@@ -2518,6 +2607,90 @@
             if (!skipHistory) history.back();
         }
 
+        // ── 背景設定モーダル（全体/メンバー別/メンバー×アルバム別） ──────────────
+        let bgModalCurrentTab = "global";
+
+        function openBackgroundModal() {
+            document.getElementById("bgMemberSelect").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+            document.getElementById("bgMemberSelect").value = currentMember;
+            document.getElementById("bgComboMemberSelect").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+            document.getElementById("bgComboMemberSelect").value = currentMember;
+            document.getElementById("bgComboAlbumSelect").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
+            document.getElementById("bgComboAlbumSelect").value = currentAlbum;
+
+            switchBgModalTab("global");
+            document.getElementById("backgroundModal").classList.remove("hidden");
+            pushModalHistory("closeBackgroundModal");
+        }
+
+        function closeBackgroundModal(skipHistory) {
+            document.getElementById("backgroundModal").classList.add("hidden");
+            if (!skipHistory) history.back();
+        }
+
+        function switchBgModalTab(tab) {
+            bgModalCurrentTab = tab;
+            ["global", "member", "combo"].forEach(t => {
+                document.getElementById(`bgTab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.toggle("hidden", t !== tab);
+                const btn = document.getElementById(`bgTab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                if (t === tab) {
+                    btn.className = "flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gradient-to-r from-purple-600 to-pink-600 text-white";
+                } else {
+                    btn.className = "flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400";
+                }
+            });
+            renderBgModalPreview();
+        }
+
+        // 現在選択中のタブに応じた、背景保存先のキーを返す
+        function getCurrentBgModalKey() {
+            if (bgModalCurrentTab === "global") return BG_KEY_DEFAULT;
+            if (bgModalCurrentTab === "member") return bgKeyForMember(document.getElementById("bgMemberSelect").value);
+            return bgKeyForCombo(document.getElementById("bgComboMemberSelect").value, document.getElementById("bgComboAlbumSelect").value);
+        }
+
+        async function renderBgModalPreview() {
+            const key = getCurrentBgModalKey();
+            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
+            const previewEl = document.getElementById(previewId);
+            try {
+                const blob = await getSettingBlob(key);
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    previewEl.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+                } else {
+                    previewEl.innerHTML = "未設定";
+                }
+            } catch (err) {
+                previewEl.innerHTML = "未設定";
+            }
+        }
+
+        async function handleBgFileSelected(input, tab) {
+            const file = input.files[0];
+            if (!file) return;
+            const key = getCurrentBgModalKey();
+            try {
+                await saveBackgroundForKey(key, file);
+                await renderBgModalPreview();
+            } catch (err) {
+                console.error("背景画像の保存に失敗:", err);
+                alert("背景画像の保存に失敗しました。");
+            }
+            input.value = "";
+        }
+
+        async function removeBgForCurrentTab() {
+            const key = getCurrentBgModalKey();
+            if (!confirm("この背景設定を削除しますか？")) return;
+            try {
+                await deleteBackgroundForKey(key);
+                await renderBgModalPreview();
+            } catch (err) {
+                console.error("背景画像の削除に失敗:", err);
+            }
+        }
+
         function renderStoreList() {
             const container = document.getElementById("storeList");
             container.innerHTML = stores.map((s, i) => `
@@ -2836,6 +3009,7 @@
             currentAlbum = targetAlbum;
             document.getElementById("galleryViewTitle").innerText = `${targetAlbum} / ${targetMember}`;
             updateGalleryTitleBannerColor();
+            updateBackgroundForCurrentContext();
             renderGalleryMemberSwitchBar();
             renderGalleryAlbumSwitchBar();
             await loadPCData();
