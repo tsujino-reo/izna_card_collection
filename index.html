@@ -135,7 +135,7 @@
             </div>
         </div>
 
-        <!-- ① アルバム選択画面：トップ階層。常にこの順でアルバムを2列表示する -->
+        <!-- ① メンバー選択画面：トップ階層。常にこの順でメンバーを2列表示する -->
         <div id="albumListView">
             <div class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
@@ -145,7 +145,7 @@
                     <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
                     <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
                 </div>
-                <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">ALBUM SELECT</label>
+                <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1.5 relative z-10">MEMBER SELECT</label>
                 <div class="grid grid-cols-2 gap-2 relative z-10" id="albumTabs"></div>
             </div>
             <div class="flex justify-end gap-2 mb-4">
@@ -174,7 +174,7 @@
                 <span id="galleryViewTitle" class="text-base font-black text-white drop-shadow-lg truncate relative z-10"></span>
             </div>
 
-            <div id="galleryAlbumSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-2 hide-scrollbar"></div>
+            <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-2 hide-scrollbar"></div>
 
             <div id="filterSection" class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
@@ -192,7 +192,7 @@
                 <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
             </div>
 
-            <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar"></div>
+            <div id="galleryAlbumSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar"></div>
 
             <div id="statsSection" class="flex justify-between items-center mb-4 bg-gray-950/95 p-2 rounded-xl border border-gray-800/60 shadow-md">
                 <div class="text-xs font-bold text-gray-400 flex items-center gap-2">
@@ -753,7 +753,7 @@
         let currentMember = "MAI";
         let currentRole = "admin";
         let currentView = "albumList"; // "albumList" | "gallery"
-        let currentAlbum = null; // 選択中のアルバム名
+        let currentAlbum = "I-LAND2"; // 選択中のアルバム名（初期値は固定6アルバムの先頭）
         let currentTempImageUrl = "";
         let currentTempImageOrientation = "portrait"; // 表面の向き
         let currentTempImageOrientationBack = "portrait"; // 裏面の向き
@@ -793,15 +793,15 @@
             window.scrollTo({ top: 0, behavior: "instant" });
         }
 
-        function selectAlbum(albumName) {
-            currentAlbum = albumName;
-            // メンバー選択画面を経由せず、直接ギャラリー画面へ移動する。
-            // メンバーが今のアルバムで選べない（getAllowedMembersForAlbum対象外）場合は先頭メンバーに切り替える。
-            const allowed = getAllowedMembersForAlbum(albumName);
-            if (!allowed.some(m => m.name === currentMember)) {
-                currentMember = allowed[0] ? allowed[0].name : currentMember;
+        // トップ画面でメンバーを選んだ時の処理。アルバム選択画面を経由せず、直接ギャラリー画面へ移動する。
+        // JIYOONが選べないアルバムを表示中だった場合（前回の選択が残っている等）は、I-LAND2にフォールバックする。
+        function selectMemberTop(memberName) {
+            currentMember = memberName;
+            const allowedAlbums = getAllowedAlbumsForMember(memberName);
+            if (!allowedAlbums.includes(currentAlbum)) {
+                currentAlbum = allowedAlbums[0];
             }
-            document.getElementById("galleryViewTitle").innerText = `${albumName} / ${currentMember}`;
+            document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
             updateGalleryTitleBannerColor();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
@@ -811,13 +811,21 @@
         }
 
         function backToAlbumList(skipHistory) {
-            currentAlbum = null;
             showView("albumList");
             if (!skipHistory) history.back();
         }
 
-        // 指定したアルバムで選択可能なメンバー一覧を返す。
+        // 指定したメンバーで選択可能なアルバム一覧を返す。
         // JIYOONはI-LAND2とN/a以外のアルバムでは選べない（出演作品の都合等の理由を想定）。
+        function getAllowedAlbumsForMember(memberName) {
+            if (memberName === "JIYOON") {
+                return albums.filter(a => a.name === "I-LAND2" || a.name === "N/a").map(a => a.name);
+            }
+            return albums.map(a => a.name);
+        }
+
+        // 後方互換: 一部の処理が「アルバムで選べるメンバー一覧」という逆方向の問い合わせをすることがあるため、
+        // getAllowedAlbumsForMemberを使って同等の判定を行うヘルパーを残しておく。
         function getAllowedMembersForAlbum(albumName) {
             if (albumName !== "I-LAND2" && albumName !== "N/a") {
                 return memberData.filter(m => m.name !== "JIYOON");
@@ -825,10 +833,13 @@
             return memberData;
         }
 
-        // ギャラリー画面の上に、固定6アルバムを横並びタブで表示し、他のアルバムへ直接切り替えられるようにする
+        // ギャラリー画面の上に、現在のメンバーが選べる範囲のアルバムを横並びタブで表示し、
+        // 他のアルバムへ直接切り替えられるようにする
         function renderGalleryAlbumSwitchBar() {
             const bar = document.getElementById("galleryAlbumSwitchBar");
-            bar.innerHTML = albums.map(a => {
+            const allowedAlbumNames = getAllowedAlbumsForMember(currentMember);
+            const visibleAlbums = albums.filter(a => allowedAlbumNames.includes(a.name));
+            bar.innerHTML = visibleAlbums.map(a => {
                 const hasCover = a.coverUrl && a.coverUrl.trim() !== "";
                 const thumbHtml = hasCover
                     ? `<img src="${a.coverUrl}" class="w-6 h-6 rounded object-cover border border-gray-700 shrink-0">`
@@ -848,25 +859,19 @@
             }).join('');
         }
 
-        // ギャラリー画面内で別のアルバムへ直接切り替える
+        // ギャラリー画面内で別のアルバムへ直接切り替える（メンバー階層を遡らずに直接切り替える）
         function switchGalleryAlbum(albumName) {
             currentAlbum = albumName;
-            const allowed = getAllowedMembersForAlbum(albumName);
-            if (!allowed.some(m => m.name === currentMember)) {
-                currentMember = allowed[0] ? allowed[0].name : currentMember;
-            }
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${currentMember}`;
             updateGalleryTitleBannerColor();
             renderGalleryAlbumSwitchBar();
-            renderGalleryMemberSwitchBar();
             renderApp();
         }
 
-        // ギャラリー画面の上に、現在のアルバム内で他のメンバーへ直接切り替えられる横並びタブを表示する
+        // ギャラリー画面の上に、全メンバーを横並びタブで表示し、他のメンバーへ直接切り替えられるようにする
         function renderGalleryMemberSwitchBar() {
             const bar = document.getElementById("galleryMemberSwitchBar");
-            const allowedMembers = getAllowedMembersForAlbum(currentAlbum);
-            bar.innerHTML = allowedMembers.map(m => {
+            bar.innerHTML = memberData.map(m => {
                 const photoUrl = memberPhotoUrls[m.name];
                 const avatarHtml = photoUrl
                     ? `<img src="${photoUrl}" class="w-6 h-6 rounded-full object-cover border border-gray-700 shrink-0">`
@@ -886,10 +891,17 @@
             }).join('');
         }
 
-        // ギャラリー画面内で別のメンバーへ切り替える（アルバム階層を遡らずに直接切り替える）
+        // ギャラリー画面内で別のメンバーへ直接切り替える。
+        // 切り替え先のメンバーが今のアルバムを選べない場合（JIYOON等）は、選べるアルバムの先頭に切り替える。
         function switchGalleryMember(memberName) {
             currentMember = memberName;
+            const allowedAlbums = getAllowedAlbumsForMember(memberName);
+            if (!allowedAlbums.includes(currentAlbum)) {
+                currentAlbum = allowedAlbums[0];
+            }
             document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
+            updateGalleryTitleBannerColor();
+            renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
             renderApp();
         }
@@ -1518,22 +1530,23 @@
         }
 
         // アルバム一覧（トップ画面）を描画する。常に albums 配列の順序のまま2列で表示する。
+        // トップ画面（メンバー選択）を描画する。常に memberData 配列の順序のまま2列で表示する。
         function renderAlbumTabs() {
             const container = document.getElementById("albumTabs");
-            container.innerHTML = albums.map(a => {
-                const hasCover = a.coverUrl && a.coverUrl.trim() !== "";
-                const imgHtml = hasCover
-                    ? `<img src="${a.coverUrl}" draggable="false" oncontextmenu="return false" class="photocard-img absolute inset-0 w-full h-full object-cover">`
-                    : `<div class="absolute inset-0 flex items-center justify-center text-4xl">💿</div>`;
-                const count = pcData.filter(d => d.album === a.name).length;
+            container.innerHTML = memberData.map(m => {
+                const photoUrl = memberPhotoUrls[m.name];
+                const imgHtml = photoUrl
+                    ? `<img src="${photoUrl}" draggable="false" oncontextmenu="return false" class="photocard-img absolute inset-0 w-full h-full object-cover">`
+                    : `<div class="absolute inset-0 flex items-center justify-center text-4xl">${m.icon}</div>`;
+                const count = pcData.filter(d => d.member === m.name).length;
                 return `
-                <div onclick="selectAlbum('${a.name}')" role="button" tabindex="0"
+                <div onclick="selectMemberTop('${m.name}')" role="button" tabindex="0"
                      class="bg-gray-900/90 border border-gray-800/80 rounded-2xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
                     <div class="mb-2">
-                        <div class="text-gray-100 font-black text-sm truncate">${a.name}</div>
+                        <div class="text-gray-100 font-black text-sm truncate">${m.name}</div>
                         <div class="text-[10px] text-gray-500 font-bold">${count}枚</div>
                     </div>
-                    <div class="relative w-full aspect-square rounded-xl bg-gray-800 border border-gray-700 overflow-hidden">
+                    <div class="relative w-full aspect-square rounded-full bg-gray-800 border border-gray-700 overflow-hidden">
                         ${imgHtml}
                     </div>
                 </div>
