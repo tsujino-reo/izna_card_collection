@@ -218,7 +218,9 @@
                 </div>
             </div>
 
-            <div id="galleryContainer" class="space-y-5 pb-10"></div>
+            <div class="bg-black/55 rounded-2xl p-3">
+                <div id="galleryContainer" class="space-y-5 pb-2"></div>
+            </div>
         </div>
     </div>
 
@@ -1851,7 +1853,7 @@
                 container.dataset.album = currentAlbum;
                 container.innerHTML = sortedCards.length
                     ? sortedCards.map(card => renderCard(card, isViewer)).join('')
-                    : `<div class="col-span-4 text-center text-gray-600 italic py-8 text-xs">登録されたトレカはありません</div>`;
+                    : `<div class="col-span-4 text-center text-gray-400 italic py-8 text-xs">登録されたトレカはありません</div>`;
                 initSortableForList(container);
             } else {
                 // category が未設定、または現在のアルバムで無効な値になっているカードは
@@ -1879,10 +1881,10 @@
                     const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
                     const cardsHtml = catCards.length
                         ? catCards.map(card => renderCard(card, isViewer)).join('')
-                        : `<div class="col-span-4 text-gray-600 italic text-[10px] py-2">未登録</div>`;
+                        : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
                     return `
                         <div>
-                            <h3 class="text-[10px] font-bold text-gray-400 mb-2 border-l-2 border-purple-500 pl-2 tracking-widest uppercase flex items-center gap-1.5">
+                            <h3 class="text-[10px] font-bold text-gray-300 mb-2 border-l-2 border-purple-500 pl-2 tracking-widest uppercase flex items-center gap-1.5">
                                 <span>${CATEGORY_ICONS[cat] || "⚫"}</span>
                                 <span>${cat} (${catCards.length})</span>
                             </h3>
