@@ -1287,8 +1287,13 @@
                 layer.style.backgroundSize = "cover";
                 return;
             }
+            // window.innerWidth/innerHeightはスクロール中にアドレスバーが伸縮するたびに変動し、
+            // それを使って毎回再計算するとガタつきの原因になる。
+            // 代わりに、CSS側で100lvh/100vwに固定されている要素自体の実サイズを使うことで、
+            // スクロール中も値が変動せず、ガタつきを防ぐ。
+            const rect = layer.getBoundingClientRect();
             const size = computeCoverSize(
-                window.innerWidth, window.innerHeight,
+                rect.width, rect.height,
                 currentBgNaturalSize.w, currentBgNaturalSize.h,
                 scalePercent
             );
