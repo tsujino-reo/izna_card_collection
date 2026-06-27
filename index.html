@@ -1247,16 +1247,52 @@
             currentBgObjectUrl = URL.createObjectURL(blob);
             const layer = document.getElementById("appBackgroundLayer");
             layer.style.backgroundImage = `url('${currentBgObjectUrl}')`;
-            applyBackgroundTransform(transform);
+
+            // 画像の自然サイズを取得してからtransformを適用する（cover計算に必要なため）
+            const img = new Image();
+            img.onload = () => {
+                currentBgNaturalSize = { w: img.naturalWidth, h: img.naturalHeight };
+                applyBackgroundTransform(transform);
+            };
+            img.onerror = () => {
+                currentBgNaturalSize = null;
+                applyBackgroundTransform(transform);
+            };
+            img.src = currentBgObjectUrl;
         }
 
         // 拡大率(scale)・位置(offsetX/offsetY)を背景レイヤーに反映する。
         // scaleはbackground-sizeの倍率(%)、offsetはbackground-positionのズレ(%)として扱う。
+        // 現在の背景画像の自然サイズ（読み込み済みのもの）。cover基準の拡大計算に使う。
+        let currentBgNaturalSize = null;
+        let currentBgScale = 100; // 画面回転時の再計算用に、現在適用中の拡大率を保持する
+
         function applyBackgroundTransform(transform) {
             const layer = document.getElementById("appBackgroundLayer");
-            const t = transform || { scale: 100, offsetX: 50, offsetY: 50 };
-            layer.style.backgroundSize = `${t.scale}%`;
+            const t = transform || { ...BG_TRANSFORM_DEFAULT };
             layer.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            applyBackgroundScale(t.scale);
+        }
+
+        // background-sizeの%指定は「要素サイズに対する比率」であり、cover(余白なく覆う)とは
+        // 一致しない。そのため、画像の実際の幅・高さとビューポートのサイズから、
+        // 「画面を覆うのに必要な最小サイズ(cover相当)」をピクセル単位で計算し、
+        // そこにユーザー指定の拡大率(scale)を掛け合わせた値を実際に設定する。
+        // これにより、scale=100%の時点で必ず画面いっぱいに表示され、黒い余白が出ない。
+        function applyBackgroundScale(scalePercent) {
+            currentBgScale = scalePercent || 100;
+            const layer = document.getElementById("appBackgroundLayer");
+            if (!currentBgNaturalSize) {
+                // 画像サイズが未取得の間は、最低限の保険として cover をそのまま使う
+                layer.style.backgroundSize = "cover";
+                return;
+            }
+            const size = computeCoverSize(
+                window.innerWidth, window.innerHeight,
+                currentBgNaturalSize.w, currentBgNaturalSize.h,
+                scalePercent
+            );
+            layer.style.backgroundSize = `${size.w}px ${size.h}px`;
         }
 
         const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
@@ -2718,6 +2754,23 @@
             return bgKeyForCombo(document.getElementById("bgComboMemberSelect").value, document.getElementById("bgComboAlbumSelect").value);
         }
 
+        // 指定した要素のサイズを基準に、画像が余白なく覆うための cover相当のピクセルサイズを計算する。
+        // メインの背景(ビューポート基準)とモーダルのプレビュー(プレビュー枠基準)の両方で使う汎用関数。
+        function computeCoverSize(elementW, elementH, naturalW, naturalH, scalePercent) {
+            const imgRatio = naturalW / naturalH;
+            const elRatio = elementW / elementH;
+            let baseW, baseH;
+            if (imgRatio > elRatio) {
+                baseH = elementH;
+                baseW = elementH * imgRatio;
+            } else {
+                baseW = elementW;
+                baseH = elementW / imgRatio;
+            }
+            const factor = (scalePercent || 100) / 100;
+            return { w: Math.round(baseW * factor), h: Math.round(baseH * factor) };
+        }
+
         async function renderBgModalPreview() {
             const key = getCurrentBgModalKey();
             const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
@@ -2730,8 +2783,17 @@
                     const t = getBgTransform(key);
                     previewEl.innerHTML = "";
                     previewEl.style.backgroundImage = `url('${url}')`;
-                    previewEl.style.backgroundSize = `${t.scale}%`;
                     previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+
+                    // プレビュー枠の実サイズを基準にcover計算する（画像の自然サイズの取得を待つ）
+                    const img = new Image();
+                    img.onload = () => {
+                        const rect = previewEl.getBoundingClientRect();
+                        const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, t.scale);
+                        previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
+                    };
+                    img.src = url;
+
                     adjustPanel.classList.remove("hidden");
                     document.getElementById("bgScaleSlider").value = t.scale;
                     document.getElementById("bgScaleValue").innerText = t.scale;
@@ -3397,6 +3459,11 @@
                 }
             } else {
             }
+        });
+
+        // 画面回転・サイズ変更時に、現在の拡大率設定を維持したままcover計算を再実行する
+        window.addEventListener("resize", () => {
+            applyBackgroundScale(currentBgScale);
         });
 
         window.onload = init;
