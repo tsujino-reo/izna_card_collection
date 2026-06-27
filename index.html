@@ -438,7 +438,7 @@
 
             <!-- ①全体共通の背景 -->
             <div id="bgTabGlobal" class="space-y-3">
-                <div id="bgGlobalPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <div id="bgGlobalPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
                 <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
                     🏞️ 画像を選択して設定
                     <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'global')">
@@ -449,7 +449,7 @@
             <!-- ②メンバー別の背景 -->
             <div id="bgTabMember" class="hidden space-y-3">
                 <select id="bgMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
-                <div id="bgMemberPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <div id="bgMemberPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
                 <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
                     🏞️ 画像を選択して設定
                     <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'member')">
@@ -461,12 +461,34 @@
             <div id="bgTabCombo" class="hidden space-y-3">
                 <select id="bgComboMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
                 <select id="bgComboAlbumSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
-                <div id="bgComboPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden">未設定</div>
+                <div id="bgComboPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
                 <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
                     🏞️ 画像を選択して設定
                     <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'combo')">
                 </label>
                 <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+            </div>
+
+            <!-- 表示範囲の調整（拡大率・位置）。設定済みの画像がある場合のみ表示する -->
+            <div id="bgAdjustPanel" class="hidden mt-4 pt-4 border-t border-gray-800 space-y-3">
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">表示範囲の調整</p>
+                <div>
+                    <label class="text-[10px] text-gray-400 block mb-1">拡大率: <span id="bgScaleValue">100</span>%</label>
+                    <input type="range" id="bgScaleSlider" min="100" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    <div class="grid grid-cols-3 gap-1.5 w-32">
+                        <div></div>
+                        <button onclick="nudgeBgPosition(0, -5)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
+                        <div></div>
+                        <button onclick="nudgeBgPosition(-5, 0)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
+                        <button onclick="resetBgPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
+                        <button onclick="nudgeBgPosition(5, 0)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
+                        <div></div>
+                        <button onclick="nudgeBgPosition(0, 5)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
+                        <div></div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex justify-end mt-4">
@@ -1192,19 +1214,21 @@
 
         // 現在のメンバー・アルバムに応じて、表示すべき背景を優先順位通りに探して適用する
         async function updateBackgroundForCurrentContext() {
-            const comboBlob = await getSettingBlob(bgKeyForCombo(currentMember, currentAlbum)).catch(() => null);
+            const comboKey = bgKeyForCombo(currentMember, currentAlbum);
+            const comboBlob = await getSettingBlob(comboKey).catch(() => null);
             if (comboBlob) {
-                applyBackgroundBlob(comboBlob);
+                applyBackgroundBlob(comboBlob, getBgTransform(comboKey));
                 return;
             }
-            const memberBlob = await getSettingBlob(bgKeyForMember(currentMember)).catch(() => null);
+            const memberKey = bgKeyForMember(currentMember);
+            const memberBlob = await getSettingBlob(memberKey).catch(() => null);
             if (memberBlob) {
-                applyBackgroundBlob(memberBlob);
+                applyBackgroundBlob(memberBlob, getBgTransform(memberKey));
                 return;
             }
             const defaultBlob = await getSettingBlob(BG_KEY_DEFAULT).catch(() => null);
             if (defaultBlob) {
-                applyBackgroundBlob(defaultBlob);
+                applyBackgroundBlob(defaultBlob, getBgTransform(BG_KEY_DEFAULT));
             } else {
                 clearBackgroundLayer();
             }
@@ -1218,11 +1242,53 @@
             document.getElementById("appBackgroundLayer").style.backgroundImage = "";
         }
 
-        function applyBackgroundBlob(blob) {
+        function applyBackgroundBlob(blob, transform) {
             if (currentBgObjectUrl) URL.revokeObjectURL(currentBgObjectUrl);
             currentBgObjectUrl = URL.createObjectURL(blob);
             const layer = document.getElementById("appBackgroundLayer");
             layer.style.backgroundImage = `url('${currentBgObjectUrl}')`;
+            applyBackgroundTransform(transform);
+        }
+
+        // 拡大率(scale)・位置(offsetX/offsetY)を背景レイヤーに反映する。
+        // scaleはbackground-sizeの倍率(%)、offsetはbackground-positionのズレ(%)として扱う。
+        function applyBackgroundTransform(transform) {
+            const layer = document.getElementById("appBackgroundLayer");
+            const t = transform || { scale: 100, offsetX: 50, offsetY: 50 };
+            layer.style.backgroundSize = `${t.scale}%`;
+            layer.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+        }
+
+        const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
+        const BG_TRANSFORM_DEFAULT = { scale: 100, offsetX: 50, offsetY: 50 };
+
+        function getBgTransform(key) {
+            try {
+                const all = JSON.parse(localStorage.getItem(BG_TRANSFORM_STORAGE_KEY) || "{}");
+                return all[key] || { ...BG_TRANSFORM_DEFAULT };
+            } catch (err) {
+                return { ...BG_TRANSFORM_DEFAULT };
+            }
+        }
+
+        function saveBgTransform(key, transform) {
+            try {
+                const all = JSON.parse(localStorage.getItem(BG_TRANSFORM_STORAGE_KEY) || "{}");
+                all[key] = transform;
+                localStorage.setItem(BG_TRANSFORM_STORAGE_KEY, JSON.stringify(all));
+            } catch (err) {
+                console.warn("背景の表示調整の保存に失敗しました:", err);
+            }
+        }
+
+        function deleteBgTransform(key) {
+            try {
+                const all = JSON.parse(localStorage.getItem(BG_TRANSFORM_STORAGE_KEY) || "{}");
+                delete all[key];
+                localStorage.setItem(BG_TRANSFORM_STORAGE_KEY, JSON.stringify(all));
+            } catch (err) {
+                console.warn("背景の表示調整の削除に失敗しました:", err);
+            }
         }
 
         // 背景設定モーダルから呼ばれる: 指定したキー（全体/メンバー/組み合わせ）に背景画像を保存する
@@ -1235,6 +1301,7 @@
         // 背景設定モーダルから呼ばれる: 指定したキーの背景設定を削除する
         async function deleteBackgroundForKey(key) {
             await deleteSettingBlob(key);
+            deleteBgTransform(key);
             await updateBackgroundForCurrentContext();
             updateStorageEstimate();
         }
@@ -2655,17 +2722,66 @@
             const key = getCurrentBgModalKey();
             const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
             const previewEl = document.getElementById(previewId);
+            const adjustPanel = document.getElementById("bgAdjustPanel");
             try {
                 const blob = await getSettingBlob(key);
                 if (blob) {
                     const url = URL.createObjectURL(blob);
-                    previewEl.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+                    const t = getBgTransform(key);
+                    previewEl.innerHTML = "";
+                    previewEl.style.backgroundImage = `url('${url}')`;
+                    previewEl.style.backgroundSize = `${t.scale}%`;
+                    previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+                    adjustPanel.classList.remove("hidden");
+                    document.getElementById("bgScaleSlider").value = t.scale;
+                    document.getElementById("bgScaleValue").innerText = t.scale;
                 } else {
+                    previewEl.style.backgroundImage = "";
                     previewEl.innerHTML = "未設定";
+                    adjustPanel.classList.add("hidden");
                 }
             } catch (err) {
+                previewEl.style.backgroundImage = "";
                 previewEl.innerHTML = "未設定";
+                adjustPanel.classList.add("hidden");
             }
+        }
+
+        // 拡大率スライダー・矢印ボタンの操作を、現在のプレビューと実際の保存値の両方に反映する
+        function getCurrentBgPreviewEl() {
+            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
+            return document.getElementById(previewId);
+        }
+
+        function onBgAdjustChange() {
+            const key = getCurrentBgModalKey();
+            const scale = Number(document.getElementById("bgScaleSlider").value);
+            document.getElementById("bgScaleValue").innerText = scale;
+            const t = getBgTransform(key);
+            t.scale = scale;
+            saveBgTransform(key, t);
+            getCurrentBgPreviewEl().style.backgroundSize = `${t.scale}%`;
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
+        function nudgeBgPosition(dx, dy) {
+            const key = getCurrentBgModalKey();
+            const t = getBgTransform(key);
+            t.offsetX = Math.max(0, Math.min(100, t.offsetX + dx));
+            t.offsetY = Math.max(0, Math.min(100, t.offsetY + dy));
+            saveBgTransform(key, t);
+            getCurrentBgPreviewEl().style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
+        function resetBgPosition() {
+            const key = getCurrentBgModalKey();
+            const t = getBgTransform(key);
+            t.offsetX = 50;
+            t.offsetY = 50;
+            saveBgTransform(key, t);
+            getCurrentBgPreviewEl().style.backgroundPosition = "50% 50%";
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
         async function handleBgFileSelected(input, tab) {
@@ -2673,6 +2789,7 @@
             if (!file) return;
             const key = getCurrentBgModalKey();
             try {
+                saveBgTransform(key, { ...BG_TRANSFORM_DEFAULT }); // 新しい画像なので表示調整は初期値に戻す
                 await saveBackgroundForKey(key, file);
                 await renderBgModalPreview();
             } catch (err) {
