@@ -2938,14 +2938,18 @@
                 const dy = Number(btn.dataset.dy);
                 let holdTimer = null;
                 let repeatInterval = null;
-                let didLongPress = false;
+                let lastTouchTime = 0;
 
                 const startHold = (e) => {
                     e.preventDefault();
-                    didLongPress = false;
+                    // スマホではtouchstartの後に合成されたmousedownイベントが追加で発火することがあり、
+                    // 何もしないとnudgeBgPositionが1タップで2回実行されてしまう（移動幅が倍になって見える原因）。
+                    // touchstartが発火した直後のmousedownは無視する。
+                    if (e.type === "mousedown" && Date.now() - lastTouchTime < 500) return;
+                    if (e.type === "touchstart") lastTouchTime = Date.now();
+
                     nudgeBgPosition(dx, dy); // 押した瞬間に1回動かす（タップ操作と同じ即時反応）
                     holdTimer = setTimeout(() => {
-                        didLongPress = true;
                         repeatInterval = setInterval(() => nudgeBgPosition(dx, dy), 80);
                     }, 300);
                 };
