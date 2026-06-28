@@ -2838,6 +2838,7 @@
                     previewEl.style.backgroundImage = `url('${url}')`;
                     previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
                     previewEl.style.backgroundColor = t.fillColor || "#000000";
+                    previewEl.style.backgroundRepeat = "no-repeat";
 
                     // プレビュー枠の実サイズを基準にcover計算する（画像の自然サイズの取得を待つ）
                     const img = new Image();
