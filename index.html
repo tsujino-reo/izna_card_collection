@@ -478,13 +478,13 @@
                 <div class="flex items-center justify-center gap-2">
                     <div class="grid grid-cols-3 gap-1.5 w-32">
                         <div></div>
-                        <button id="bgNudgeUp" data-dx="0" data-dy="-2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
+                        <button id="bgNudgeUp" data-dx="0" data-dy="-0.5" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
                         <div></div>
-                        <button id="bgNudgeLeft" data-dx="-2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
+                        <button id="bgNudgeLeft" data-dx="-0.5" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
                         <button onclick="resetBgPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
-                        <button id="bgNudgeRight" data-dx="2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
+                        <button id="bgNudgeRight" data-dx="0.5" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
                         <div></div>
-                        <button id="bgNudgeDown" data-dx="0" data-dy="2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
+                        <button id="bgNudgeDown" data-dx="0" data-dy="0.5" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
                         <div></div>
                     </div>
                 </div>
@@ -2914,18 +2914,7 @@
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
-        let _nudgeCallCount = 0; // デバッグ用: 呼び出し回数の確認のため一時的に追加
         function nudgeBgPosition(dx, dy) {
-            _nudgeCallCount++;
-            let dbg = document.getElementById("_nudgeDebug");
-            if (!dbg) {
-                dbg = document.createElement("div");
-                dbg.id = "_nudgeDebug";
-                dbg.style.cssText = "position:fixed; top:10px; left:10px; z-index:99999; background:red; color:white; font-size:14px; padding:8px; border-radius:8px; font-weight:bold;";
-                document.body.appendChild(dbg);
-            }
-            dbg.innerText = `nudge呼び出し回数: ${_nudgeCallCount} (dx=${dx}, dy=${dy})`;
-
             const key = getCurrentBgModalKey();
             const t = getBgTransform(key);
             t.offsetX = Math.max(0, Math.min(100, t.offsetX + dx));
