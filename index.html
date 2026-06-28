@@ -428,12 +428,11 @@
     <div id="backgroundModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
             <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏞️ 背景設定</h3>
-            <p class="text-[10px] text-gray-500 mb-4">表示の優先順位: ①メンバー×アルバムの組み合わせ → ②メンバー単位 → ③全体共通。設定したい範囲だけでOKです（未設定は自動でひとつ下にフォールバックします）。</p>
+            <p class="text-[10px] text-gray-500 mb-4">表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。</p>
 
             <div class="flex gap-1.5 mb-4">
                 <button id="bgTabGlobalBtn" onclick="switchBgModalTab('global')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gradient-to-r from-purple-600 to-pink-600 text-white">①全体共通</button>
-                <button id="bgTabMemberBtn" onclick="switchBgModalTab('member')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">②メンバー別</button>
-                <button id="bgTabComboBtn" onclick="switchBgModalTab('combo')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">③組み合わせ</button>
+                <button id="bgTabComboBtn" onclick="switchBgModalTab('combo')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">②組み合わせ</button>
             </div>
 
             <!-- ①全体共通の背景 -->
@@ -446,18 +445,7 @@
                 <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
             </div>
 
-            <!-- ②メンバー別の背景 -->
-            <div id="bgTabMember" class="hidden space-y-3">
-                <select id="bgMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
-                <div id="bgMemberPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
-                <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
-                    🏞️ 画像を選択して設定
-                    <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'member')">
-                </label>
-                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
-            </div>
-
-            <!-- ③メンバー×アルバムの組み合わせの背景 -->
+            <!-- ②メンバー×アルバムの組み合わせの背景 -->
             <div id="bgTabCombo" class="hidden space-y-3">
                 <select id="bgComboMemberSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
                 <select id="bgComboAlbumSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
@@ -480,18 +468,23 @@
                 <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-2">表示範囲の調整</p>
                 <div>
                     <label class="text-[10px] text-gray-400 block mb-1">拡大率: <span id="bgScaleValue">100</span>%</label>
-                    <input type="range" id="bgScaleSlider" min="100" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
+                    <input type="range" id="bgScaleSlider" min="50" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
+                </div>
+                <div id="bgFillColorWrap" class="hidden flex items-center gap-2">
+                    <label class="text-[10px] text-gray-400 shrink-0">余白の色:</label>
+                    <input type="color" id="bgFillColorPicker" value="#000000" oninput="onBgFillColorChange()" class="w-10 h-8 rounded border border-gray-700 bg-gray-900 cursor-pointer">
+                    <span class="text-[10px] text-gray-500">100%未満の時に表示される余白を埋める色です</span>
                 </div>
                 <div class="flex items-center justify-center gap-2">
                     <div class="grid grid-cols-3 gap-1.5 w-32">
                         <div></div>
-                        <button onclick="nudgeBgPosition(0, -5)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
+                        <button id="bgNudgeUp" data-dx="0" data-dy="-2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
                         <div></div>
-                        <button onclick="nudgeBgPosition(-5, 0)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
+                        <button id="bgNudgeLeft" data-dx="-2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
                         <button onclick="resetBgPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
-                        <button onclick="nudgeBgPosition(5, 0)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
+                        <button id="bgNudgeRight" data-dx="2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
                         <div></div>
-                        <button onclick="nudgeBgPosition(0, 5)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
+                        <button id="bgNudgeDown" data-dx="0" data-dy="2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
                         <div></div>
                     </div>
                 </div>
@@ -1247,6 +1240,7 @@
             }
             const layer = document.getElementById("appBackgroundLayer");
             layer.style.backgroundImage = "";
+            layer.style.backgroundColor = "";
             layer.style.backgroundRepeat = "no-repeat";
         }
 
@@ -1279,6 +1273,7 @@
             const layer = document.getElementById("appBackgroundLayer");
             const t = transform || { ...BG_TRANSFORM_DEFAULT };
             layer.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            layer.style.backgroundColor = t.fillColor || "#000000"; // scale<100%で空いた余白を埋める色
             applyBackgroundScale(t.scale);
         }
 
@@ -1312,12 +1307,13 @@
         }
 
         const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
-        const BG_TRANSFORM_DEFAULT = { scale: 100, offsetX: 50, offsetY: 50 };
+        const BG_TRANSFORM_DEFAULT = { scale: 100, offsetX: 50, offsetY: 50, fillColor: "#000000" };
 
         function getBgTransform(key) {
             try {
                 const all = JSON.parse(localStorage.getItem(BG_TRANSFORM_STORAGE_KEY) || "{}");
-                return all[key] || { ...BG_TRANSFORM_DEFAULT };
+                // 古い保存データにfillColor等の新しいフィールドが無い場合に備え、デフォルト値とマージする
+                return { ...BG_TRANSFORM_DEFAULT, ...(all[key] || {}) };
             } catch (err) {
                 return { ...BG_TRANSFORM_DEFAULT };
             }
@@ -2728,18 +2724,17 @@
             if (!skipHistory) history.back();
         }
 
-        // ── 背景設定モーダル（全体/メンバー別/メンバー×アルバム別） ──────────────
+        // ── 背景設定モーダル（全体/メンバー×アルバム別） ──────────────
         let bgModalCurrentTab = "global";
 
         function openBackgroundModal() {
-            document.getElementById("bgMemberSelect").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
-            document.getElementById("bgMemberSelect").value = currentMember;
             document.getElementById("bgComboMemberSelect").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
             document.getElementById("bgComboMemberSelect").value = currentMember;
             document.getElementById("bgComboAlbumSelect").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
             document.getElementById("bgComboAlbumSelect").value = currentAlbum;
 
             switchBgModalTab("global");
+            setupBgNudgeButtonHold();
             document.getElementById("backgroundModal").classList.remove("hidden");
             pushModalHistory("closeBackgroundModal");
         }
@@ -2751,7 +2746,7 @@
 
         function switchBgModalTab(tab) {
             bgModalCurrentTab = tab;
-            ["global", "member", "combo"].forEach(t => {
+            ["global", "combo"].forEach(t => {
                 document.getElementById(`bgTab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.toggle("hidden", t !== tab);
                 const btn = document.getElementById(`bgTab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
                 if (t === tab) {
@@ -2766,7 +2761,6 @@
         // 現在選択中のタブに応じた、背景保存先のキーを返す
         function getCurrentBgModalKey() {
             if (bgModalCurrentTab === "global") return BG_KEY_DEFAULT;
-            if (bgModalCurrentTab === "member") return bgKeyForMember(document.getElementById("bgMemberSelect").value);
             return bgKeyForCombo(document.getElementById("bgComboMemberSelect").value, document.getElementById("bgComboAlbumSelect").value);
         }
 
@@ -2830,7 +2824,7 @@
 
         async function renderBgModalPreview() {
             const key = getCurrentBgModalKey();
-            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
+            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : "bgComboPreview";
             const previewEl = document.getElementById(previewId);
             const adjustPanel = document.getElementById("bgAdjustPanel");
             try {
@@ -2841,6 +2835,7 @@
                     previewEl.innerHTML = "";
                     previewEl.style.backgroundImage = `url('${url}')`;
                     previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+                    previewEl.style.backgroundColor = t.fillColor || "#000000";
 
                     // プレビュー枠の実サイズを基準にcover計算する（画像の自然サイズの取得を待つ）
                     const img = new Image();
@@ -2859,6 +2854,8 @@
                     adjustPanel.classList.remove("hidden");
                     document.getElementById("bgScaleSlider").value = t.scale;
                     document.getElementById("bgScaleValue").innerText = t.scale;
+                    document.getElementById("bgFillColorPicker").value = t.fillColor || "#000000";
+                    document.getElementById("bgFillColorWrap").classList.toggle("hidden", t.scale >= 100);
                 } else {
                     previewEl.style.backgroundImage = "";
                     previewEl.innerHTML = "未設定";
@@ -2875,7 +2872,7 @@
 
         // 拡大率スライダー・矢印ボタンの操作を、現在のプレビューと実際の保存値の両方に反映する
         function getCurrentBgPreviewEl() {
-            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
+            const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : "bgComboPreview";
             return document.getElementById(previewId);
         }
 
@@ -2886,6 +2883,8 @@
             const t = getBgTransform(key);
             t.scale = scale;
             saveBgTransform(key, t);
+
+            document.getElementById("bgFillColorWrap").classList.toggle("hidden", scale >= 100);
 
             const previewEl = getCurrentBgPreviewEl();
             const bgImage = previewEl.style.backgroundImage;
@@ -2904,6 +2903,17 @@
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
+        // 余白を埋める色が変更された時の処理
+        function onBgFillColorChange() {
+            const key = getCurrentBgModalKey();
+            const color = document.getElementById("bgFillColorPicker").value;
+            const t = getBgTransform(key);
+            t.fillColor = color;
+            saveBgTransform(key, t);
+            getCurrentBgPreviewEl().style.backgroundColor = color;
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
         function nudgeBgPosition(dx, dy) {
             const key = getCurrentBgModalKey();
             const t = getBgTransform(key);
@@ -2913,6 +2923,47 @@
             getCurrentBgPreviewEl().style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
             renderBgCropFrame(t);
             if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
+        // 上下左右ボタンを長押しすると、一定間隔で連続的に移動し続けるようにする。
+        // 単発タップは1回だけ移動、300ms以上押し続けると80ms間隔の連続移動に切り替わる。
+        function setupBgNudgeButtonHold() {
+            const buttonIds = ["bgNudgeUp", "bgNudgeLeft", "bgNudgeRight", "bgNudgeDown"];
+            buttonIds.forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn || btn._holdSetup) return; // 二重セットアップ防止
+                btn._holdSetup = true;
+
+                const dx = Number(btn.dataset.dx);
+                const dy = Number(btn.dataset.dy);
+                let holdTimer = null;
+                let repeatInterval = null;
+                let didLongPress = false;
+
+                const startHold = (e) => {
+                    e.preventDefault();
+                    didLongPress = false;
+                    nudgeBgPosition(dx, dy); // 押した瞬間に1回動かす（タップ操作と同じ即時反応）
+                    holdTimer = setTimeout(() => {
+                        didLongPress = true;
+                        repeatInterval = setInterval(() => nudgeBgPosition(dx, dy), 80);
+                    }, 300);
+                };
+                const stopHold = () => {
+                    clearTimeout(holdTimer);
+                    clearInterval(repeatInterval);
+                    holdTimer = null;
+                    repeatInterval = null;
+                };
+
+                btn.addEventListener("touchstart", startHold, { passive: false });
+                btn.addEventListener("touchend", stopHold);
+                btn.addEventListener("touchcancel", stopHold);
+                // マウス操作（PCでの確認用）にも対応
+                btn.addEventListener("mousedown", startHold);
+                btn.addEventListener("mouseup", stopHold);
+                btn.addEventListener("mouseleave", stopHold);
+            });
         }
 
         function resetBgPosition() {
