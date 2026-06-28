@@ -474,7 +474,7 @@
                 <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">表示範囲の調整</p>
                 <div>
                     <label class="text-[10px] text-gray-400 block mb-1">拡大率: <span id="bgScaleValue">100</span>%</label>
-                    <input type="range" id="bgScaleSlider" min="100" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
+                    <input type="range" id="bgScaleSlider" min="50" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
                 </div>
                 <div class="flex items-center justify-center gap-2">
                     <div class="grid grid-cols-3 gap-1.5 w-32">
@@ -1239,7 +1239,9 @@
                 URL.revokeObjectURL(currentBgObjectUrl);
                 currentBgObjectUrl = null;
             }
-            document.getElementById("appBackgroundLayer").style.backgroundImage = "";
+            const layer = document.getElementById("appBackgroundLayer");
+            layer.style.backgroundImage = "";
+            layer.style.backgroundRepeat = "no-repeat";
         }
 
         function applyBackgroundBlob(blob, transform) {
@@ -1298,6 +1300,10 @@
                 scalePercent
             );
             layer.style.backgroundSize = `${size.w}px ${size.h}px`;
+
+            // 拡大率を100%未満（縮小）にすると、画像が画面より小さくなり余白ができる。
+            // その余白を同じ画像の繰り返しで埋めるため、100%未満の時だけrepeatに切り替える。
+            layer.style.backgroundRepeat = (scalePercent < 100) ? "repeat" : "no-repeat";
         }
 
         const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
@@ -2796,6 +2802,7 @@
                         const rect = previewEl.getBoundingClientRect();
                         const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, t.scale);
                         previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
+                        previewEl.style.backgroundRepeat = (t.scale < 100) ? "repeat" : "no-repeat";
                     };
                     img.src = url;
 
@@ -2827,7 +2834,21 @@
             const t = getBgTransform(key);
             t.scale = scale;
             saveBgTransform(key, t);
-            getCurrentBgPreviewEl().style.backgroundSize = `${t.scale}%`;
+
+            const previewEl = getCurrentBgPreviewEl();
+            const bgImage = previewEl.style.backgroundImage;
+            const urlMatch = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+            if (urlMatch) {
+                const img = new Image();
+                img.onload = () => {
+                    const rect = previewEl.getBoundingClientRect();
+                    const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, scale);
+                    previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
+                    previewEl.style.backgroundRepeat = (scale < 100) ? "repeat" : "no-repeat";
+                };
+                img.src = urlMatch[1];
+            }
+
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
