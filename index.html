@@ -1747,10 +1747,10 @@
                 const count = pcData.filter(d => d.member === m.name).length;
                 return `
                 <div onclick="selectMemberTop('${m.name}')" role="button" tabindex="0"
-                     class="bg-gray-900/90 border border-gray-800/80 rounded-2xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
+                     class="bg-gray-900/50 border border-gray-800/80 rounded-2xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
                     <div class="mb-2">
-                        <div class="text-gray-100 font-black text-sm truncate">${m.name}</div>
-                        <div class="text-[10px] text-gray-500 font-bold">${count}枚</div>
+                        <div class="text-gray-100 font-black text-sm truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">${m.name}</div>
+                        <div class="text-[10px] text-gray-300 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">${count}枚</div>
                     </div>
                     <div class="relative w-full aspect-square rounded-full bg-gray-800 border border-gray-700 overflow-hidden">
                         ${imgHtml}
