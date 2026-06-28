@@ -2914,7 +2914,18 @@
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
+        let _nudgeCallCount = 0; // デバッグ用: 呼び出し回数の確認のため一時的に追加
         function nudgeBgPosition(dx, dy) {
+            _nudgeCallCount++;
+            let dbg = document.getElementById("_nudgeDebug");
+            if (!dbg) {
+                dbg = document.createElement("div");
+                dbg.id = "_nudgeDebug";
+                dbg.style.cssText = "position:fixed; top:10px; left:10px; z-index:99999; background:red; color:white; font-size:14px; padding:8px; border-radius:8px; font-weight:bold;";
+                document.body.appendChild(dbg);
+            }
+            dbg.innerText = `nudge呼び出し回数: ${_nudgeCallCount} (dx=${dx}, dy=${dy})`;
+
             const key = getCurrentBgModalKey();
             const t = getBgTransform(key);
             t.offsetX = Math.max(0, Math.min(100, t.offsetX + dx));
