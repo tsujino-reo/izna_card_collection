@@ -884,6 +884,7 @@
 
         function backToAlbumList(skipHistory) {
             showView("albumList");
+            updateBackgroundForCurrentContext();
             if (!skipHistory) history.back();
         }
 
@@ -1215,6 +1216,19 @@
 
         // 現在のメンバー・アルバムに応じて、表示すべき背景を優先順位通りに探して適用する
         async function updateBackgroundForCurrentContext() {
+            // トップ画面（メンバー一覧）では、まだ「どのアルバムを見るか」が決まっていないため、
+            // メンバー×アルバムの組み合わせ背景は考慮せず、常に全体共通の背景を表示する。
+            // 組み合わせ・メンバー単位の背景は、ギャラリー画面に入った時だけ反映される。
+            if (currentView !== "gallery") {
+                const defaultBlob = await getSettingBlob(BG_KEY_DEFAULT).catch(() => null);
+                if (defaultBlob) {
+                    applyBackgroundBlob(defaultBlob, getBgTransform(BG_KEY_DEFAULT));
+                } else {
+                    clearBackgroundLayer();
+                }
+                return;
+            }
+
             const comboKey = bgKeyForCombo(currentMember, currentAlbum);
             const comboBlob = await getSettingBlob(comboKey).catch(() => null);
             if (comboBlob) {
