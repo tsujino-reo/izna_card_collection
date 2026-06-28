@@ -471,10 +471,16 @@
 
             <!-- 表示範囲の調整（拡大率・位置）。設定済みの画像がある場合のみ表示する -->
             <div id="bgAdjustPanel" class="hidden mt-4 pt-4 border-t border-gray-800 space-y-3">
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">表示範囲の調整</p>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">使用される範囲（元画像）</p>
+                <div id="bgSourcePreviewWrap" class="relative w-full rounded-xl bg-gray-900 border border-gray-800 overflow-hidden">
+                    <img id="bgSourceImg" src="" draggable="false" oncontextmenu="return false" class="photocard-img w-full h-auto block">
+                    <div id="bgCropFrame" class="absolute border-2 border-pink-400 shadow-[0_0_0_2000px_rgba(0,0,0,0.45)] pointer-events-none"></div>
+                </div>
+
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-2">表示範囲の調整</p>
                 <div>
                     <label class="text-[10px] text-gray-400 block mb-1">拡大率: <span id="bgScaleValue">100</span>%</label>
-                    <input type="range" id="bgScaleSlider" min="50" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
+                    <input type="range" id="bgScaleSlider" min="100" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
                 </div>
                 <div class="flex items-center justify-center gap-2">
                     <div class="grid grid-cols-3 gap-1.5 w-32">
@@ -1303,7 +1309,6 @@
 
             // 拡大率を100%未満（縮小）にすると、画像が画面より小さくなり余白ができる。
             // その余白を同じ画像の繰り返しで埋めるため、100%未満の時だけrepeatに切り替える。
-            layer.style.backgroundRepeat = (scalePercent < 100) ? "repeat" : "no-repeat";
         }
 
         const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
@@ -2782,6 +2787,47 @@
             return { w: Math.round(baseW * factor), h: Math.round(baseH * factor) };
         }
 
+        // 元画像の上に「実際に背景として使われる範囲」を示す枠を描く。
+        // 考え方: 実際の背景表示では、画面（ビューポート）に対してcover計算した画像が
+        // background-positionの位置を基準に配置される。これを画面のアスペクト比を仮の
+        // 基準にして、元画像の表示サイズに対する比率に変換し、矩形として逆算する。
+        function renderBgCropFrame(transform) {
+            const sourceImg = document.getElementById("bgSourceImg");
+            const frame = document.getElementById("bgCropFrame");
+            const t = transform || { ...BG_TRANSFORM_DEFAULT };
+
+            // 実際の表示先（スマホ画面）のアスペクト比を仮定する。背景設定モーダルを開いている
+            // デバイス自身のビューポート比率を使うのが最も実態に近い。
+            const viewportRatio = window.innerWidth / window.innerHeight;
+            const imgDisplayW = sourceImg.clientWidth;
+            const imgDisplayH = sourceImg.clientHeight;
+            const imgRatio = imgDisplayW / imgDisplayH;
+
+            // 画面比率を基準にした「画面を覆うのに必要な最小サイズ」を、画像の表示サイズに対する比率で求める
+            let coverW, coverH;
+            if (imgRatio > viewportRatio) {
+                coverH = imgDisplayH;
+                coverW = imgDisplayH * viewportRatio;
+            } else {
+                coverW = imgDisplayW;
+                coverH = imgDisplayW / viewportRatio;
+            }
+            const factor = (t.scale || 100) / 100;
+            // 拡大率を上げると「画面に見える範囲」は逆に狭くなる（ズームインするため）
+            const visibleW = coverW / factor;
+            const visibleH = coverH / factor;
+
+            // background-positionのoffsetX/offsetYは「画像のどの位置を画面の対応する位置に合わせるか」を表す。
+            // 切り出し枠の左上座標は、画像内の空き領域(imgDisplayW - visibleW)に対してoffsetの割合分ずらした位置になる。
+            const left = (imgDisplayW - visibleW) * (t.offsetX / 100);
+            const top = (imgDisplayH - visibleH) * (t.offsetY / 100);
+
+            frame.style.left = `${Math.max(0, left)}px`;
+            frame.style.top = `${Math.max(0, top)}px`;
+            frame.style.width = `${Math.min(imgDisplayW, visibleW)}px`;
+            frame.style.height = `${Math.min(imgDisplayH, visibleH)}px`;
+        }
+
         async function renderBgModalPreview() {
             const key = getCurrentBgModalKey();
             const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : (bgModalCurrentTab === "member" ? "bgMemberPreview" : "bgComboPreview");
@@ -2802,9 +2848,13 @@
                         const rect = previewEl.getBoundingClientRect();
                         const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, t.scale);
                         previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
-                        previewEl.style.backgroundRepeat = (t.scale < 100) ? "repeat" : "no-repeat";
                     };
                     img.src = url;
+
+                    // 元画像＋切り出し枠の表示（使用される範囲がひと目でわかるように）
+                    const sourceImg = document.getElementById("bgSourceImg");
+                    sourceImg.onload = () => renderBgCropFrame(t);
+                    sourceImg.src = url;
 
                     adjustPanel.classList.remove("hidden");
                     document.getElementById("bgScaleSlider").value = t.scale;
@@ -2812,11 +2862,13 @@
                 } else {
                     previewEl.style.backgroundImage = "";
                     previewEl.innerHTML = "未設定";
+                    document.getElementById("bgSourceImg").src = "";
                     adjustPanel.classList.add("hidden");
                 }
             } catch (err) {
                 previewEl.style.backgroundImage = "";
                 previewEl.innerHTML = "未設定";
+                document.getElementById("bgSourceImg").src = "";
                 adjustPanel.classList.add("hidden");
             }
         }
@@ -2844,10 +2896,10 @@
                     const rect = previewEl.getBoundingClientRect();
                     const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, scale);
                     previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
-                    previewEl.style.backgroundRepeat = (scale < 100) ? "repeat" : "no-repeat";
                 };
                 img.src = urlMatch[1];
             }
+            renderBgCropFrame(t);
 
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
@@ -2859,6 +2911,7 @@
             t.offsetY = Math.max(0, Math.min(100, t.offsetY + dy));
             saveBgTransform(key, t);
             getCurrentBgPreviewEl().style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            renderBgCropFrame(t);
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
@@ -2869,6 +2922,7 @@
             t.offsetY = 50;
             saveBgTransform(key, t);
             getCurrentBgPreviewEl().style.backgroundPosition = "50% 50%";
+            renderBgCropFrame(t);
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
