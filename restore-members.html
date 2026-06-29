@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>メンバー写真 復元（Storage→IndexedDB）</title>
+<title>メンバー写真 復元（Firestore→IndexedDB）</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#1a1a1a; color:#fff; padding:16px; margin:0; }
   h1   { font-size:18px; margin-bottom:8px; }
@@ -20,9 +20,9 @@
 </style>
 </head>
 <body>
-<h1>📸 メンバー写真 復元ツール（Storage→IndexedDB）</h1>
-<p>Firebase Storage に保存されたメンバー写真を、このブラウザの IndexedDB に書き込みます。<br>
-完了後に <strong>index.html</strong> を開くとメンバー写真が表示されます。</p>
+<h1>📸 メンバー写真 復元ツール</h1>
+<p>Firestore に保存されたメンバー写真を、このブラウザの IndexedDB に書き込みます。<br>
+完了後に <strong>メインページ</strong> を開くとメンバー写真が表示されます。</p>
 
 <div id="status" class="status">準備中…</div>
 <button id="startBtn" disabled>📥 IndexedDB に書き込む</button>
@@ -48,13 +48,12 @@ const DB_NAME          = "iznaArchiveDB_v3";
 const DB_VERSION       = 3;
 const IMAGE_STORE_NAME = "images";
 
-const statusEl  = document.getElementById("status");
-const startBtn  = document.getElementById("startBtn");
-const gridEl    = document.getElementById("grid");
+const statusEl = document.getElementById("status");
+const startBtn = document.getElementById("startBtn");
+const gridEl   = document.getElementById("grid");
 
-let memberUrls = {};
+let memberData = {};
 
-// Open (or reuse) IndexedDB without running upgrades
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -74,10 +73,13 @@ function writeBlob(db, id, blob) {
   });
 }
 
-async function fetchAsBlob(url) {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return await resp.blob();
+function dataUrlToBlob(dataUrl) {
+  const [header, b64] = dataUrl.split(",");
+  const mime = header.match(/:(.*?);/)[1];
+  const binary = atob(b64);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
 }
 
 async function init() {
@@ -92,29 +94,31 @@ async function init() {
     return;
   }
 
-  statusEl.innerHTML = "Firestore からメンバー写真 URL を取得中…";
+  statusEl.innerHTML = "Firestore からメンバー写真データを取得中…";
   try {
     const doc = await fbDb.doc("config/memberPhotos").get();
     if (!doc.exists) {
-      statusEl.innerHTML = `<span class="err">❌ Firestore に config/memberPhotos が見つかりません。<br>restore-member-photos.ps1 を先に実行してください。</span>`;
+      statusEl.innerHTML = `<span class="err">❌ Firestore に config/memberPhotos が見つかりません。</span>`;
       return;
     }
-    memberUrls = doc.data();
+    memberData = doc.data();
   } catch (e) {
     statusEl.innerHTML = `<span class="err">❌ Firestore 読み込み失敗: ${e.message}</span>`;
     return;
   }
 
-  const names = Object.keys(memberUrls);
-  statusEl.innerHTML = `<span class="ok">✅ ${names.length} 件の URL を取得しました。</span><br>下のボタンを押すと IndexedDB に書き込みます。`;
+  const names = Object.keys(memberData);
+  statusEl.innerHTML = `<span class="ok">✅ ${names.length} 件取得しました。</span><br>下のボタンを押すと IndexedDB に書き込みます。`;
 
-  // Show previews
   gridEl.innerHTML = "";
   for (const name of names) {
     const card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = `<img src="${memberUrls[name]}" loading="lazy">
-                      <div class="name">${name}</div>`;
+    const dataUrl = memberData[name];
+    const isDataUrl = dataUrl && dataUrl.startsWith("data:");
+    card.innerHTML = isDataUrl
+      ? `<img src="${dataUrl}" loading="lazy"><div class="name">${name}</div>`
+      : `<div class="name" style="padding:20px">${name}<br><small style="color:#888">(URLのみ)</small></div>`;
     gridEl.appendChild(card);
   }
 
@@ -133,16 +137,15 @@ async function writeAll(names) {
     return;
   }
 
-  statusEl.innerHTML = "書き込み中…";
   let ok = 0, fail = 0;
-
   for (const name of names) {
-    const id = "member_" + name;
+    const id      = "member_" + name;
+    const dataUrl = memberData[name];
+    statusEl.innerHTML = `書き込み中… ${ok + fail + 1} / ${names.length}`;
     try {
-      const blob = await fetchAsBlob(memberUrls[name]);
+      const blob = dataUrlToBlob(dataUrl);
       await writeBlob(db, id, blob);
       ok++;
-      statusEl.innerHTML = `書き込み中… ${ok + fail} / ${names.length}`;
     } catch (e) {
       fail++;
       console.error(`${name} failed:`, e);
@@ -151,10 +154,9 @@ async function writeAll(names) {
 
   if (fail === 0) {
     statusEl.innerHTML = `<span class="ok">✅ ${ok} 件すべて IndexedDB に書き込みました！</span><br>
-      このタブを閉じて <strong>index.html</strong> を開き直すとメンバー写真が表示されます。`;
+      このタブを閉じて <strong>メインページ（/）</strong> を開き直してください。`;
   } else {
-    statusEl.innerHTML = `<span class="err">⚠️ 完了（成功: ${ok} / 失敗: ${fail}）</span><br>
-      失敗した写真は DevTools Console を確認してください。`;
+    statusEl.innerHTML = `<span class="err">⚠️ 完了（成功: ${ok} / 失敗: ${fail}）</span>`;
   }
 }
 
