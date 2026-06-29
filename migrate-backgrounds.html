@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<!--
+  migrate-backgrounds.html
+  IndexedDB（settings ストア）に保存された背景画像を Firestore backgrounds/{key} に移行する一時ツール。
+  移行完了後はこのファイルを削除すること。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>背景画像 移行ツール（IndexedDB → Firestore）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #111; color: #eee; padding: 16px; min-height: 100vh; }
+  h1  { font-size: 17px; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+  .card { background: #1e1e1e; border: 1px solid #333; border-radius: 10px;
+          padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; color: #aaa; margin-bottom: 8px; }
+
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+         font-size: 13px; }
+  .badge { font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 20px; }
+  .badge-ok    { background: #14532d; color: #4ade80; }
+  .badge-skip  { background: #312e1a; color: #fbbf24; }
+  .badge-err   { background: #450a0a; color: #f87171; }
+  .badge-info  { background: #1e3a5f; color: #60a5fa; }
+
+  .log { background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 8px;
+         padding: 10px; font-size: 12px; font-family: monospace; max-height: 360px;
+         overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .log .ok   { color: #4ade80; }
+  .log .skip { color: #fbbf24; }
+  .log .err  { color: #f87171; }
+  .log .info { color: #60a5fa; }
+
+  button { padding: 11px 20px; border-radius: 8px; border: none; cursor: pointer;
+           font-size: 14px; font-weight: bold; transition: opacity .15s; }
+  button:disabled { opacity: .4; cursor: default; }
+  .btn-blue  { background: #2563eb; color: #fff; }
+  .btn-green { background: #16a34a; color: #fff; }
+  .btn-gray  { background: #374151; color: #ccc; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  .summary { font-size: 15px; font-weight: bold; padding: 12px 16px;
+             border-radius: 8px; background: #1a2e1a; border: 1px solid #2d5a2d;
+             color: #4ade80; margin-top: 10px; }
+
+  /* 上書き確認ダイアログ */
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+             z-index: 100; align-items: center; justify-content: center; }
+  #overlay.show { display: flex; }
+  #dialog { background: #1e1e1e; border: 1px solid #444; border-radius: 12px;
+            padding: 20px; max-width: 420px; width: 90%; }
+  #dialog h3 { font-size: 15px; margin-bottom: 10px; }
+  #dialog p  { font-size: 13px; color: #aaa; line-height: 1.6; margin-bottom: 14px; }
+  #dialog ul { font-size: 12px; font-family: monospace; color: #fbbf24;
+               background: #111; border-radius: 6px; padding: 8px 12px;
+               max-height: 160px; overflow-y: auto; margin-bottom: 14px;
+               list-style: none; }
+  #dialog li::before { content: "⚠ "; }
+</style>
+</head>
+<body>
+
+<h1>🖼 背景画像 移行ツール</h1>
+<p class="subtitle">IndexedDB（settings ストア）→ Firestore（backgrounds コレクション）</p>
+
+<!-- ステータスカード -->
+<div class="card" id="cardStatus">
+  <h2>接続状態</h2>
+  <div class="row" id="rowFirebase">
+    <span class="badge badge-info">待機</span> Firebase 認証
+  </div>
+  <div class="row" id="rowIDB">
+    <span class="badge badge-info">待機</span> IndexedDB 読み込み
+  </div>
+</div>
+
+<!-- スキャン結果カード -->
+<div class="card" id="cardScan" style="display:none">
+  <h2>スキャン結果</h2>
+  <div id="scanResult" style="font-size:13px; line-height:1.8;"></div>
+  <div class="btn-row">
+    <button id="btnStart" class="btn-green" disabled>▶ 移行を開始する</button>
+    <button id="btnCancel" class="btn-gray" onclick="location.reload()">キャンセル</button>
+  </div>
+</div>
+
+<!-- 進捗ログカード -->
+<div class="card" id="cardLog" style="display:none">
+  <h2>移行ログ</h2>
+  <div class="log" id="log"></div>
+  <div id="summaryEl"></div>
+</div>
+
+<!-- 上書き確認ダイアログ -->
+<div id="overlay">
+  <div id="dialog">
+    <h3>⚠ 既存データが見つかりました</h3>
+    <p>以下のキーは Firestore にすでに存在します。<br>
+       どちらの処理を行いますか？</p>
+    <ul id="conflictList"></ul>
+    <div class="btn-row">
+      <button id="btnOverwrite" class="btn-blue">上書きして移行</button>
+      <button id="btnSkipExisting" class="btn-gray">既存はスキップ（新規のみ移行）</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// ─── Firebase ────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBQrUYDr8kv8kWaOzVUVQuPeQtIZlRD72c",
+  authDomain:        "izna-archive.firebaseapp.com",
+  projectId:         "izna-archive",
+  storageBucket:     "izna-archive.firebasestorage.app",
+  messagingSenderId: "1083631359944",
+  appId:             "1:1083631359944:web:2c79813979b561b84212fd"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDb   = firebase.firestore();
+
+// ─── IndexedDB 定数（index.html と同じ値） ───────────────────
+const DB_NAME           = "iznaArchiveDB_v3";
+const DB_VERSION        = 3;
+const SETTINGS_STORE    = "settings";
+const BG_TRANSFORM_KEY  = "izna_bg_transform_v1";
+const BG_TRANSFORM_DEF  = { scale: 100, offsetX: 50, offsetY: 50, fillColor: "#000000" };
+
+// 背景キーかどうかを判定する関数
+function isBgKey(key) {
+  return key === "appBackground" || key.startsWith("bg_");
+}
+
+// ─── UI ヘルパー ─────────────────────────────────────────────
+function setBadge(rowId, cls, text) {
+  const row = document.getElementById(rowId);
+  row.querySelector(".badge").className = `badge badge-${cls}`;
+  row.querySelector(".badge").textContent = text;
+}
+const logEl = document.getElementById("log");
+function log(cls, msg) {
+  const span = document.createElement("span");
+  span.className = cls;
+  span.textContent = msg + "\n";
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ─── IndexedDB ───────────────────────────────────────────────
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onsuccess       = () => resolve(req.result);
+    req.onerror         = () => reject(req.error);
+    req.onupgradeneeded = () => {};  // 既存DBを開くだけ
+  });
+}
+
+function getAllSettings(db) {
+  return new Promise((resolve, reject) => {
+    const tx   = db.transaction(SETTINGS_STORE, "readonly");
+    const req  = tx.objectStore(SETTINGS_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+// ─── 変換・圧縮 ──────────────────────────────────────────────
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// index.html の compressBgDataUrl() と同じロジック
+function compressBgDataUrl(dataUrl) {
+  const compress = (src, maxDim, quality) => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else       { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+  return compress(dataUrl, 1280, 0.75).then(result => {
+    if (result.length > 700000) return compress(result, 960, 0.65);
+    return result;
+  });
+}
+
+// localStorage から transform を取得（なければデフォルト値）
+function getTransform(key) {
+  try {
+    const all = JSON.parse(localStorage.getItem(BG_TRANSFORM_KEY) || "{}");
+    return { ...BG_TRANSFORM_DEF, ...(all[key] || {}) };
+  } catch {
+    return { ...BG_TRANSFORM_DEF };
+  }
+}
+
+// ─── メイン処理 ──────────────────────────────────────────────
+let idbRecords  = [];   // { key, blob }[]  — 背景キーのみ
+let firestoreKeys = []; // string[]         — Firestore に既存のキー
+let overwriteMode = false;
+
+async function init() {
+  // 1. Firebase 認証
+  try {
+    await new Promise(resolve => {
+      const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u); });
+    });
+    if (!fbAuth.currentUser) await fbAuth.signInAnonymously();
+    setBadge("rowFirebase", "ok", "OK");
+  } catch (e) {
+    setBadge("rowFirebase", "err", "失敗");
+    document.getElementById("scanResult").innerHTML =
+      `<span style="color:#f87171">Firebase 認証失敗: ${e.message}</span>`;
+    document.getElementById("cardScan").style.display = "";
+    return;
+  }
+
+  // 2. IndexedDB を開いて背景キーのレコードを取得
+  let db;
+  try {
+    db = await openDb();
+    const allRecords = await getAllSettings(db);
+    idbRecords = allRecords.filter(r => r.key && isBgKey(r.key) && r.blob);
+    setBadge("rowIDB", "ok", "OK");
+  } catch (e) {
+    setBadge("rowIDB", "err", "失敗");
+    document.getElementById("scanResult").innerHTML =
+      `<span style="color:#f87171">IndexedDB 読み込み失敗: ${e.message}</span>`;
+    document.getElementById("cardScan").style.display = "";
+    return;
+  }
+
+  // 3. Firestore に既存キーを確認
+  try {
+    const snap = await fbDb.collection("backgrounds").get();
+    firestoreKeys = snap.docs.map(d => d.id);
+  } catch (e) {
+    firestoreKeys = [];
+    console.warn("Firestore 確認失敗（続行します）:", e);
+  }
+
+  // 4. スキャン結果を表示
+  const conflicts = idbRecords.filter(r => firestoreKeys.includes(r.key));
+  const newKeys   = idbRecords.filter(r => !firestoreKeys.includes(r.key));
+  const resultEl  = document.getElementById("scanResult");
+
+  if (idbRecords.length === 0) {
+    resultEl.innerHTML = `<span style="color:#fbbf24">⚠ IndexedDB に背景データが見つかりませんでした。<br>
+      このブラウザには背景画像が設定されていない可能性があります。</span>`;
+    document.getElementById("btnStart").disabled = true;
+  } else {
+    resultEl.innerHTML = `
+      <div>IndexedDB に <strong>${idbRecords.length} 件</strong> の背景データが見つかりました。</div>
+      <div style="margin-top:6px; font-size:12px; color:#aaa;">
+        ${idbRecords.map(r => `• <code>${r.key}</code>`).join("<br>")}
+      </div>
+      <div style="margin-top:10px;">
+        Firestore に既存: <strong style="color:${conflicts.length > 0 ? '#fbbf24' : '#4ade80'}">${conflicts.length} 件</strong>
+        ／ 新規: <strong style="color:#4ade80">${newKeys.length} 件</strong>
+      </div>`;
+    document.getElementById("btnStart").disabled = false;
+  }
+
+  document.getElementById("cardScan").style.display = "";
+  document.getElementById("btnStart").onclick = () => onStartClicked(conflicts);
+}
+
+function onStartClicked(conflicts) {
+  if (conflicts.length > 0) {
+    // 上書き確認ダイアログを表示
+    const ul = document.getElementById("conflictList");
+    ul.innerHTML = conflicts.map(r => `<li>${r.key}</li>`).join("");
+    document.getElementById("overlay").classList.add("show");
+
+    document.getElementById("btnOverwrite").onclick = () => {
+      overwriteMode = true;
+      document.getElementById("overlay").classList.remove("show");
+      startMigration();
+    };
+    document.getElementById("btnSkipExisting").onclick = () => {
+      overwriteMode = false;
+      document.getElementById("overlay").classList.remove("show");
+      startMigration();
+    };
+  } else {
+    overwriteMode = true;
+    startMigration();
+  }
+}
+
+async function startMigration() {
+  document.getElementById("cardScan").querySelector(".btn-row").style.display = "none";
+  document.getElementById("cardLog").style.display = "";
+  log("info", `=== 移行開始 (${idbRecords.length} 件) ===`);
+  log("info", overwriteMode ? "モード: 既存キーも上書き" : "モード: 既存キーはスキップ");
+  log("info", "");
+
+  let ok = 0, skipped = 0, failed = 0;
+
+  for (const record of idbRecords) {
+    const key = record.key;
+
+    // スキップ判定
+    if (!overwriteMode && firestoreKeys.includes(key)) {
+      log("skip", `SKIP  ${key}  （Firestore に既存のためスキップ）`);
+      skipped++;
+      continue;
+    }
+
+    try {
+      // Blob → data URL
+      const dataUrl = await blobToDataUrl(record.blob);
+      const originalKB = Math.round(dataUrl.length / 1024);
+
+      // 圧縮（index.html と同じロジック）
+      const compressed = await compressBgDataUrl(dataUrl);
+      const compressedKB = Math.round(compressed.length / 1024);
+
+      // transform を localStorage から取得
+      const transform = getTransform(key);
+
+      // Firestore に書き込む
+      await fbDb.doc(`backgrounds/${key}`).set({ data: compressed, transform });
+
+      log("ok", `OK    ${key}  ${originalKB}KB → ${compressedKB}KB`);
+      ok++;
+    } catch (e) {
+      log("err", `FAIL  ${key}  ${e.message || e}`);
+      failed++;
+    }
+  }
+
+  log("info", "");
+  log("info", `=== 完了: 成功 ${ok} / スキップ ${skipped} / 失敗 ${failed} ===`);
+
+  const sumEl = document.getElementById("summaryEl");
+  if (failed === 0) {
+    sumEl.innerHTML = `<div class="summary">
+      ✅ 移行完了：${ok} 件成功、${skipped} 件スキップ<br>
+      <span style="font-size:13px; font-weight:normal; color:#86efac; margin-top:4px; display:block;">
+        メインページ（/）を開いて背景画像が表示されるか確認してください。</span>
+    </div>`;
+  } else {
+    sumEl.innerHTML = `<div class="summary" style="background:#2d1a1a; border-color:#5a2d2d; color:#f87171;">
+      ⚠ 移行完了（失敗あり）：成功 ${ok} / スキップ ${skipped} / 失敗 ${failed}<br>
+      <span style="font-size:13px; font-weight:normal; margin-top:4px; display:block;">
+        失敗したキーのログを確認してください。</span>
+    </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
