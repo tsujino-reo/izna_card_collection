@@ -635,6 +635,40 @@
             });
         }
 
+        function fileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 背景画像を最大1280px・JPEG75%に圧縮する。Firestore 1MB制限に収めるため。
+        // 圧縮後も700KB超の場合は960px・65%で再圧縮する。
+        async function compressBgDataUrl(dataUrl) {
+            if (!dataUrl || !dataUrl.startsWith("data:image")) return dataUrl || "";
+            const compress = (src, maxDim, quality) => new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                        else       { w = Math.round(w * maxDim / h); h = maxDim; }
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", quality));
+                };
+                img.onerror = () => resolve(src);
+                img.src = src;
+            });
+            let result = await compress(dataUrl, 1280, 0.75);
+            if (result.length > 700000) result = await compress(result, 960, 0.65);
+            return result;
+        }
+
         // 100000〜999999 のランダムな6桁PINを生成する
         function generatePin() {
             return String(Math.floor(100000 + Math.random() * 900000));
@@ -1312,6 +1346,7 @@
             }
 
             try {
+                await loadAllBackgrounds();
                 await loadAppBackground();
             } catch (err) {
                 console.warn("背景画像の読み込みに失敗しました:", err);
@@ -1503,38 +1538,28 @@
         }
 
         // 現在のメンバー・アルバムに応じて、表示すべき背景を優先順位通りに探して適用する
+        // Firestore (bgCache) を優先し、なければ IndexedDB (settings ストア) にフォールバックする
         async function updateBackgroundForCurrentContext() {
-            // トップ画面（メンバー一覧）では、まだ「どのアルバムを見るか」が決まっていないため、
-            // メンバー×アルバムの組み合わせ背景は考慮せず、常に全体共通の背景を表示する。
-            // 組み合わせ・メンバー単位の背景は、ギャラリー画面に入った時だけ反映される。
-            if (currentView !== "gallery") {
-                const defaultBlob = await getSettingBlob(BG_KEY_DEFAULT).catch(() => null);
-                if (defaultBlob) {
-                    applyBackgroundBlob(defaultBlob, getBgTransform(BG_KEY_DEFAULT));
-                } else {
-                    clearBackgroundLayer();
+            const applyKey = async (key) => {
+                if (bgCache[key]?.data) {
+                    applyBackgroundDataUrl(bgCache[key].data, bgCache[key].transform || getBgTransform(key));
+                    return true;
                 }
+                const blob = await getSettingBlob(key).catch(() => null);
+                if (blob) { applyBackgroundBlob(blob, getBgTransform(key)); return true; }
+                return false;
+            };
+
+            if (currentView !== "gallery") {
+                if (!await applyKey(BG_KEY_DEFAULT)) clearBackgroundLayer();
                 return;
             }
 
             const comboKey = bgKeyForCombo(currentMember, currentAlbum);
-            const comboBlob = await getSettingBlob(comboKey).catch(() => null);
-            if (comboBlob) {
-                applyBackgroundBlob(comboBlob, getBgTransform(comboKey));
-                return;
-            }
+            if (await applyKey(comboKey)) return;
             const memberKey = bgKeyForMember(currentMember);
-            const memberBlob = await getSettingBlob(memberKey).catch(() => null);
-            if (memberBlob) {
-                applyBackgroundBlob(memberBlob, getBgTransform(memberKey));
-                return;
-            }
-            const defaultBlob = await getSettingBlob(BG_KEY_DEFAULT).catch(() => null);
-            if (defaultBlob) {
-                applyBackgroundBlob(defaultBlob, getBgTransform(BG_KEY_DEFAULT));
-            } else {
-                clearBackgroundLayer();
-            }
+            if (await applyKey(memberKey)) return;
+            if (!await applyKey(BG_KEY_DEFAULT)) clearBackgroundLayer();
         }
 
         function clearBackgroundLayer() {
@@ -1567,11 +1592,24 @@
             img.src = currentBgObjectUrl;
         }
 
+        function applyBackgroundDataUrl(dataUrl, transform) {
+            const layer = document.getElementById("appBackgroundLayer");
+            layer.style.backgroundImage = `url('${dataUrl}')`;
+            const img = new Image();
+            img.onload = () => {
+                currentBgNaturalSize = { w: img.naturalWidth, h: img.naturalHeight };
+                applyBackgroundTransform(transform);
+            };
+            img.onerror = () => { currentBgNaturalSize = null; applyBackgroundTransform(transform); };
+            img.src = dataUrl;
+        }
+
         // 拡大率(scale)・位置(offsetX/offsetY)を背景レイヤーに反映する。
         // scaleはbackground-sizeの倍率(%)、offsetはbackground-positionのズレ(%)として扱う。
         // 現在の背景画像の自然サイズ（読み込み済みのもの）。cover基準の拡大計算に使う。
         let currentBgNaturalSize = null;
         let currentBgScale = 100; // 画面回転時の再計算用に、現在適用中の拡大率を保持する
+        let bgCache = {}; // Firestoreから読み込んだ背景データのキャッシュ { key: { data, transform } }
 
         function applyBackgroundTransform(transform) {
             const layer = document.getElementById("appBackgroundLayer");
@@ -1631,6 +1669,13 @@
             } catch (err) {
                 console.warn("背景の表示調整の保存に失敗しました:", err);
             }
+            // Firestore にも同期（bgCache に data がある場合のみ）
+            if (bgCache[key]?.data) {
+                bgCache[key].transform = transform;
+                fbDb.doc(`backgrounds/${key}`).update({ transform }).catch(e =>
+                    console.warn("背景transform Firestore保存失敗:", e)
+                );
+            }
         }
 
         function deleteBgTransform(key) {
@@ -1644,15 +1689,22 @@
         }
 
         // 背景設定モーダルから呼ばれる: 指定したキー（全体/メンバー/組み合わせ）に背景画像を保存する
+        // 画像を圧縮してFirestoreに保存する（CORSなしで全端末共有できるようにbase64方式を採用）
         async function saveBackgroundForKey(key, file) {
-            await saveSettingBlob(key, file);
+            const dataUrl = await fileToDataUrl(file);
+            const compressed = await compressBgDataUrl(dataUrl);
+            const transform = { ...BG_TRANSFORM_DEFAULT };
+            bgCache[key] = { data: compressed, transform };
+            await fbDb.doc(`backgrounds/${key}`).set({ data: compressed, transform });
+            saveBgTransform(key, transform);
             await updateBackgroundForCurrentContext();
             updateStorageEstimate();
         }
 
         // 背景設定モーダルから呼ばれる: 指定したキーの背景設定を削除する
         async function deleteBackgroundForKey(key) {
-            await deleteSettingBlob(key);
+            try { await fbDb.doc(`backgrounds/${key}`).delete(); } catch (e) {}
+            delete bgCache[key];
             deleteBgTransform(key);
             await updateBackgroundForCurrentContext();
             updateStorageEstimate();
@@ -2073,6 +2125,17 @@
 
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
         let memberPhotoUrls = {};
+
+        // Firestoreの backgrounds コレクションから全背景データを bgCache に読み込む
+        async function loadAllBackgrounds() {
+            try {
+                const snap = await fbDb.collection("backgrounds").get();
+                bgCache = {};
+                snap.docs.forEach(doc => { bgCache[doc.id] = doc.data(); });
+            } catch (e) {
+                console.warn("Firestoreから背景を読み込めませんでした:", e);
+            }
+        }
 
         async function loadMemberPhotos() {
             for (const m of memberData) {
@@ -3182,43 +3245,48 @@
             const previewId = bgModalCurrentTab === "global" ? "bgGlobalPreview" : "bgComboPreview";
             const previewEl = document.getElementById(previewId);
             const adjustPanel = document.getElementById("bgAdjustPanel");
-            try {
-                const blob = await getSettingBlob(key);
-                if (blob) {
-                    const url = URL.createObjectURL(blob);
-                    const t = getBgTransform(key);
-                    previewEl.innerHTML = "";
-                    previewEl.style.backgroundImage = `url('${url}')`;
-                    previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
-                    previewEl.style.backgroundColor = t.fillColor || "#000000";
-                    previewEl.style.backgroundRepeat = "no-repeat";
 
-                    // プレビュー枠の実サイズを基準にcover計算する（画像の自然サイズの取得を待つ）
-                    const img = new Image();
-                    img.onload = () => {
-                        const rect = previewEl.getBoundingClientRect();
-                        const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, t.scale);
-                        previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
-                    };
-                    img.src = url;
+            // Firestoreキャッシュを優先し、なければIndexedDBから取得する
+            let url = null;
+            let needRevoke = false;
+            const cacheEntry = bgCache[key];
+            if (cacheEntry?.data) {
+                url = cacheEntry.data;
+            } else {
+                try {
+                    const blob = await getSettingBlob(key);
+                    if (blob) { url = URL.createObjectURL(blob); needRevoke = true; }
+                } catch (e) {}
+            }
 
-                    // 元画像＋切り出し枠の表示（使用される範囲がひと目でわかるように）
-                    const sourceImg = document.getElementById("bgSourceImg");
-                    sourceImg.onload = () => renderBgCropFrame(t);
-                    sourceImg.src = url;
+            if (url) {
+                const t = getBgTransform(key);
+                previewEl.innerHTML = "";
+                previewEl.style.backgroundImage = `url('${url}')`;
+                previewEl.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+                previewEl.style.backgroundColor = t.fillColor || "#000000";
+                previewEl.style.backgroundRepeat = "no-repeat";
 
-                    adjustPanel.classList.remove("hidden");
-                    document.getElementById("bgScaleSlider").value = t.scale;
-                    document.getElementById("bgScaleValue").innerText = t.scale;
-                    document.getElementById("bgFillColorPicker").value = t.fillColor || "#000000";
-                    document.getElementById("bgFillColorWrap").classList.toggle("hidden", t.scale >= 100);
-                } else {
-                    previewEl.style.backgroundImage = "";
-                    previewEl.innerHTML = "未設定";
-                    document.getElementById("bgSourceImg").src = "";
-                    adjustPanel.classList.add("hidden");
-                }
-            } catch (err) {
+                const img = new Image();
+                img.onload = () => {
+                    const rect = previewEl.getBoundingClientRect();
+                    const size = computeCoverSize(rect.width, rect.height, img.naturalWidth, img.naturalHeight, t.scale);
+                    previewEl.style.backgroundSize = `${size.w}px ${size.h}px`;
+                    if (needRevoke) URL.revokeObjectURL(url);
+                };
+                img.onerror = () => { if (needRevoke) URL.revokeObjectURL(url); };
+                img.src = url;
+
+                const sourceImg = document.getElementById("bgSourceImg");
+                sourceImg.onload = () => renderBgCropFrame(t);
+                sourceImg.src = url;
+
+                adjustPanel.classList.remove("hidden");
+                document.getElementById("bgScaleSlider").value = t.scale;
+                document.getElementById("bgScaleValue").innerText = t.scale;
+                document.getElementById("bgFillColorPicker").value = t.fillColor || "#000000";
+                document.getElementById("bgFillColorWrap").classList.toggle("hidden", t.scale >= 100);
+            } else {
                 previewEl.style.backgroundImage = "";
                 previewEl.innerHTML = "未設定";
                 document.getElementById("bgSourceImg").src = "";
