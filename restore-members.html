@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メンバー写真 復元（Storage→IndexedDB）</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#1a1a1a; color:#fff; padding:16px; margin:0; }
+  h1   { font-size:18px; margin-bottom:8px; }
+  p    { font-size:13px; color:#aaa; line-height:1.6; }
+  .status { background:#2a2a2a; border-radius:8px; padding:12px; margin:12px 0; font-size:13px; }
+  .ok  { color:#4ade80; }
+  .err { color:#f87171; }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
+  .card { background:#2a2a2a; border-radius:12px; padding:10px; text-align:center; }
+  .card img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; background:#444; }
+  .card .name { margin-top:6px; font-size:13px; font-weight:bold; }
+  button { width:100%; padding:12px; font-size:15px; border-radius:8px; border:none; background:#3b82f6; color:#fff; margin-top:16px; cursor:pointer; }
+  button:disabled { background:#444; color:#888; }
+</style>
+</head>
+<body>
+<h1>📸 メンバー写真 復元ツール（Storage→IndexedDB）</h1>
+<p>Firebase Storage に保存されたメンバー写真を、このブラウザの IndexedDB に書き込みます。<br>
+完了後に <strong>index.html</strong> を開くとメンバー写真が表示されます。</p>
+
+<div id="status" class="status">準備中…</div>
+<button id="startBtn" disabled>📥 IndexedDB に書き込む</button>
+<div id="grid" class="grid"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBQrUYDr8kv8kWaOzVUVQuPeQtIZlRD72c",
+  authDomain:        "izna-archive.firebaseapp.com",
+  projectId:         "izna-archive",
+  storageBucket:     "izna-archive.firebasestorage.app",
+  messagingSenderId: "1083631359944",
+  appId:             "1:1083631359944:web:2c79813979b561b84212fd"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDb   = firebase.firestore();
+
+const DB_NAME          = "iznaArchiveDB_v3";
+const DB_VERSION       = 3;
+const IMAGE_STORE_NAME = "images";
+
+const statusEl  = document.getElementById("status");
+const startBtn  = document.getElementById("startBtn");
+const gridEl    = document.getElementById("grid");
+
+let memberUrls = {};
+
+// Open (or reuse) IndexedDB without running upgrades
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+    req.onupgradeneeded = () => {};
+  });
+}
+
+function writeBlob(db, id, blob) {
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(IMAGE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(IMAGE_STORE_NAME);
+    store.put({ id, blob });
+    tx.oncomplete = () => resolve();
+    tx.onerror    = (e) => reject(e.target.error);
+  });
+}
+
+async function fetchAsBlob(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return await resp.blob();
+}
+
+async function init() {
+  statusEl.innerHTML = "Firebase に接続中…";
+  try {
+    await new Promise(resolve => {
+      const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u); });
+    });
+    if (!fbAuth.currentUser) await fbAuth.signInAnonymously();
+  } catch (e) {
+    statusEl.innerHTML = `<span class="err">❌ Firebase 認証失敗: ${e.message}</span>`;
+    return;
+  }
+
+  statusEl.innerHTML = "Firestore からメンバー写真 URL を取得中…";
+  try {
+    const doc = await fbDb.doc("config/memberPhotos").get();
+    if (!doc.exists) {
+      statusEl.innerHTML = `<span class="err">❌ Firestore に config/memberPhotos が見つかりません。<br>restore-member-photos.ps1 を先に実行してください。</span>`;
+      return;
+    }
+    memberUrls = doc.data();
+  } catch (e) {
+    statusEl.innerHTML = `<span class="err">❌ Firestore 読み込み失敗: ${e.message}</span>`;
+    return;
+  }
+
+  const names = Object.keys(memberUrls);
+  statusEl.innerHTML = `<span class="ok">✅ ${names.length} 件の URL を取得しました。</span><br>下のボタンを押すと IndexedDB に書き込みます。`;
+
+  // Show previews
+  gridEl.innerHTML = "";
+  for (const name of names) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<img src="${memberUrls[name]}" loading="lazy">
+                      <div class="name">${name}</div>`;
+    gridEl.appendChild(card);
+  }
+
+  startBtn.disabled = false;
+  startBtn.onclick  = () => writeAll(names);
+}
+
+async function writeAll(names) {
+  startBtn.disabled = true;
+  let db;
+  try {
+    db = await openDb();
+  } catch (e) {
+    statusEl.innerHTML = `<span class="err">❌ IndexedDB を開けませんでした: ${e.message}</span>`;
+    startBtn.disabled = false;
+    return;
+  }
+
+  statusEl.innerHTML = "書き込み中…";
+  let ok = 0, fail = 0;
+
+  for (const name of names) {
+    const id = "member_" + name;
+    try {
+      const blob = await fetchAsBlob(memberUrls[name]);
+      await writeBlob(db, id, blob);
+      ok++;
+      statusEl.innerHTML = `書き込み中… ${ok + fail} / ${names.length}`;
+    } catch (e) {
+      fail++;
+      console.error(`${name} failed:`, e);
+    }
+  }
+
+  if (fail === 0) {
+    statusEl.innerHTML = `<span class="ok">✅ ${ok} 件すべて IndexedDB に書き込みました！</span><br>
+      このタブを閉じて <strong>index.html</strong> を開き直すとメンバー写真が表示されます。`;
+  } else {
+    statusEl.innerHTML = `<span class="err">⚠️ 完了（成功: ${ok} / 失敗: ${fail}）</span><br>
+      失敗した写真は DevTools Console を確認してください。`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
