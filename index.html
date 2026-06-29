@@ -6,6 +6,11 @@
     <title>izna Photocard Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <!-- Firebase SDK (compat v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
     <style>
         body { 
             background-color: #090a0f; 
@@ -99,6 +104,12 @@
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
                         <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🏞️ 背景設定
+                        </button>
+                        <button id="pinViewBtn" onclick="showCurrentPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🔑 PINコードを確認
+                        </button>
+                        <button id="pinRegenBtn" onclick="regeneratePin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🔄 PINコードを再生成
                         </button>
                         <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
@@ -508,12 +519,288 @@
         </div>
     </div>
 
+    <!-- PINゲート: セッション未確認時に画面全体を覆う。z-[200]で他のモーダルより必ず前面に出る -->
+    <div id="pinGate" class="fixed inset-0 z-[200] bg-gray-950 flex items-center justify-center p-6">
+        <div class="w-full max-w-xs space-y-8 text-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-rose-400">izna ARCHIVE</h1>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Photocard Collection</p>
+            </div>
+
+            <!-- 接続中スピナー -->
+            <div id="pinGateLoading" class="flex flex-col items-center gap-3">
+                <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-400 text-xs">接続中...</p>
+            </div>
+
+            <!-- エラー表示 -->
+            <div id="pinGateErrorBox" class="hidden space-y-3">
+                <p id="pinGateErrorMsg" class="text-rose-400 text-xs font-bold bg-rose-950/50 border border-rose-800/50 rounded-xl p-3 whitespace-pre-wrap text-left"></p>
+                <button onclick="location.reload()" class="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold text-xs transition-colors">再読み込み</button>
+            </div>
+
+            <!-- PIN入力フォーム -->
+            <div id="pinGateEntry" class="hidden space-y-4">
+                <p class="text-gray-300 text-sm font-bold">PINコードを入力してください</p>
+                <input type="text" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                       placeholder="6桁のPIN"
+                       class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-center text-xl font-black tracking-[0.3em] focus:outline-none focus:border-pink-500 transition-colors">
+                <p id="pinWrongMsg" class="hidden text-rose-400 text-xs font-bold">PINコードが違います</p>
+                <button id="pinSubmitBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm shadow-lg shadow-purple-900/30 active:scale-95 transition-all">入室する</button>
+            </div>
+
+            <!-- 初回起動: 生成されたPINを表示 -->
+            <div id="pinGateFirstRun" class="hidden space-y-4">
+                <div class="bg-emerald-950/50 border border-emerald-800/50 rounded-xl p-4 space-y-3">
+                    <p class="text-emerald-400 text-[10px] font-black uppercase tracking-wider">初期設定完了</p>
+                    <p class="text-gray-300 text-xs leading-relaxed">共有PINコードが生成されました。<br>参加メンバーに共有してください。</p>
+                    <div id="firstRunPinValue" class="text-3xl font-black text-white tracking-[0.3em] bg-black/40 rounded-lg py-3 border border-emerald-800/30"></div>
+                    <button id="pinCopyBtn" onclick="copyPinToClipboard()" class="w-full py-2 rounded-lg bg-black/30 border border-emerald-800/40 text-emerald-300 text-xs font-bold active:scale-95 transition-all">📋 クリップボードにコピー</button>
+                </div>
+                <button onclick="finishFirstRun()" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm active:scale-95 transition-all">アプリを開く →</button>
+            </div>
+        </div>
+    </div>
+
     <div id="undoBar" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 border border-purple-700/50 text-white text-xs font-bold rounded-full pl-4 pr-2 py-2 items-center gap-3 shadow-2xl z-[60]">
         <span id="undoMessage">削除しました</span>
         <button onclick="undoLastDelete()" class="bg-purple-700 hover:bg-purple-600 text-white rounded-full px-3 py-1 text-[11px] font-black transition-colors">↩ 元に戻す</button>
     </div>
 
     <script>
+        // ══════════════════════════════════════════════════════════════
+        // Firebase 設定
+        // Firebase Console > プロジェクトの設定 > マイアプリ > SDK の設定と構成
+        // から取得した値をここに貼り付けてください。
+        // ══════════════════════════════════════════════════════════════
+        const FIREBASE_CONFIG = {
+            apiKey:            "AIzaSyBQrUYDr8kv8kWaOzVUVQuPeQtIZlRD72c",
+            authDomain:        "izna-archive.firebaseapp.com",
+            projectId:         "izna-archive",
+            storageBucket:     "izna-archive.firebasestorage.app",
+            messagingSenderId: "1083631359944",
+            appId:             "1:1083631359944:web:2c79813979b561b84212fd"
+        };
+
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const fbAuth    = firebase.auth();
+        const fbDb      = firebase.firestore();
+        const fbStorage = firebase.storage();
+
+        // オフライン永続化を有効化（他の Firestore 操作より先に呼ぶ必要がある）
+        // 複数タブで開いている場合は2番目以降のタブで無効になるが、動作は継続する
+        fbDb.enablePersistence({ synchronizeTabs: true }).catch(err => {
+            if (err.code === "failed-precondition") {
+                console.warn("Firestore永続化: 複数タブが開いているためスキップしました");
+            } else if (err.code === "unimplemented") {
+                console.warn("Firestore永続化: このブラウザでは未対応です");
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // PINゲート（匿名認証 + 共有6桁PIN）
+        // ══════════════════════════════════════════════════════════════
+        const PIN_SESSION_KEY = "izna_pin_verified_v1";
+        const PIN_DOC_REF    = () => fbDb.doc("config/pin");
+
+        // ══════════════════════════════════════════════════════════════
+        // Firestore — 共有データの読み書き参照
+        // ══════════════════════════════════════════════════════════════
+        const FS_ALBUMS_DOC  = () => fbDb.doc("config/albums");
+        const FS_STORES_DOC  = () => fbDb.doc("config/stores");
+        const FS_CARDS_COL   = () => fbDb.collection("cards");
+        const FS_BATCH_LIMIT = 450; // Firestoreのバッチ上限500件に対する安全マージン
+
+        // アルバムカバー画像をFirestoreドキュメントサイズ上限（1MB）に収まるよう圧縮する。
+        // 最大辺800px・JPEG品質0.75 を目安に。既に十分小さい場合（≈100KB以下）はスキップする。
+        async function compressAlbumCoverDataUrl(dataUrl) {
+            if (!dataUrl || !dataUrl.startsWith("data:image")) return dataUrl || "";
+            if (dataUrl.length < 133000) return dataUrl; // 100KB未満は圧縮不要
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 800;
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    if (w > MAX || h > MAX) {
+                        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                        else       { w = Math.round(w * MAX / h); h = MAX; }
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", 0.75));
+                };
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+
+        // 100000〜999999 のランダムな6桁PINを生成する
+        function generatePin() {
+            return String(Math.floor(100000 + Math.random() * 900000));
+        }
+
+        // アプリのブートストラップ処理。
+        // 匿名認証でサインイン → FirestoreのPINと照合 → 一致すればinit()を呼ぶ。
+        // window.onload から直接呼ばれ、既存のinit()はこの関数が完了した後に実行される。
+        async function bootstrapApp() {
+            // onAuthStateChanged で既存の認証状態が確定するまで待つ。
+            // キャッシュされた匿名ユーザーがあればオフラインでも即座に解決する。
+            await new Promise(resolve => {
+                const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u); });
+            });
+
+            if (!fbAuth.currentUser) {
+                try {
+                    await fbAuth.signInAnonymously();
+                } catch (err) {
+                    showPinError(
+                        "サーバーへの接続に失敗しました。\n" +
+                        "インターネット接続を確認して再読み込みしてください。\n" +
+                        "(" + (err.message || "") + ")"
+                    );
+                    return;
+                }
+            }
+
+            let pinDoc;
+            try {
+                // Firestore永続化が有効な場合、オフラインでもキャッシュから取得できる
+                pinDoc = await PIN_DOC_REF().get();
+            } catch (err) {
+                showPinError(
+                    "データの取得に失敗しました。\n" +
+                    "インターネット接続を確認して再読み込みしてください。\n" +
+                    "(" + (err.message || "") + ")"
+                );
+                return;
+            }
+
+            if (!pinDoc.exists) {
+                // 初回起動: 6桁PINを生成してFirestoreに保存
+                const newPin = generatePin();
+                try {
+                    await PIN_DOC_REF().set({ value: newPin });
+                } catch (err) {
+                    showPinError("初期設定に失敗しました。\n(" + (err.message || "") + ")");
+                    return;
+                }
+                showFirstRunScreen(newPin);
+                return;
+            }
+
+            const currentPin = pinDoc.data().value;
+
+            // ローカルに保存済みのPINセッションと照合する。
+            // 管理者がPINを再生成した場合、保存値が変わるためセッションは自動的に無効になる。
+            if (localStorage.getItem(PIN_SESSION_KEY) === currentPin) {
+                hidePinGate();
+                await init();
+                return;
+            }
+
+            showPinEntryScreen(currentPin);
+        }
+
+        function showPinError(message) {
+            document.getElementById("pinGateLoading").classList.add("hidden");
+            document.getElementById("pinGateErrorMsg").textContent = message;
+            document.getElementById("pinGateErrorBox").classList.remove("hidden");
+        }
+
+        function showFirstRunScreen(pin) {
+            document.getElementById("pinGateLoading").classList.add("hidden");
+            document.getElementById("firstRunPinValue").textContent = pin;
+            document.getElementById("pinGateFirstRun").classList.remove("hidden");
+        }
+
+        function showPinEntryScreen(currentPin) {
+            document.getElementById("pinGateLoading").classList.add("hidden");
+            document.getElementById("pinGateEntry").classList.remove("hidden");
+            const input     = document.getElementById("pinInput");
+            const submitBtn = document.getElementById("pinSubmitBtn");
+            const wrongMsg  = document.getElementById("pinWrongMsg");
+
+            const tryPin = async () => {
+                if (input.value.trim() === currentPin) {
+                    localStorage.setItem(PIN_SESSION_KEY, currentPin);
+                    hidePinGate();
+                    await init();
+                } else {
+                    wrongMsg.classList.remove("hidden");
+                    input.value = "";
+                    input.focus();
+                }
+            };
+
+            submitBtn.addEventListener("click", tryPin);
+            // Enterキーでも送信できるようにする
+            input.addEventListener("keydown", e => { if (e.key === "Enter") tryPin(); });
+            input.focus();
+        }
+
+        function hidePinGate() {
+            document.getElementById("pinGate").classList.add("hidden");
+        }
+
+        // 初回画面で「アプリを開く」を押した後の処理
+        async function finishFirstRun() {
+            // 初回起動者（管理者）は自分でPINを知っているのでセッションを保存して即入室
+            const pinDoc = await PIN_DOC_REF().get().catch(() => null);
+            if (pinDoc && pinDoc.exists) {
+                localStorage.setItem(PIN_SESSION_KEY, pinDoc.data().value);
+            }
+            hidePinGate();
+            await init();
+        }
+
+        async function copyPinToClipboard() {
+            const pin = document.getElementById("firstRunPinValue").textContent;
+            try {
+                await navigator.clipboard.writeText(pin);
+                const btn = document.getElementById("pinCopyBtn");
+                if (btn) {
+                    btn.textContent = "✓ コピーしました";
+                    setTimeout(() => { btn.textContent = "📋 クリップボードにコピー"; }, 2000);
+                }
+            } catch (_) {
+                // clipboard API が使えない場合はフォールバックとしてalertで表示
+                alert("PINコード: " + pin);
+            }
+        }
+
+        // 管理者向け: 現在の共有PINをアラートで表示する
+        async function showCurrentPin() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            try {
+                const doc = await PIN_DOC_REF().get();
+                if (doc.exists) {
+                    alert("現在の共有PINコード: " + doc.data().value);
+                }
+            } catch (err) {
+                alert("取得に失敗しました: " + (err.message || err));
+            }
+        }
+
+        // 管理者向け: PINを再生成する。
+        // 再生成後は全メンバーが次回起動時に新しいPINの入力を求められる。
+        async function regeneratePin() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            if (!confirm(
+                "PINコードを再生成しますか？\n" +
+                "現在のPINは無効になり、全メンバーが次回起動時に新しいPINの入力を求められます。"
+            )) return;
+            const newPin = generatePin();
+            try {
+                await PIN_DOC_REF().set({ value: newPin });
+                // 再生成した管理者自身のセッションは新PINで更新しておく
+                localStorage.setItem(PIN_SESSION_KEY, newPin);
+                alert("新しい共有PINコード: " + newPin + "\n\nメンバーに共有してください。");
+            } catch (err) {
+                alert("再生成に失敗しました: " + (err.message || err));
+            }
+        }
+
         const memberData = [
             { name: "MAI", icon: "🦊" },
             { name: "JEEMIN", icon: "🐻" },
@@ -1010,10 +1297,11 @@
             }
 
             loadSavedRole();
-            loadAlbumsToApp();
-            loadStores();
+            await loadAlbumsToApp();
+            await loadStores();
 
             try {
+                await migrateIndexedDBCardsToFirestore();
                 await loadPCData();
                 await migrateMemberNamesToEnglish();
                 await normalizeCardCategories();
@@ -1400,33 +1688,35 @@
             return meta;
         }
 
-        // メタデータのみを cards ストアへ保存（画像は別途 saveImageBlob で保存する）
-        function saveCardToDB(card) {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                tx.objectStore(STORE_NAME).put(stripImgUrl(card));
-                tx.oncomplete = () => resolve();
-                tx.onerror = (e) => reject(e.target.error);
-            });
+        // メタデータのみを Firestore に保存（画像は別途 saveImageBlob で IndexedDB へ保存する）
+        async function saveCardToDB(card) {
+            await FS_CARDS_COL().doc(card.id).set(stripImgUrl(card));
         }
 
-        function deleteCardFromDB(id) {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                tx.objectStore(STORE_NAME).delete(id);
-                tx.oncomplete = () => resolve();
-                tx.onerror = (e) => reject(e.target.error);
-            }).then(() => Promise.all([deleteImageBlob(id), deleteImageBlob(id + "_back")]));
+        async function deleteCardFromDB(id) {
+            await FS_CARDS_COL().doc(id).delete();
+            await Promise.all([deleteImageBlob(id), deleteImageBlob(id + "_back")]);
         }
 
-        // メタデータを取得し、各カードに images ストアから読み込んだ ObjectURL を付与する
+        // Firebase Storage からダウンロードURLを取得する（存在しなければnullを返す）
+        async function getStorageDownloadUrl(path) {
+            try {
+                return await fbStorage.ref(path).getDownloadURL();
+            } catch (_) {
+                return null;
+            }
+        }
+
+        // Firestoreからメタデータを取得し、IndexedDBの画像BlobをObjectURLとして各カードに付与する。
+        // IndexedDBに画像がない場合はFirebase Storageからダウンロードして使用する。
         async function getAllCardsFromDB() {
-            const metaList = await new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, "readonly");
-                const request = tx.objectStore(STORE_NAME).getAll();
-                request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.onerror);
-            });
+            let metaList = [];
+            try {
+                const snapshot = await FS_CARDS_COL().get();
+                metaList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (err) {
+                console.warn("Firestoreからカードを読み込めませんでした:", err);
+            }
 
             // 前回発行したObjectURLを解放してメモリリークを防ぐ
             issuedObjectUrls.forEach(url => URL.revokeObjectURL(url));
@@ -1442,77 +1732,122 @@
                     const url = URL.createObjectURL(blob);
                     issuedObjectUrls.add(url);
                     result.imgUrl = url;
+                } else {
+                    // IndexedDBにない場合はFirebase Storageからダウンロード
+                    const storageUrl = await getStorageDownloadUrl(`cards/${card.id}.jpg`);
+                    if (storageUrl) result.imgUrl = storageUrl;
                 }
                 if (backBlob) {
                     const backUrl = URL.createObjectURL(backBlob);
                     issuedObjectUrls.add(backUrl);
                     result.imgUrlBack = backUrl;
+                } else {
+                    // IndexedDBにない場合はFirebase Storageからダウンロード
+                    const storageBackUrl = await getStorageDownloadUrl(`cards/${card.id}_back.jpg`);
+                    if (storageBackUrl) result.imgUrlBack = storageBackUrl;
                 }
                 return result;
             }));
             return withImages;
         }
 
-        // 【修正3】複数カードのメタデータを1つのトランザクションでまとめて保存するバッチ関数。
-        function saveCardsToDB(cards) {
-            return new Promise((resolve, reject) => {
-                if (!cards.length) { resolve(); return; }
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                const store = tx.objectStore(STORE_NAME);
-                cards.forEach(card => store.put(stripImgUrl(card)));
-                tx.oncomplete = () => resolve();
-                tx.onerror = (e) => reject(e.target.error);
-            });
+        // Firestoreへのバッチ書き込み（500件上限を超える場合は分割して実行）
+        async function saveCardsToDB(cards) {
+            if (!cards.length) return;
+            for (let i = 0; i < cards.length; i += FS_BATCH_LIMIT) {
+                const batch = fbDb.batch();
+                cards.slice(i, i + FS_BATCH_LIMIT).forEach(card => {
+                    batch.set(FS_CARDS_COL().doc(card.id), stripImgUrl(card));
+                });
+                await batch.commit();
+            }
         }
 
         async function loadPCData() {
             pcData = await getAllCardsFromDB();
         }
 
+        // IndexedDB（旧ストレージ）のカードメタデータをFirestoreへ一度だけ移行する。
+        // Firestoreにカードが0件かつlocalStorageの移行フラグが未設定の場合のみ実行する。
+        const MIGRATED_FLAG_KEY = "izna_migrated_to_firestore_v1";
+        async function migrateIndexedDBCardsToFirestore() {
+            if (localStorage.getItem(MIGRATED_FLAG_KEY)) return;
+
+            let firestoreEmpty = false;
+            try {
+                const snap = await FS_CARDS_COL().get();
+                firestoreEmpty = snap.empty;
+            } catch (_) {}
+
+            if (firestoreEmpty) {
+                const legacyCards = await new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, "readonly");
+                    const req = tx.objectStore(STORE_NAME).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror  = () => reject(req.error);
+                });
+                if (legacyCards.length > 0) {
+                    await saveCardsToDB(legacyCards);
+                    console.log(`IndexedDBから${legacyCards.length}枚のカードをFirestoreへ移行しました`);
+                }
+            }
+            localStorage.setItem(MIGRATED_FLAG_KEY, "1");
+        }
+
         // デフォルトの6アルバムは常にこの順序で固定表示する（並べ替え機能は提供しない）。
         // それ以外に管理者が手動追加したアルバムは、常にこのリストの後ろに追加される。
         const FIXED_ALBUM_ORDER = ["I-LAND2", "N/a", "SIGN", "BEEP", "Not Just Pretty", "Set The Tempo", "その他特典"];
 
-        function loadAlbumsToApp() {
-            const savedAlbums = localStorage.getItem(STORAGE_KEY_ALBUMS);
-            if (savedAlbums) {
-                albums = JSON.parse(savedAlbums);
-                let changed = false;
-
-                // 固定アルバムのうち、存在しないものを追加する（既存のcoverUrl等は壊さない）
-                FIXED_ALBUM_ORDER.forEach(name => {
-                    if (!albums.some(a => a.name === name)) {
-                        const defaultDef = DEFAULT_ALBUMS.find(a => a.name === name);
-                        albums.push(defaultDef ? { ...defaultDef } : { name, coverUrl: "" });
-                        changed = true;
-                    }
-                });
-
-                // 既存の「I-LAND2」「SIGN」に categories 指定が無い場合は付与する
-                // （カテゴリ機能を一度廃止して復活させた経緯があるため、移行データに対応）
-                const ilandAlbum = albums.find(a => a.name === "I-LAND2");
-                if (ilandAlbum && !ilandAlbum.categories) {
-                    ilandAlbum.categories = [];
-                    changed = true;
+        async function loadAlbumsToApp() {
+            let fromFirestore = false;
+            try {
+                const doc = await FS_ALBUMS_DOC().get();
+                if (doc.exists) {
+                    albums = doc.data().list || [];
+                    fromFirestore = true;
                 }
-                const signAlbum = albums.find(a => a.name === "SIGN");
-                if (signAlbum && !signAlbum.categories) {
-                    signAlbum.categories = ["サノク", "その他"];
-                    changed = true;
-                }
-
-                // 固定6アルバムを定義順に並べ、それ以外（手動追加分）は元の相対順序を保ったまま後ろに続ける
-                const reordered = sortAlbumsByFixedOrder(albums);
-                if (JSON.stringify(reordered) !== JSON.stringify(albums)) {
-                    albums = reordered;
-                    changed = true;
-                }
-
-                if (changed) saveAlbums();
-            } else {
-                albums = JSON.parse(JSON.stringify(DEFAULT_ALBUMS));
-                localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums));
+            } catch (err) {
+                console.warn("Firestoreからアルバムを読み込めませんでした。ローカルデータを使用します:", err);
             }
+
+            if (!fromFirestore) {
+                // Firestoreにデータがない場合は localStorage から移行する（初回起動時のマイグレーション）
+                const savedAlbums = localStorage.getItem(STORAGE_KEY_ALBUMS);
+                albums = savedAlbums ? JSON.parse(savedAlbums) : JSON.parse(JSON.stringify(DEFAULT_ALBUMS));
+            }
+
+            let changed = false;
+
+            // 固定アルバムのうち、存在しないものを追加する（既存のcoverUrl等は壊さない）
+            FIXED_ALBUM_ORDER.forEach(name => {
+                if (!albums.some(a => a.name === name)) {
+                    const defaultDef = DEFAULT_ALBUMS.find(a => a.name === name);
+                    albums.push(defaultDef ? { ...defaultDef } : { name, coverUrl: "" });
+                    changed = true;
+                }
+            });
+
+            // 既存の「I-LAND2」「SIGN」に categories 指定が無い場合は付与する
+            // （カテゴリ機能を一度廃止して復活させた経緯があるため、移行データに対応）
+            const ilandAlbum = albums.find(a => a.name === "I-LAND2");
+            if (ilandAlbum && !ilandAlbum.categories) {
+                ilandAlbum.categories = [];
+                changed = true;
+            }
+            const signAlbum = albums.find(a => a.name === "SIGN");
+            if (signAlbum && !signAlbum.categories) {
+                signAlbum.categories = ["サノク", "その他"];
+                changed = true;
+            }
+
+            // 固定6アルバムを定義順に並べ、それ以外（手動追加分）は元の相対順序を保ったまま後ろに続ける
+            const reordered = sortAlbumsByFixedOrder(albums);
+            if (JSON.stringify(reordered) !== JSON.stringify(albums)) {
+                albums = reordered;
+                changed = true;
+            }
+
+            if (changed || !fromFirestore) await saveAlbums();
         }
 
         // 固定6アルバムを FIXED_ALBUM_ORDER の順に並べ、それ以外のアルバム（手動追加分）は
@@ -1778,6 +2113,8 @@
             document.getElementById("manageMemberPhotosBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
         }
 
         // 枚数の不一致など、データ不整合が解消できない場合の最終手段として、
@@ -1846,6 +2183,8 @@
             // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
             document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             renderGlobalSearch();
             renderGallery();
         }
@@ -3119,7 +3458,7 @@
             affectedCards.forEach(card => { card.album = trimNewName; });
             await saveCardsToDB(affectedCards);
 
-            saveAlbums();
+            await saveAlbums();
             renderAlbumListModal();
         }
 
@@ -3128,8 +3467,9 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                albums[index].coverUrl = e.target.result;
+            reader.onload = async function(e) {
+                // Firestoreに収まるサイズに圧縮してからメモリにも反映する
+                albums[index].coverUrl = await compressAlbumCoverDataUrl(e.target.result);
                 saveAlbums();
                 renderAlbumListModal();
                 updateStorageEstimate();
@@ -3181,26 +3521,56 @@
                 await saveCardsToDB(affectedCards);
             }
             albums.splice(index, 1);
-            saveAlbums();
+            await saveAlbums();
             renderAlbumListModal();
             updateStorageEstimate();
         }
 
-        function saveAlbums() { localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums)); }
+        async function saveAlbums() {
+            // カバー画像を圧縮したコピーをFirestoreへ保存する（albums配列本体は変更しない）
+            const albumsForFs = await Promise.all(albums.map(async a => ({
+                ...a,
+                coverUrl: a.coverUrl ? await compressAlbumCoverDataUrl(a.coverUrl) : ""
+            })));
+            try {
+                await FS_ALBUMS_DOC().set({ list: albumsForFs });
+            } catch (err) {
+                console.error("アルバムのFirestore保存に失敗しました:", err);
+            }
+            // オフライン時のフォールバック用にlocalStorageにも保存する
+            try { localStorage.setItem(STORAGE_KEY_ALBUMS, JSON.stringify(albums)); } catch (_) {}
+        }
 
         // ── 店舗一覧（店舗特典・ラキドロ用） ──────────────────────────────
-        function loadStores() {
-            const saved = localStorage.getItem(STORAGE_KEY_STORES);
-            if (saved) {
-                stores = JSON.parse(saved);
-            } else {
-                stores = [...DEFAULT_STORES];
-                saveStores();
+        async function loadStores() {
+            let fromFirestore = false;
+            try {
+                const doc = await FS_STORES_DOC().get();
+                if (doc.exists) {
+                    stores = doc.data().list || [];
+                    fromFirestore = true;
+                }
+            } catch (err) {
+                console.warn("Firestoreから店舗リストを読み込めませんでした:", err);
+            }
+
+            if (!fromFirestore) {
+                // Firestoreにデータがない場合は localStorage から移行する
+                const saved = localStorage.getItem(STORAGE_KEY_STORES);
+                stores = saved ? JSON.parse(saved) : [...DEFAULT_STORES];
+                await saveStores();
             }
             sortStoresAlphabetically();
         }
 
-        function saveStores() { localStorage.setItem(STORAGE_KEY_STORES, JSON.stringify(stores)); }
+        async function saveStores() {
+            try {
+                await FS_STORES_DOC().set({ list: stores });
+            } catch (err) {
+                console.error("店舗リストのFirestore保存に失敗しました:", err);
+            }
+            try { localStorage.setItem(STORAGE_KEY_STORES, JSON.stringify(stores)); } catch (_) {}
+        }
 
         // 店舗名をアルファベット順（大文字・小文字を区別しない）に並べ替える
         function sortStoresAlphabetically() {
@@ -3472,15 +3842,15 @@
             a.click();
         }
 
-        // 【修正3】store.clear()のトランザクション完了を明示的に待ち、
-        // その後にカード群を1トランザクションでまとめてput（saveCardsToDB）するよう変更
-        function clearCardStore() {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                tx.objectStore(STORE_NAME).clear();
-                tx.oncomplete = () => resolve();
-                tx.onerror = (e) => reject(e.target.error);
-            });
+        // Firestoreのcardsコレクションを全件削除する（インポート上書き時に使用）
+        async function clearCardStore() {
+            const snapshot = await FS_CARDS_COL().get();
+            if (snapshot.empty) return;
+            for (let i = 0; i < snapshot.docs.length; i += FS_BATCH_LIMIT) {
+                const batch = fbDb.batch();
+                snapshot.docs.slice(i, i + FS_BATCH_LIMIT).forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
         }
 
         function importData(input) {
@@ -3499,7 +3869,7 @@
                             : "データを上書きインポートします。よろしいですか？";
                         if (confirm(warningMsg)) {
                             albums = data.albums;
-                            saveAlbums();
+                            await saveAlbums();
 
                             await clearCardStore();
                             await clearImageStore();
@@ -3618,7 +3988,8 @@
             applyBackgroundScale(currentBgScale);
         });
 
-        window.onload = init;
+        // Firebase 認証・PINゲートを経由してから既存の init() を呼ぶ
+        window.onload = bootstrapApp;
     </script>
 </body>
 </html>
