@@ -79,6 +79,12 @@
   </div>
 </div>
 
+<!-- DB 診断パネル（デバッグ用：トラブル時にここを確認する） -->
+<div class="card" id="cardDiag" style="display:none">
+  <h2>IndexedDB 診断情報</h2>
+  <div id="diagInfo" style="font-size:12px; font-family:monospace; line-height:1.8; color:#aaa;"></div>
+</div>
+
 <!-- スキャン結果カード -->
 <div class="card" id="cardScan" style="display:none">
   <h2>スキャン結果</h2>
@@ -155,22 +161,54 @@ function log(cls, msg) {
 }
 
 // ─── IndexedDB ───────────────────────────────────────────────
+// onupgradeneeded で index.html と同じストアを作成する。
+// DB バージョンが 3 未満の端末では upgrade が走るため、空ハンドラだとストアが作られずエラーになる。
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onsuccess       = () => resolve(req.result);
-    req.onerror         = () => reject(req.error);
-    req.onupgradeneeded = () => {};  // 既存DBを開くだけ
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains("cards"))    d.createObjectStore("cards",    { keyPath: "id" });
+      if (!d.objectStoreNames.contains("images"))   d.createObjectStore("images",   { keyPath: "id" });
+      if (!d.objectStoreNames.contains(SETTINGS_STORE)) d.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
   });
 }
 
+// settings ストアが存在するか確認してからトランザクションを開く。
+// 存在しない場合は空配列を返す（背景データなしと扱う）。
 function getAllSettings(db) {
   return new Promise((resolve, reject) => {
-    const tx   = db.transaction(SETTINGS_STORE, "readonly");
-    const req  = tx.objectStore(SETTINGS_STORE).getAll();
+    if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+      console.warn(`[migrate] "${SETTINGS_STORE}" store not found in DB. Available stores:`,
+        Array.from(db.objectStoreNames));
+      resolve([]);
+      return;
+    }
+    const tx  = db.transaction(SETTINGS_STORE, "readonly");
+    const req = tx.objectStore(SETTINGS_STORE).getAll();
     req.onsuccess = () => resolve(req.result || []);
     req.onerror   = () => reject(req.error);
   });
+}
+
+// DB の実際の状態を診断パネルに表示する
+function showDiagnostics(db) {
+  const stores = Array.from(db.objectStoreNames);
+  const hasSettings = stores.includes(SETTINGS_STORE);
+  const diagEl = document.getElementById("diagInfo");
+  diagEl.innerHTML = [
+    `DB 名:     <strong>${db.name}</strong>`,
+    `バージョン: <strong>${db.version}</strong>`,
+    `ストア一覧: <strong>${stores.join(", ") || "(なし)"}</strong>`,
+    `"${SETTINGS_STORE}" ストア: <strong style="color:${hasSettings ? "#4ade80" : "#f87171"}">${hasSettings ? "あり ✅" : "なし ❌"}</strong>`,
+  ].join("<br>");
+  document.getElementById("cardDiag").style.display = "";
+
+  // コンソールにも出力（スクショで共有できるように）
+  console.log("[migrate] DB診断:", { name: db.name, version: db.version, stores, hasSettings });
 }
 
 // ─── 変換・圧縮 ──────────────────────────────────────────────
@@ -242,11 +280,14 @@ async function init() {
   let db;
   try {
     db = await openDb();
+    showDiagnostics(db);  // 診断パネルにストア情報を表示
     const allRecords = await getAllSettings(db);
     idbRecords = allRecords.filter(r => r.key && isBgKey(r.key) && r.blob);
     setBadge("rowIDB", "ok", "OK");
   } catch (e) {
     setBadge("rowIDB", "err", "失敗");
+    // DB が開けた場合でも診断情報を出す
+    if (db) showDiagnostics(db);
     document.getElementById("scanResult").innerHTML =
       `<span style="color:#f87171">IndexedDB 読み込み失敗: ${e.message}</span>`;
     document.getElementById("cardScan").style.display = "";
