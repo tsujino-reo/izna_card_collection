@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メンバー写真 復元ツール</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    padding: 16px;
+    margin: 0;
+  }
+  h1 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  p {
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.5;
+  }
+  .status {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .ok { color: #4ade80; }
+  .err { color: #f87171; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .card {
+    background: #2a2a2a;
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+  }
+  .card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #444;
+  }
+  .card .name {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .card .missing {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: #3a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #f87171;
+  }
+  .card a {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #60a5fa;
+    text-decoration: none;
+    background: #1f3a5f;
+    border-radius: 6px;
+    padding: 6px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+
+<h1>📸 メンバー写真 復元ツール</h1>
+<p>このページは今のサイトと同じドメインで開いてください。IndexedDB (iznaArchiveDB_v3 / images) から member_* の写真を読み出します。</p>
+
+<div id="status" class="status">読み込み中…</div>
+<div id="grid" class="grid"></div>
+<button id="downloadAllBtn" style="display:none;">全部まとめてダウンロード (JSON)</button>
+
+<script>
+const DB_NAME = "iznaArchiveDB_v3";
+const DB_VERSION = 3;
+const IMAGE_STORE_NAME = "images";
+
+const MEMBERS = [
+  { key: "MAI", label: "MAI 🦊" },
+  { key: "JEEMIN", label: "JEEMIN 🐻" },
+  { key: "JIYOON", label: "JIYOON 🐻‍❄️" },
+  { key: "KOKO", label: "KOKO 🈳" },
+  { key: "SARANG", label: "SARANG 🐶" },
+  { key: "JUNGEUN", label: "JUNGEUN 🐆" },
+  { key: "SAEBI", label: "SAEBI 🐰" },
+];
+
+const statusEl = document.getElementById("status");
+const gridEl = document.getElementById("grid");
+const downloadAllBtn = document.getElementById("downloadAllBtn");
+
+let foundResults = [];
+
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+    req.onupgradeneeded = () => {
+      // バージョンを上げてしまわないよう、ここでは何もしない
+      // (既存DBが無ければここに来るが、その場合は読み取り対象がないだけ)
+    };
+  });
+}
+
+function getImageRecord(db, id) {
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(IMAGE_STORE_NAME, "readonly");
+      const store = tx.objectStore(IMAGE_STORE_NAME);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function run() {
+  let db;
+  try {
+    db = await openDb();
+  } catch (e) {
+    statusEl.innerHTML = `<span class="err">❌ DBを開けませんでした: ${e.message || e}</span><br>このページが正しいドメインで開かれているか確認してください。`;
+    return;
+  }
+
+  statusEl.innerHTML = `✅ DB接続成功 (${DB_NAME})。メンバー写真を検索中…`;
+
+  let foundCount = 0;
+
+  for (const member of MEMBERS) {
+    const id = "member_" + member.key;
+    const card = document.createElement("div");
+    card.className = "card";
+
+    let record = null;
+    try {
+      record = await getImageRecord(db, id);
+    } catch (e) {
+      record = null;
+    }
+
+    if (record && record.blob) {
+      foundCount++;
+      const dataUrl = await blobToDataUrl(record.blob);
+      foundResults.push({ id, dataUrl });
+
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      card.appendChild(img);
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = member.label;
+      card.appendChild(name);
+
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = id + ".jpg";
+      link.textContent = "⬇️ 保存（長押しでも可）";
+      card.appendChild(link);
+    } else {
+      const missing = document.createElement("div");
+      missing.className = "missing";
+      missing.textContent = "❌";
+      card.appendChild(missing);
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = member.label + "（見つからず）";
+      card.appendChild(name);
+    }
+
+    gridEl.appendChild(card);
+  }
+
+  if (foundCount > 0) {
+    statusEl.innerHTML = `<span class="ok">✅ ${foundCount} / ${MEMBERS.length} 枚 見つかりました。</span><br>各画像を長押し保存、または下のボタンでまとめてダウンロードできます。`;
+    downloadAllBtn.style.display = "block";
+  } else {
+    statusEl.innerHTML = `<span class="err">❌ メンバー写真が1枚も見つかりませんでした。</span><br>このブラウザ・このドメインに当時のデータが残っていない可能性があります。`;
+  }
+}
+
+downloadAllBtn.addEventListener("click", () => {
+  const data = {};
+  foundResults.forEach(r => { data[r.id] = r.dataUrl; });
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "member_photos_recovered.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+run();
+</script>
+
+</body>
+</html>
