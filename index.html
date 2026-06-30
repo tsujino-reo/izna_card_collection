@@ -157,7 +157,10 @@
             <label class="block text-[9px] text-gray-400 font-black uppercase tracking-wider mb-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">MEMBER SELECT</label>
             <div class="grid grid-cols-2 gap-2 mb-4" id="albumTabs"></div>
 
-            <div class="flex justify-end gap-2 mb-4">
+            <div class="flex justify-end gap-2 mb-4 flex-wrap">
+                <button id="migrateBgBtn" onclick="migrateLocalBackgroundsToFirestore()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                    ☁️ 背景をFirestoreへ移行
+                </button>
                 <button id="resetAllDataBtn" onclick="confirmResetAllCards()" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     🗑️ トレカ全削除
                 </button>
@@ -1710,6 +1713,84 @@
             updateStorageEstimate();
         }
 
+        // IndexedDB settings ストアの背景データを Firestore へ一括移行するワンタイム関数。
+        // このブラウザ（file:// オリジン）のローカルデータを Firestore に書き込むことで
+        // 他端末と共有できるようにする。Firestore に既存のキーはスキップする。
+        async function migrateLocalBackgroundsToFirestore() {
+            const btn = document.getElementById("migrateBgBtn");
+            btn.disabled = true;
+            btn.textContent = "スキャン中…";
+
+            // IndexedDB settings ストアから全件取得
+            let records = [];
+            try {
+                records = await new Promise((resolve, reject) => {
+                    const tx = db.transaction(SETTINGS_STORE_NAME, "readonly");
+                    const req = tx.objectStore(SETTINGS_STORE_NAME).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = "☁️ 背景をFirestoreへ移行";
+                alert("IndexedDB の読み込みに失敗しました:\n" + (e.message || e));
+                return;
+            }
+
+            const bgRecords = records.filter(r => r.key && r.blob &&
+                (r.key === BG_KEY_DEFAULT || r.key.startsWith("bg_")));
+
+            if (bgRecords.length === 0) {
+                btn.disabled = false;
+                btn.textContent = "☁️ 背景をFirestoreへ移行";
+                alert("IndexedDB に移行対象の背景画像がありません。\n" +
+                    "（すでに移行済みか、このブラウザには背景が設定されていません）");
+                return;
+            }
+
+            btn.textContent = "移行中…";
+            let ok = 0, skipped = 0, failed = 0;
+            const lines = [];
+
+            for (const record of bgRecords) {
+                const key = record.key;
+                // Firestore に既存のキーはスキップ
+                if (bgCache[key]?.data) {
+                    lines.push(`⏭ SKIP  ${key}  （Firestore に既存）`);
+                    skipped++;
+                    continue;
+                }
+                try {
+                    const dataUrl = await new Promise((res, rej) => {
+                        const reader = new FileReader();
+                        reader.onload = e => res(e.target.result);
+                        reader.onerror = rej;
+                        reader.readAsDataURL(record.blob);
+                    });
+                    const compressed = await compressBgDataUrl(dataUrl);
+                    const transform = getBgTransform(key);
+                    await fbDb.doc(`backgrounds/${key}`).set({ data: compressed, transform });
+                    bgCache[key] = { data: compressed, transform };
+                    lines.push(`✅ OK    ${key}`);
+                    ok++;
+                } catch (e) {
+                    lines.push(`❌ FAIL  ${key}  ${e.message || e}`);
+                    failed++;
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = "☁️ 背景をFirestoreへ移行";
+
+            alert(
+                `移行完了\n` +
+                `成功: ${ok} 件 / スキップ: ${skipped} 件 / 失敗: ${failed} 件\n\n` +
+                lines.join("\n")
+            );
+
+            if (ok > 0) await updateBackgroundForCurrentContext();
+        }
+
         async function changeAppBackground(input) {
             const file = input.files[0];
             if (!file) return;
@@ -2176,6 +2257,7 @@
             document.getElementById("manageMemberPhotosBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("migrateBgBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
         }
