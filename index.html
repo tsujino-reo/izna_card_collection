@@ -1748,14 +1748,25 @@
                 return;
             }
 
+            btn.textContent = "Firestore確認中…";
+
+            // bgCache は IndexedDB 由来のデータも含むため、Firestore の実態はサーバーへ直接問い合わせる
+            const firestoreKeys = new Set();
+            try {
+                const snap = await fbDb.collection("backgrounds").get({ source: "server" });
+                snap.docs.forEach(doc => firestoreKeys.add(doc.id));
+            } catch (e) {
+                console.warn("Firestore既存キー確認失敗（スキップチェックを無効化して続行）:", e);
+            }
+
             btn.textContent = "移行中…";
             let ok = 0, skipped = 0, failed = 0;
             const lines = [];
 
             for (const record of bgRecords) {
                 const key = record.key;
-                // Firestore に既存のキーはスキップ
-                if (bgCache[key]?.data) {
+                // Firestore サーバーに既存のキーはスキップ（bgCache は参照しない）
+                if (firestoreKeys.has(key)) {
                     lines.push(`⏭ SKIP  ${key}  （Firestore に既存）`);
                     skipped++;
                     continue;
