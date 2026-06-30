@@ -2212,7 +2212,15 @@
         // 取得できた場合は bgCache に展開して updateBackgroundForCurrentContext() が使えるようにする。
         async function loadAllBackgrounds() {
             try {
-                const snap = await fbDb.collection("backgrounds").get();
+                // source:'server' でSDKの永続化キャッシュをバイパスし、サーバーから直接取得する。
+                // デフォルトの get() はキャッシュを優先するため、他端末での更新が反映されないことがある。
+                let snap;
+                try {
+                    snap = await fbDb.collection("backgrounds").get({ source: "server" });
+                } catch (_) {
+                    // オフライン時はキャッシュにフォールバック
+                    snap = await fbDb.collection("backgrounds").get({ source: "cache" });
+                }
                 bgCache = {};
                 snap.docs.forEach(doc => { bgCache[doc.id] = doc.data(); });
             } catch (e) {
