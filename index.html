@@ -2207,7 +2207,9 @@
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
         let memberPhotoUrls = {};
 
-        // Firestoreの backgrounds コレクションから全背景データを bgCache に読み込む
+        // Firestoreの backgrounds コレクションから全背景データを bgCache に読み込む。
+        // Firestore が空またはオフライン時は IndexedDB settings ストアにフォールバックし、
+        // 取得できた場合は bgCache に展開して updateBackgroundForCurrentContext() が使えるようにする。
         async function loadAllBackgrounds() {
             try {
                 const snap = await fbDb.collection("backgrounds").get();
@@ -2216,11 +2218,62 @@
             } catch (e) {
                 console.warn("Firestoreから背景を読み込めませんでした:", e);
             }
+
+            // Firestore にデータがなければ IndexedDB settings ストアを bgCache に展開する
+            if (Object.keys(bgCache).length === 0) {
+                try {
+                    const records = await new Promise((resolve, reject) => {
+                        const tx = db.transaction(SETTINGS_STORE_NAME, "readonly");
+                        const req = tx.objectStore(SETTINGS_STORE_NAME).getAll();
+                        req.onsuccess = () => resolve(req.result || []);
+                        req.onerror = () => reject(req.error);
+                    });
+                    for (const r of records) {
+                        if (!r.key || !r.blob) continue;
+                        if (r.key !== BG_KEY_DEFAULT && !r.key.startsWith("bg_")) continue;
+                        const dataUrl = await new Promise((res, rej) => {
+                            const reader = new FileReader();
+                            reader.onload = e => res(e.target.result);
+                            reader.onerror = rej;
+                            reader.readAsDataURL(r.blob);
+                        });
+                        bgCache[r.key] = { data: dataUrl, transform: getBgTransform(r.key) };
+                    }
+                } catch (e) {
+                    console.warn("IndexedDB からの背景フォールバックに失敗しました:", e);
+                }
+            }
         }
 
         async function loadMemberPhotos() {
+            // IndexedDB になければ Firestore config/memberPhotos にフォールバックし、
+            // 取得できた場合は IndexedDB にキャッシュしてオフライン時にも使えるようにする
+            let firestorePhotos = null; // 遅延取得（実際に必要になるまで Firestore を叩かない）
+
             for (const m of memberData) {
-                const blob = await getImageBlob("member_" + m.name);
+                let blob = await getImageBlob("member_" + m.name).catch(() => null);
+
+                if (!blob) {
+                    if (!firestorePhotos) {
+                        try {
+                            const doc = await fbDb.doc("config/memberPhotos").get();
+                            firestorePhotos = doc.exists ? doc.data() : {};
+                        } catch (e) {
+                            firestorePhotos = {};
+                            console.warn("Firestoreからメンバー写真を取得できませんでした:", e);
+                        }
+                    }
+                    const dataUrl = firestorePhotos[m.name];
+                    if (dataUrl && dataUrl.startsWith("data:")) {
+                        try {
+                            await saveImageBlob("member_" + m.name, dataUrl); // IndexedDB にキャッシュ
+                            blob = dataUrlToBlob(dataUrl);
+                        } catch (e) {
+                            console.warn(`${m.name} の写真キャッシュに失敗:`, e);
+                        }
+                    }
+                }
+
                 if (blob) {
                     if (memberPhotoUrls[m.name]) URL.revokeObjectURL(memberPhotoUrls[m.name]);
                     memberPhotoUrls[m.name] = URL.createObjectURL(blob);
