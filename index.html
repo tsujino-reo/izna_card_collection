@@ -1198,10 +1198,10 @@
             }
             document.getElementById("galleryViewTitle").innerText = `${currentAlbum} / ${memberName}`;
             updateGalleryTitleBannerColor();
+            showView("gallery");
             updateBackgroundForCurrentContext();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
-            showView("gallery");
             renderApp();
             pushModalHistory("backToAlbumList");
         }
@@ -2475,11 +2475,11 @@
             currentMember = memberName;
             document.getElementById("galleryViewTitle").innerText = `${albumName} / ${memberName}`;
             updateGalleryTitleBannerColor();
-            updateBackgroundForCurrentContext();
             document.getElementById("searchBar").value = "";
+            showView("gallery");
+            updateBackgroundForCurrentContext();
             renderGalleryAlbumSwitchBar();
             renderGalleryMemberSwitchBar();
-            showView("gallery");
             renderApp();
         }
 
