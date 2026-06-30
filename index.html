@@ -1524,11 +1524,16 @@
         // 優先順位: ①メンバー×アルバムの組み合わせ専用の背景 → ②メンバー単位の背景 → ③全体共通の背景
         // 設定したい範囲だけ登録すればよく、未設定の場合は自動的に1段階下にフォールバックする。
         // ══════════════════════════════════════════════════════════════
+        // Firestoreのドキュメントパスに "/" は使えないため、キーの "/" を "-" に置換する。
+        // アルバム名 "N/a" などで発生する問題を防ぐ。IndexedDB / bgCache / Firestore で統一して使う。
+        function sanitizeBgKey(key) {
+            return key.replace(/\//g, "-");
+        }
         function bgKeyForCombo(memberName, albumName) {
-            return `bg_member_${memberName}_album_${albumName}`;
+            return sanitizeBgKey(`bg_member_${memberName}_album_${albumName}`);
         }
         function bgKeyForMember(memberName) {
-            return `bg_member_${memberName}`;
+            return sanitizeBgKey(`bg_member_${memberName}`);
         }
         const BG_KEY_DEFAULT = "appBackground";
 
@@ -1765,9 +1770,11 @@
 
             for (const record of bgRecords) {
                 const key = record.key;
+                // Firestore ドキュメントパスに "/" は使えないためサニタイズしたキーを使う
+                const fsKey = sanitizeBgKey(key);
                 // Firestore サーバーに既存のキーはスキップ（bgCache は参照しない）
-                if (firestoreKeys.has(key)) {
-                    lines.push(`⏭ SKIP  ${key}  （Firestore に既存）`);
+                if (firestoreKeys.has(fsKey)) {
+                    lines.push(`⏭ SKIP  ${fsKey}  （Firestore に既存）`);
                     skipped++;
                     continue;
                 }
@@ -1780,12 +1787,12 @@
                     });
                     const compressed = await compressBgDataUrl(dataUrl);
                     const transform = getBgTransform(key);
-                    await fbDb.doc(`backgrounds/${key}`).set({ data: compressed, transform });
-                    bgCache[key] = { data: compressed, transform };
-                    lines.push(`✅ OK    ${key}`);
+                    await fbDb.doc(`backgrounds/${fsKey}`).set({ data: compressed, transform });
+                    bgCache[fsKey] = { data: compressed, transform };
+                    lines.push(`✅ OK    ${fsKey}`);
                     ok++;
                 } catch (e) {
-                    lines.push(`❌ FAIL  ${key}  ${e.message || e}`);
+                    lines.push(`❌ FAIL  ${fsKey}  ${e.message || e}`);
                     failed++;
                 }
             }
@@ -2256,7 +2263,8 @@
                             reader.onerror = rej;
                             reader.readAsDataURL(r.blob);
                         });
-                        bgCache[r.key] = { data: dataUrl, transform: getBgTransform(r.key) };
+                        // "/" を含む旧キーを bgKeyForCombo と一致するサニタイズ済みキーで登録する
+                        bgCache[sanitizeBgKey(r.key)] = { data: dataUrl, transform: getBgTransform(r.key) };
                     }
                 } catch (e) {
                     console.warn("IndexedDB からの背景フォールバックに失敗しました:", e);
