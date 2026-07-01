@@ -738,7 +738,9 @@
                 console.log("[izna-archive] Google UID:", uid);
                 try {
                     const role = await fetchGoogleRole(uid);
-                    if (role === "admin") {
+                    if (role === "admin" || role === "editor" || role === "viewer") {
+                        currentRole = role;
+                        localStorage.setItem("izna_role", role);
                         hidePinGate();
                         await init();
                         return;
@@ -882,7 +884,9 @@
                 await applyInviteIfPresent(uid);
 
                 const role = await fetchGoogleRole(uid);
-                if (role === "admin") {
+                if (role === "admin" || role === "editor" || role === "viewer") {
+                    currentRole = role;
+                    localStorage.setItem("izna_role", role);
                     hidePinGate();
                     await init();
                     return;
