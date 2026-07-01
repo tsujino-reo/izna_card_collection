@@ -822,9 +822,10 @@
         }
 
         async function fetchGoogleRole(uid) {
-            const doc = await fbDb.doc("config/users/" + uid).get();
+            const doc = await fbDb.doc("config/users").get();
             if (!doc.exists) return null;
-            return doc.data().role || null;
+            const entry = doc.data()[uid];
+            return (entry && entry.role) || null;
         }
 
         async function signInWithGoogle() {
