@@ -111,6 +111,9 @@
                         <button id="pinRegenBtn" onclick="regeneratePin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔄 PINコードを再生成
                         </button>
+                        <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🔗 招待リンクを作成
+                        </button>
                         <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
@@ -441,6 +444,37 @@
         </div>
     </div>
 
+    <div id="inviteModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🔗 招待リンクを作成</h3>
+            <p class="text-[10px] text-gray-500 mb-4">発行したリンクは7日間有効です。1回使用されると無効になります。</p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">付与するロール</label>
+                    <select id="inviteRoleSelect" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                        <option value="editor">✍️ 編集者</option>
+                        <option value="viewer">👁️ 閲覧者</option>
+                    </select>
+                </div>
+                <button id="inviteCreateBtn" onclick="createInviteLink()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">🔗 招待リンクを発行</button>
+
+                <div id="inviteResultBox" class="hidden pt-3 border-t border-gray-800 space-y-2">
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">発行された招待リンク</label>
+                    <div class="flex gap-1.5">
+                        <input type="text" id="inviteResultUrl" readonly class="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-[10px]">
+                        <button id="inviteCopyBtn" onclick="copyInviteLinkToClipboard()" class="shrink-0 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-[10px] font-bold">📋 コピー</button>
+                    </div>
+                    <p class="text-[9px] text-gray-500">このリンクは7日後、または1回使用されると無効になります。</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-4">
+                <button onclick="closeInviteModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <div id="backgroundModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
             <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏞️ 背景設定</h3>
@@ -621,6 +655,8 @@
         const FS_ALBUMS_DOC  = () => fbDb.doc("config/albums");
         const FS_STORES_DOC  = () => fbDb.doc("config/stores");
         const FS_CARDS_COL   = () => fbDb.collection("cards");
+        const FS_USERS_DOC   = () => fbDb.doc("config/users");
+        const FS_INVITES_COL = () => fbDb.collection("invites");
         const FS_BATCH_LIMIT = 450; // Firestoreのバッチ上限500件に対する安全マージン
 
         // アルバムカバー画像をFirestoreドキュメントサイズ上限（1MB）に収まるよう圧縮する。
@@ -727,6 +763,10 @@
                     return;
                 }
             }
+
+            // ?inviteパラメータがある場合、ログイン前のこの時点で検出・検証しておく。
+            // 有効な招待はpendingInviteに保持され、後続のGoogleログイン成功時に適用される。
+            await handleInviteParam();
 
             let pinDoc;
             try {
@@ -837,6 +877,10 @@
                 const result = await fbAuth.signInWithPopup(provider);
                 const uid = result.user.uid;
                 console.log("[izna-archive] Google UID:", uid);
+
+                // 招待トークンを保持している場合は、既存のadmin判定チェックより先に適用する
+                await applyInviteIfPresent(uid);
+
                 const role = await fetchGoogleRole(uid);
                 if (role === "admin") {
                     hidePinGate();
@@ -896,6 +940,124 @@
                 alert("新しい共有PINコード: " + newPin + "\n\nメンバーに共有してください。");
             } catch (err) {
                 alert("再生成に失敗しました: " + (err.message || err));
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // 招待リンク（トークン方式） — 管理者がeditor/viewerロールを付与するためのリンクを発行する
+        // ══════════════════════════════════════════════════════════════
+        const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7日間
+
+        // URLの?inviteパラメータを検証した結果、まだGoogleログインで消費されていない招待
+        let pendingInvite = null;
+
+        function generateInviteToken() {
+            return crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        }
+
+        // 管理者向け: 招待リンクを発行し、invites/{token}に保存する
+        async function createInviteLink() {
+            const btn = document.getElementById("inviteCreateBtn");
+            const role = document.getElementById("inviteRoleSelect").value;
+            if (btn) { btn.disabled = true; btn.textContent = "発行中..."; }
+            try {
+                const token = generateInviteToken();
+                const expiresAt = firebase.firestore.Timestamp.fromMillis(Date.now() + INVITE_EXPIRY_MS);
+                await FS_INVITES_COL().doc(token).set({
+                    role,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: fbAuth.currentUser ? fbAuth.currentUser.uid : null,
+                    expiresAt,
+                    used: false
+                });
+                const url = `${location.origin}${location.pathname}?invite=${token}`;
+                document.getElementById("inviteResultUrl").value = url;
+                document.getElementById("inviteResultBox").classList.remove("hidden");
+            } catch (err) {
+                alert("招待リンクの発行に失敗しました: " + (err.message || err));
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = "🔗 招待リンクを発行"; }
+            }
+        }
+
+        async function copyInviteLinkToClipboard() {
+            const input = document.getElementById("inviteResultUrl");
+            try {
+                await navigator.clipboard.writeText(input.value);
+                const btn = document.getElementById("inviteCopyBtn");
+                if (btn) {
+                    btn.textContent = "✓ コピーしました";
+                    setTimeout(() => { btn.textContent = "📋 コピー"; }, 2000);
+                }
+            } catch (_) {
+                input.select();
+                alert("招待リンク: " + input.value);
+            }
+        }
+
+        function openInviteModal() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            document.getElementById("inviteResultBox").classList.add("hidden");
+            document.getElementById("inviteModal").classList.remove("hidden");
+            pushModalHistory("closeInviteModal");
+        }
+
+        function closeInviteModal(skipHistory) {
+            document.getElementById("inviteModal").classList.add("hidden");
+            if (!skipHistory) history.back();
+        }
+
+        // ページロード時に?inviteパラメータを検出する
+        function getInviteTokenFromUrl() {
+            return new URLSearchParams(location.search).get("invite");
+        }
+
+        // ?inviteパラメータがあれば invites/{token} を検証し、有効な招待をpendingInviteに保持する。
+        // 無効な場合（存在しない/使用済み/期限切れ）は理由をアラートで表示する。
+        async function handleInviteParam() {
+            const token = getInviteTokenFromUrl();
+            if (!token) return;
+            try {
+                const doc = await FS_INVITES_COL().doc(token).get();
+                if (!doc.exists) {
+                    alert("無効な招待リンクです。");
+                    return;
+                }
+                const data = doc.data();
+                if (data.used) {
+                    alert("この招待リンクは既に使用されています。");
+                    return;
+                }
+                if (data.expiresAt && data.expiresAt.toDate().getTime() < Date.now()) {
+                    alert("この招待リンクの有効期限が切れています。");
+                    return;
+                }
+                pendingInvite = { token, role: data.role };
+            } catch (err) {
+                console.error("招待リンクの確認に失敗しました:", err);
+            }
+        }
+
+        // Googleログイン成功時に呼ばれる。有効な招待を保持していれば、そのロールをuidに付与し、
+        // invites/{token}を使用済みにして、URLから?inviteパラメータを除去する。
+        async function applyInviteIfPresent(uid) {
+            if (!pendingInvite) return;
+            const { token, role } = pendingInvite;
+            try {
+                await FS_USERS_DOC().set({ [uid]: { role } }, { merge: true });
+                await FS_INVITES_COL().doc(token).update({
+                    used: true,
+                    usedBy: uid,
+                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (err) {
+                console.error("招待の適用に失敗しました:", err);
+                alert("招待の適用に失敗しました。(" + (err.message || err) + ")");
+            } finally {
+                pendingInvite = null;
+                const url = new URL(location.href);
+                url.searchParams.delete("invite");
+                history.replaceState({}, "", url.toString());
             }
         }
 
@@ -2401,6 +2563,7 @@
             document.getElementById("migrateBgBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
         }
 
         // 枚数の不一致など、データ不整合が解消できない場合の最終手段として、
@@ -2471,6 +2634,7 @@
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
             renderGlobalSearch();
             renderGallery();
         }
