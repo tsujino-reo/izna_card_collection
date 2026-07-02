@@ -232,7 +232,7 @@
                 <div class="flex gap-2">
                     <button onclick="selectAllCards()" class="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-1 rounded-lg">全選択</button>
                     <button onclick="openBulkMoveModal()" class="text-[10px] text-blue-300 font-bold bg-blue-900/40 px-2 py-1 rounded-lg">移動</button>
-                    <button onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
+                    <button id="bulkDeleteBtn" onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
                     <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
                 </div>
             </div>
@@ -4060,6 +4060,8 @@
                 addBtn.classList.toggle("hidden", isMultiSelectMode);
                 if (currentRole === "admin") albumBtn.classList.toggle("hidden", isMultiSelectMode);
             }
+            // 一括削除は個別削除と同様にadmin限定（editorは編集・移動はできるが削除は不可）
+            document.getElementById("bulkDeleteBtn").classList.toggle("hidden", currentRole !== "admin");
 
             updateSelectedCountLabel();
             renderApp();
