@@ -350,7 +350,7 @@
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">アルバム</label>
-                    <select id="formAlbum" onchange="updateFormCategoryOptions(); updateFormMemberOptions();" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                    <select id="formAlbum" onchange="updateFormCategoryOptions(); updateFormMemberOptions(); updateThemeDatalist();" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
                 </div>
 
                 <div id="formCategoryWrap">
@@ -2768,7 +2768,8 @@
                 : (currentTabMobData ? currentTabMobData.icon : "👤");
 
             const isViewer = (currentRole === "viewer");
-            const albumCategories = getCategoriesForAlbum(currentAlbum);
+            // 見出しの並び順は固定の優先リストではなく、種類名の50音・アルファベット順で機械的にソートする
+            const albumCategories = getCategoriesForAlbum(currentAlbum).slice().sort((a, b) => a.localeCompare(b, "ja"));
 
             if (albumCategories.length === 0) {
                 // I-LAND2のようにカテゴリ指定がないアルバムは、フラットな1行4枚グリッドで表示する
@@ -2860,6 +2861,8 @@
                 ? `toggleCardSelection('${card.id}')`
                 : `openPreviewModal('${card.id}')`;
             const selectedRingClass = isSelected ? "ring-2 ring-purple-500" : "";
+            // admin画面のみ、editorが登録した未確認カードの枠を目立つ色にする
+            const needsReviewClass = (currentRole === "admin" && card.needsReview) ? "border-2 border-amber-400" : "border border-gray-800";
             const checkboxHtml = isMultiSelectMode ? `
                 <div class="absolute top-1 left-1 z-20 w-5 h-5 rounded-full border-2 ${isSelected ? 'bg-purple-600 border-purple-400' : 'bg-black/50 border-gray-500'} flex items-center justify-center text-[10px] text-white font-black">
                     ${isSelected ? '✓' : ''}
@@ -2873,7 +2876,7 @@
             const imgAspectClass = isLandscape ? "aspect-[3/2]" : "aspect-[2/3]";
 
             return `
-                <div data-id="${card.id}" class="bg-gray-950/95 border border-gray-800 rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}" 
+                <div data-id="${card.id}" class="bg-gray-950/95 ${needsReviewClass} rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}"
                      onclick="${clickHandler}">
                     ${checkboxHtml}
                     ${backBadgeHtml}
@@ -2974,10 +2977,14 @@
             pushModalHistory("closeModal");
         }
 
-        // 既存カードのテーマ名を重複なく集め、ローマ字(Unicode)順に並べてdatalistに反映する。
+        // 現在フォームで選択中のアルバムに登録済みのテーマ名を重複なく集め、
+        // ローマ字(Unicode)順に並べてdatalistに反映する（メンバーが違っても同アルバムなら候補に含める）。
         // input要素はlist属性で参照しているだけなので、直接入力もそのまま可能。
         function updateThemeDatalist() {
-            const uniqueThemes = Array.from(new Set(pcData.map(d => d.theme).filter(t => t && t.trim())));
+            const albumName = document.getElementById("formAlbum").value;
+            const uniqueThemes = Array.from(new Set(
+                pcData.filter(d => d.album === albumName).map(d => d.theme).filter(t => t && t.trim())
+            ));
             uniqueThemes.sort((a, b) => a.localeCompare(b, "en"));
             document.getElementById("formThemeList").innerHTML =
                 uniqueThemes.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
@@ -3281,6 +3288,8 @@
                         sortOrder: 999,
                         createdAt: Date.now()
                     };
+                    // admin以外（editor）が新規登録したカードは「未確認」として扱い、admin画面で目立たせる
+                    if (currentRole !== "admin") newCard.needsReview = true;
                     await saveCardToDB(newCard);
                     await saveImageBlob(newId, currentTempImageUrl);
                     if (currentTempImageUrlBack) {
@@ -3337,11 +3346,11 @@
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
-            updateThemeDatalist();
             document.getElementById("modalTitle").innerText = "トレカ情報の編集";
             document.getElementById("editIndex").value = card.id;
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formAlbum").value = card.album;
+            updateThemeDatalist();
             updateFormMemberOptions();
             document.getElementById("formMember").value = card.member;
             updateFormCategoryOptions();
@@ -3401,6 +3410,13 @@
         function openPreviewModal(id) {
             const card = pcData.find(d => d.id === id);
             if (!card) return;
+
+            // adminが未確認カードの詳細を開いたら確認済みとして扱い、枠の強調を解除する
+            if (currentRole === "admin" && card.needsReview) {
+                card.needsReview = false;
+                saveCardToDB(card).catch(err => console.error("needsReviewの更新に失敗しました:", err));
+                renderApp();
+            }
 
             currentPreviewCardId = id;
             isShowingBackFace = false;
