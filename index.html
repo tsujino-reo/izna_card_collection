@@ -358,7 +358,7 @@
 
                 <div id="formCategoryWrap">
                     <label class="text-gray-400 font-bold block mb-1">種類</label>
-                    <select id="formCategory" onchange="updateFormStoreVisibility()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
+                    <select id="formCategory" onchange="updateFormStoreVisibility(); updateThemeDatalist();" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div id="formStoreWrap" class="hidden">
@@ -3064,13 +3064,19 @@
             pushModalHistory("closeModal");
         }
 
-        // 現在フォームで選択中のアルバムに登録済みのテーマ名を重複なく集め、
-        // ローマ字(Unicode)順に並べて候補配列に反映する（メンバーが違っても同アルバムなら候補に含める）。
+        // 現在フォームで選択中のアルバム・種類に実際に紐づいているカードのテーマ名だけを重複なく集め、
+        // ローマ字(Unicode)順に並べて候補配列に反映する（メンバーが違っても同アルバム・同種類なら候補に含める）。
+        // 種類区分を持たないアルバム（albumCatsが空）の場合は種類での絞り込みは行わない。
         let themeCandidates = [];
         function updateThemeDatalist() {
             const albumName = document.getElementById("formAlbum").value;
+            const albumCats = getCategoriesForAlbum(albumName);
+            const category = albumCats.length > 0 ? document.getElementById("formCategory").value : null;
             themeCandidates = Array.from(new Set(
-                pcData.filter(d => d.album === albumName).map(d => d.theme).filter(t => t && t.trim())
+                pcData
+                    .filter(d => d.album === albumName && (!category || d.category === category))
+                    .map(d => d.theme)
+                    .filter(t => t && t.trim())
             )).sort((a, b) => a.localeCompare(b, "en"));
             hideThemeSuggestions();
         }
@@ -3492,7 +3498,6 @@
             document.getElementById("editIndex").value = card.id;
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formAlbum").value = card.album;
-            updateThemeDatalist();
             updateFormMemberOptions();
             document.getElementById("formMember").value = card.member;
             updateFormCategoryOptions();
@@ -3501,6 +3506,8 @@
                 updateFormStoreVisibility();
                 if (card.store) document.getElementById("formStore").value = card.store;
             }
+            // テーマ候補はアルバム・種類の両方が確定してから絞り込む必要があるため、この位置で呼ぶ
+            updateThemeDatalist();
             document.getElementById("formTags").value = (card.tags || []).join(" ");
             
             currentTempImageUrl = "";
