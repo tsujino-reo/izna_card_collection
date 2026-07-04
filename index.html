@@ -737,6 +737,8 @@
                 const uid = fbAuth.currentUser.uid;
                 console.log("[izna-archive] Google UID:", uid);
                 try {
+                    // 古いIDトークンのキャッシュを持ち越さないよう、権限チェック前に必ず強制リフレッシュする
+                    await fbAuth.currentUser.getIdToken(true);
                     const role = await fetchGoogleRole(uid);
                     if (role === "admin" || role === "editor" || role === "viewer") {
                         currentRole = role;
@@ -879,6 +881,9 @@
                 const result = await fbAuth.signInWithPopup(provider);
                 const uid = result.user.uid;
                 console.log("[izna-archive] Google UID:", uid);
+
+                // 古いIDトークンのキャッシュを持ち越さないよう、Firestoreへの書き込み前に必ず強制リフレッシュする
+                await result.user.getIdToken(true);
 
                 // 招待トークンを保持している場合は、既存のadmin判定チェックより先に適用する
                 await applyInviteIfPresent(uid);
