@@ -117,6 +117,9 @@
                         <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔗 招待リンクを作成
                         </button>
+                        <button id="accessManageBtn" onclick="openAccessManageModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            👥 アクセス管理
+                        </button>
                         <button id="exportFullBtn" onclick="exportData(true)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
@@ -489,6 +492,19 @@
 
             <div class="flex justify-end mt-4">
                 <button onclick="closeInviteModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="accessManageModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">👥 アクセス管理</h3>
+            <p class="text-[10px] text-gray-500 mb-4">招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。</p>
+
+            <div id="accessManageList" class="space-y-2"></div>
+
+            <div class="flex justify-end mt-4">
+                <button onclick="closeAccessManageModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
             </div>
         </div>
     </div>
@@ -929,7 +945,7 @@
                 await result.user.getIdToken(true);
 
                 // 招待トークンを保持している場合は、既存のadmin判定チェックより先に適用する
-                await applyInviteIfPresent(uid);
+                await applyInviteIfPresent(uid, result.user.displayName, result.user.email);
 
                 const role = await fetchGoogleRole(uid);
                 if (role === "admin" || role === "editor" || role === "viewer") {
@@ -1074,6 +1090,82 @@
             if (!skipHistory) history.back();
         }
 
+        // ── アクセス管理（editor/viewerの一覧表示・取り消し） ──────────────
+        function openAccessManageModal() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            document.getElementById("accessManageModal").classList.remove("hidden");
+            pushModalHistory("closeAccessManageModal");
+            renderAccessManageList();
+        }
+
+        function closeAccessManageModal(skipHistory) {
+            document.getElementById("accessManageModal").classList.add("hidden");
+            if (!skipHistory) history.back();
+        }
+
+        // config/usersの一覧から、admin以外（editor/viewer）のエントリだけを一覧表示する。
+        // invitedViaが記録されている場合は、対応するinvites/{token}のusedAtを付与日として表示する。
+        async function renderAccessManageList() {
+            const container = document.getElementById("accessManageList");
+            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">読み込み中...</p>`;
+            try {
+                const doc = await FS_USERS_DOC().get();
+                const data = doc.exists ? doc.data() : {};
+                const entries = Object.entries(data).filter(([, info]) => info && info.role && info.role !== "admin");
+
+                if (entries.length === 0) {
+                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">editor/viewer権限を持つユーザーはいません</p>`;
+                    return;
+                }
+
+                const grantedAtMap = {};
+                await Promise.all(entries.map(async ([uid, info]) => {
+                    if (!info.invitedVia) return;
+                    try {
+                        const inviteDoc = await FS_INVITES_COL().doc(info.invitedVia).get();
+                        if (inviteDoc.exists && inviteDoc.data().usedAt) {
+                            grantedAtMap[uid] = inviteDoc.data().usedAt.toDate();
+                        }
+                    } catch (_) { /* 招待情報が取得できなくても一覧表示自体は継続する */ }
+                }));
+
+                const roleLabel = { editor: "✍️ 編集者", viewer: "👁️ 閲覧者" };
+                container.innerHTML = entries.map(([uid, info]) => {
+                    const name = info.displayName || info.email || `不明なユーザー（${uid.slice(0, 8)}…）`;
+                    const sub = (info.displayName && info.email) ? info.email : "";
+                    const grantedAt = grantedAtMap[uid] ? grantedAtMap[uid].toLocaleDateString("ja-JP") : "不明";
+                    return `
+                        <div class="flex items-center justify-between gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-gray-200 truncate">${escapeHtml(name)}</p>
+                                ${sub ? `<p class="text-[10px] text-gray-500 truncate">${escapeHtml(sub)}</p>` : ''}
+                                <p class="text-[9px] text-gray-500">${roleLabel[info.role] || info.role} ・ 付与日: ${grantedAt}</p>
+                            </div>
+                            <button onclick="revokeAccess('${uid}')" class="shrink-0 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                                取り消し
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("アクセス一覧の取得に失敗しました:", err);
+                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">読み込みに失敗しました</p>`;
+            }
+        }
+
+        // 指定uidのconfig/usersエントリを削除する。次回そのユーザーがログインを試みると、
+        // fetchGoogleRole()がnullを返し、既存の「アクセス権限がありません」表示になる。
+        async function revokeAccess(uid) {
+            if (!confirm("このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。")) return;
+            try {
+                await FS_USERS_DOC().update({ [uid]: firebase.firestore.FieldValue.delete() });
+                await renderAccessManageList();
+            } catch (err) {
+                console.error("アクセス取り消しに失敗しました:", err);
+                alert("アクセス取り消しに失敗しました: " + (err.message || err));
+            }
+        }
+
         // ページロード時に?inviteパラメータを検出する
         function getInviteTokenFromUrl() {
             return new URLSearchParams(location.search).get("invite");
@@ -1107,11 +1199,12 @@
 
         // Googleログイン成功時に呼ばれる。有効な招待を保持していれば、そのロールをuidに付与し、
         // invites/{token}を使用済みにして、URLから?inviteパラメータを除去する。
-        async function applyInviteIfPresent(uid) {
+        async function applyInviteIfPresent(uid, displayName, email) {
             if (!pendingInvite) return;
             const { token, role } = pendingInvite;
             try {
-                await FS_USERS_DOC().set({ [uid]: { role, invitedVia: token } }, { merge: true });
+                // アクセス管理画面で識別しやすいよう、招待消費時点のGoogleアカウント名・メールも保存する
+                await FS_USERS_DOC().set({ [uid]: { role, invitedVia: token, displayName: displayName || "", email: email || "" } }, { merge: true });
                 await FS_INVITES_COL().doc(token).update({
                     used: true,
                     usedBy: uid,
@@ -2761,6 +2854,7 @@
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("accessManageBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("headerMenuBtn").classList.toggle("hidden", currentRole !== "admin");
@@ -4340,6 +4434,16 @@
         }
 
         function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+        // Googleアカウント名など外部由来の文字列をinnerHTMLに埋め込む前にエスケープする
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
 
         // ══════════════════════════════════════════════════════════════
         // 複数選択モード・一括操作
