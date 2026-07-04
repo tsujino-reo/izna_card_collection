@@ -175,6 +175,9 @@
                 <button id="migrateBgBtn" onclick="migrateLocalBackgroundsToFirestore()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     ☁️ 背景をFirestoreへ移行
                 </button>
+                <button id="migrateCardImagesBtn" onclick="migrateCardImagesToStorage()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                    ☁️ トレカ画像をStorageへ移行
+                </button>
                 <button id="resetAllDataBtn" onclick="confirmResetAllCards()" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     🗑️ トレカ全削除
                 </button>
@@ -2129,6 +2132,82 @@
             if (ok > 0) await updateBackgroundForCurrentContext();
         }
 
+        // 既存カード（Firestoreにメタデータのみ登録済みで、画像がこの端末のIndexedDBにしか
+        // 無いもの）の画像を、一度だけFirebase Storage（cards/{id}.jpg）へ一括アップロードする。
+        // IndexedDBは読み取りのみで、削除・上書きは行わない。
+        // Storageに既に同名の画像がある場合はスキップする（上書きしない）。
+        async function migrateCardImagesToStorage() {
+            const btn = document.getElementById("migrateCardImagesBtn");
+            if (!confirm(
+                "登録済みの全トレカについて、この端末に保存されている画像をFirebase Storageへアップロードします。\n" +
+                "・画像がこの端末に無いカードはスキップします\n" +
+                "・Storageに既に同じ画像がある場合もスキップします（上書きしません）\n" +
+                "・この端末のデータは削除・変更しません\n\n" +
+                "続行しますか？"
+            )) return;
+
+            btn.disabled = true;
+            btn.textContent = "確認中…";
+
+            let cardIds = [];
+            try {
+                const snapshot = await FS_CARDS_COL().get();
+                cardIds = snapshot.docs.map(doc => doc.id);
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = "☁️ トレカ画像をStorageへ移行";
+                alert("Firestoreからのカード一覧取得に失敗しました:\n" + (e.message || e));
+                return;
+            }
+
+            btn.textContent = "移行中…";
+            let success = 0, skippedNoLocal = 0, skippedInStorage = 0, failed = 0;
+            const lines = [];
+
+            for (const id of cardIds) {
+                const frontBlob = await getImageBlob(id).catch(() => null);
+                if (!frontBlob) {
+                    lines.push(`⏭ SKIP  ${id}  （この端末に画像なし）`);
+                    skippedNoLocal++;
+                    continue;
+                }
+                try {
+                    const alreadyInStorage = await getStorageDownloadUrl(`cards/${id}.jpg`);
+                    if (alreadyInStorage) {
+                        lines.push(`⏭ SKIP  ${id}  （Storageに既存）`);
+                        skippedInStorage++;
+                        continue;
+                    }
+                    const dataUrl = await blobToDataUrl(frontBlob);
+                    await fbStorage.ref(`cards/${id}.jpg`).putString(dataUrl, "data_url");
+
+                    // 裏面画像があれば合わせてアップロードする（対象/成功件数のカウントは表面基準のまま）
+                    const backBlob = await getImageBlob(id + "_back").catch(() => null);
+                    if (backBlob && !(await getStorageDownloadUrl(`cards/${id}_back.jpg`))) {
+                        const backDataUrl = await blobToDataUrl(backBlob);
+                        await fbStorage.ref(`cards/${id}_back.jpg`).putString(backDataUrl, "data_url");
+                    }
+
+                    lines.push(`✅ OK    ${id}`);
+                    success++;
+                } catch (e) {
+                    lines.push(`❌ FAIL  ${id}  ${e.message || e}`);
+                    failed++;
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = "☁️ トレカ画像をStorageへ移行";
+
+            alert(
+                `移行完了\n` +
+                `対象: ${cardIds.length} 件 / 成功: ${success} 件 / ` +
+                `スキップ: ${skippedNoLocal + skippedInStorage} 件（画像なし ${skippedNoLocal} / Storage既存 ${skippedInStorage}） / ` +
+                `失敗: ${failed} 件\n\n` +
+                lines.join("\n")
+            );
+        }
+
         async function changeAppBackground(input) {
             const file = input.files[0];
             if (!file) return;
@@ -2668,6 +2747,7 @@
             document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("migrateBgBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("migrateCardImagesBtn").classList.toggle("hidden", currentRole !== "admin");
             // ヘッダー共通部分（「⋮」メニュー等）はギャラリー画面と共有のため、まとめて1関数に集約している
             updateHeaderMenuVisibility();
         }
