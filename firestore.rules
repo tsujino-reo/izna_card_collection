@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── ヘルパー ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAnonymous() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // 匿名（共有PIN）ユーザーは常に viewer 扱い。
+    // Googleユーザーは config/users/{uid}.role を参照する。
+    function myRole() {
+      return isAnonymous()
+        ? 'viewer'
+        : (exists(/databases/$(database)/documents/config/users)
+            ? get(/databases/$(database)/documents/config/users).data.get(request.auth.uid, {}).get('role', null)
+            : null);
+    }
+
+    function isAdmin()  { return isSignedIn() && myRole() == 'admin'; }
+    function isEditor() { return isSignedIn() && (myRole() == 'admin' || myRole() == 'editor'); }
+    function isViewer() { return isSignedIn() && myRole() != null; }
+
+    // ── トレカ本体 ───────────────────────────────────────────
+    match /cards/{cardId} {
+      allow read: if isViewer();
+      allow create, update: if isEditor();
+      allow delete: if isAdmin();
+    }
+
+    // ── 共有PIN ──────────────────────────────────────────────
+    match /config/pin {
+      allow read: if isViewer();
+      // 初回起動時のみ、誰でもPINドキュメントを新規作成できる
+      allow create: if isSignedIn() && !exists(/databases/$(database)/documents/config/pin);
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ── アルバム/店舗一覧（admin管理） ─────────────────────────
+    match /config/albums {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+    match /config/stores {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // ── メンバー写真（アプリからは読み取り専用。書き込みは管理スクリプト経由） ──
+    match /config/memberPhotos {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // ── ユーザーロール一覧 ───────────────────────────────────
+    // 通常はadminのみ書き込み可。ただし招待リンクを消費する本人だけは、
+    // 有効な招待に一致する形で自分のuidエントリを追加できる。
+    match /config/users {
+      allow read: if isViewer();
+      allow write: if isAdmin() || isValidInviteRedemption();
+    }
+
+    function isValidInviteRedemption() {
+      let uid = request.auth.uid;
+      let before = (resource != null) ? resource.data : {};
+      let after = request.resource.data;
+      let entry = after.get(uid, {});
+      let token = entry.get('invitedVia', '');
+      let invitePath = /databases/$(database)/documents/invites/$(token);
+      return isSignedIn() && !isAnonymous()
+        && after.diff(before).affectedKeys().hasOnly([uid])
+        && entry.keys().hasOnly(['role', 'invitedVia'])
+        && exists(invitePath)
+        && get(invitePath).data.used == false
+        && get(invitePath).data.role == entry.role
+        && get(invitePath).data.expiresAt > request.time;
+    }
+
+    // ── 招待リンク ───────────────────────────────────────────
+    match /invites/{token} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      // 消費（used化）は、未使用・本人がusedByになる形の更新のみ許可
+      allow update: if isSignedIn() && !isAnonymous()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == request.auth.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAdmin();
+    }
+
+    // ── 背景画像（admin管理、閲覧は全員） ─────────────────────
+    match /backgrounds/{key} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // 上記以外の全パスはデフォルトで拒否
+  }
+}

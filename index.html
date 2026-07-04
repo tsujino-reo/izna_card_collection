@@ -1048,7 +1048,7 @@
             if (!pendingInvite) return;
             const { token, role } = pendingInvite;
             try {
-                await FS_USERS_DOC().set({ [uid]: { role } }, { merge: true });
+                await FS_USERS_DOC().set({ [uid]: { role, invitedVia: token } }, { merge: true });
                 await FS_INVITES_COL().doc(token).update({
                     used: true,
                     usedBy: uid,
