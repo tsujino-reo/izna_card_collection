@@ -620,6 +620,8 @@
         <button onclick="undoLastDelete()" class="bg-purple-700 hover:bg-purple-600 text-white rounded-full px-3 py-1 text-[11px] font-black transition-colors">↩ 元に戻す</button>
     </div>
 
+    <div id="errorToast" class="hidden fixed top-4 right-4 max-w-[80vw] bg-rose-950 border border-rose-700/60 text-rose-200 text-[11px] font-bold rounded-lg px-3 py-2.5 shadow-2xl z-[70]"></div>
+
     <script>
         // ══════════════════════════════════════════════════════════════
         // Firebase 設定
@@ -3033,7 +3035,12 @@
                     updatedCards.push(card);
                 }
             });
-            await saveCardsToDB(updatedCards);
+            try {
+                await saveCardsToDB(updatedCards);
+            } catch (err) {
+                console.error("並び替えの保存に失敗しました:", err);
+                showErrorToast("並び替えを保存できませんでした。権限を確認してください。");
+            }
         }
 
         function openModal() {
@@ -3544,13 +3551,18 @@
 
         async function deleteCard(id) {
             if (!confirm("このトレカを削除してもよろしいですか？")) return;
-            const target = pcData.find(d => d.id === id);
-            if (target) await captureUndoSnapshot([target]);
-            await deleteCardFromDB(id);
-            await loadPCData();
-            renderApp();
-            updateStorageEstimate();
-            showUndoToast(1);
+            try {
+                const target = pcData.find(d => d.id === id);
+                if (target) await captureUndoSnapshot([target]);
+                await deleteCardFromDB(id);
+                await loadPCData();
+                renderApp();
+                updateStorageEstimate();
+                showUndoToast(1);
+            } catch (err) {
+                console.error("削除に失敗しました:", err);
+                showErrorToast("削除できませんでした。権限を確認してください。");
+            }
         }
 
         let currentPreviewCardId = null;
@@ -4140,16 +4152,21 @@
             const name = albums[index].name;
             const cardCount = pcData.filter(d => d.album === name).length;
             if (cardCount > 0 && !confirm(`アルバム「${name}」には ${cardCount} 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？`)) return;
-            
-            if (cardCount > 0) {
-                const affectedCards = pcData.filter(card => card.album === name);
-                affectedCards.forEach(card => { card.album = "N/a"; });
-                await saveCardsToDB(affectedCards);
+
+            try {
+                if (cardCount > 0) {
+                    const affectedCards = pcData.filter(card => card.album === name);
+                    affectedCards.forEach(card => { card.album = "N/a"; });
+                    await saveCardsToDB(affectedCards);
+                }
+                albums.splice(index, 1);
+                await saveAlbums();
+                renderAlbumListModal();
+                updateStorageEstimate();
+            } catch (err) {
+                console.error("アルバムの削除に失敗しました:", err);
+                showErrorToast("削除できませんでした。権限を確認してください。");
             }
-            albums.splice(index, 1);
-            await saveAlbums();
-            renderAlbumListModal();
-            updateStorageEstimate();
         }
 
         async function saveAlbums() {
@@ -4254,19 +4271,24 @@
             if (selectedCardIds.size === 0) { alert("カードが選択されていません。"); return; }
             if (!confirm(`選択した ${selectedCardIds.size} 枚のトレカを削除します。よろしいですか？`)) return;
 
-            const targets = pcData.filter(d => selectedCardIds.has(d.id));
-            await captureUndoSnapshot(targets);
+            try {
+                const targets = pcData.filter(d => selectedCardIds.has(d.id));
+                await captureUndoSnapshot(targets);
 
-            for (const card of targets) {
-                await deleteCardFromDB(card.id);
+                for (const card of targets) {
+                    await deleteCardFromDB(card.id);
+                }
+
+                selectedCardIds.clear();
+                toggleMultiSelectMode();
+                await loadPCData();
+                renderApp();
+                updateStorageEstimate();
+                showUndoToast(targets.length);
+            } catch (err) {
+                console.error("一括削除に失敗しました:", err);
+                showErrorToast("削除できませんでした。権限を確認してください。");
             }
-
-            selectedCardIds.clear();
-            toggleMultiSelectMode();
-            await loadPCData();
-            renderApp();
-            updateStorageEstimate();
-            showUndoToast(targets.length);
         }
 
         function openBulkMoveModal() {
@@ -4324,28 +4346,47 @@
             const targetCategory = albumCats.length > 0 ? document.getElementById("bulkMoveCategory").value : null;
             const targetStore = (targetCategory === "店舗特典・ラキドロ") ? document.getElementById("bulkMoveStore").value : null;
 
-            const targets = pcData.filter(d => selectedCardIds.has(d.id));
-            targets.forEach(card => {
-                card.member = targetMember;
-                card.album = targetAlbum;
-                card.category = targetCategory;
-                card.store = targetStore;
-            });
-            await saveCardsToDB(targets);
+            try {
+                const targets = pcData.filter(d => selectedCardIds.has(d.id));
+                targets.forEach(card => {
+                    card.member = targetMember;
+                    card.album = targetAlbum;
+                    card.category = targetCategory;
+                    card.store = targetStore;
+                });
+                await saveCardsToDB(targets);
 
-            closeBulkMoveModal();
-            selectedCardIds.clear();
-            toggleMultiSelectMode();
-            currentMember = targetMember;
-            currentAlbum = targetAlbum;
-            document.getElementById("galleryViewTitle").innerText = `${targetAlbum} / ${targetMember}`;
-            updateGalleryTitleBannerColor();
-            updateBackgroundForCurrentContext();
-            renderGalleryMemberSwitchBar();
-            renderGalleryAlbumSwitchBar();
-            await loadPCData();
-            renderApp();
-            updateStorageEstimate();
+                closeBulkMoveModal();
+                selectedCardIds.clear();
+                toggleMultiSelectMode();
+                currentMember = targetMember;
+                currentAlbum = targetAlbum;
+                document.getElementById("galleryViewTitle").innerText = `${targetAlbum} / ${targetMember}`;
+                updateGalleryTitleBannerColor();
+                updateBackgroundForCurrentContext();
+                renderGalleryMemberSwitchBar();
+                renderGalleryAlbumSwitchBar();
+                await loadPCData();
+                renderApp();
+                updateStorageEstimate();
+            } catch (err) {
+                console.error("移動に失敗しました:", err);
+                showErrorToast("移動できませんでした。権限を確認してください。");
+            }
+        }
+
+        // 権限不足などの操作エラーを、画面端に数秒だけ表示して自動で消えるトーストで通知する。
+        // window.onerror/unhandledrejectionで拾われる開発用の全画面オーバーレイ(showFatalErrorOverlay)とは別物で、
+        // こちらは想定内のエラー（例: 権限不足）をユーザーに分かりやすく伝えるためのもの。
+        let errorToastTimer = null;
+        function showErrorToast(message) {
+            const toast = document.getElementById("errorToast");
+            toast.textContent = message;
+            toast.classList.remove("hidden");
+            if (errorToastTimer) clearTimeout(errorToastTimer);
+            errorToastTimer = setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 4000);
         }
 
         // ══════════════════════════════════════════════════════════════
