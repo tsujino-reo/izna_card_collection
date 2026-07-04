@@ -114,10 +114,10 @@
                         <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔗 招待リンクを作成
                         </button>
-                        <button onclick="exportData(true)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="exportFullBtn" onclick="exportData(true)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
-                        <button onclick="exportData(false)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="exportMetaBtn" onclick="exportData(false)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             📝 メタデータのみ出力
                         </button>
                         <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer border-b border-gray-800">
@@ -129,6 +129,9 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- editorのみ、見た目だけを一時的に閲覧モードへ切り替えられる（実権限は変わらない） -->
+                <button id="viewModeToggleBtn" onclick="toggleEditorViewerPreview()" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold text-gray-300 hover:bg-gray-800 transition-colors"></button>
 
                 <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら常にviewerで
                      サーバー側により確定しており、自己申告で変更できてはならないため常にdisabled表示にする -->
@@ -776,6 +779,7 @@
                     const role = await fetchGoogleRole(uid);
                     if (role === "admin" || role === "editor" || role === "viewer") {
                         currentRole = role;
+                        realRole = role;
                         hidePinGate();
                         await init();
                         return;
@@ -924,6 +928,7 @@
                 const role = await fetchGoogleRole(uid);
                 if (role === "admin" || role === "editor" || role === "viewer") {
                     currentRole = role;
+                    realRole = role;
                     hidePinGate();
                     await init();
                     return;
@@ -1425,7 +1430,11 @@
         let pcData = [];
         let albums = [];
         let currentMember = "MAI";
+        // currentRole: 画面表示に使う実効ロール。editorが閲覧モード表示に切り替えている間は
+        // realRoleより低い"viewer"になる（実権限には影響しない、UI表示専用の値）。
         let currentRole = "admin";
+        // realRole: サーバー側で確定した本当のロール。閲覧モード表示のON/OFFの基準・復元先として使う。
+        let realRole = "admin";
         let currentView = "albumList"; // "albumList" | "gallery"
         let currentAlbum = "I-LAND2"; // 選択中のアルバム名（初期値は固定6アルバムの先頭）
         let currentTempImageUrl = "";
@@ -1588,6 +1597,7 @@
             // 匿名（共有PIN）セッションは常にviewer固定。
             if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
                 currentRole = "viewer";
+                realRole = "viewer";
             }
 
             loadAlbumColorCacheFromStorage();
@@ -2510,6 +2520,35 @@
             document.getElementById("roleSelect").value = currentRole;
         }
 
+        // editorが「見た目だけ」閲覧モードに切り替える／戻すためのトグル。
+        // 実際の権限（realRole、およびFirestoreルール側の判定）は一切変わらず、
+        // UI表示用のcurrentRoleだけを一時的にeditor⇔viewerで切り替える。
+        function toggleEditorViewerPreview() {
+            if (realRole !== "editor") return; // editor以外はこの機能を使えない
+            currentRole = (currentRole === "viewer") ? "editor" : "viewer";
+            if (currentRole === "viewer" && isMultiSelectMode) {
+                isMultiSelectMode = false;
+                selectedCardIds.clear();
+                document.getElementById("multiSelectBar").classList.add("hidden");
+            }
+            loadSavedRole();
+            updateViewModeToggleButton();
+            renderAlbumTabs();
+            if (currentView === "gallery") {
+                renderGalleryMemberSwitchBar();
+                renderApp();
+            }
+            updateStorageEstimate();
+        }
+
+        // 閲覧モード切替ボタンの表示/文言を、realRole・現在の表示モードに応じて更新する。
+        // ヘッダーはトップ階層・ギャラリー画面で共有のため、両方のrender関数から呼ぶ必要がある。
+        function updateViewModeToggleButton() {
+            const btn = document.getElementById("viewModeToggleBtn");
+            btn.classList.toggle("hidden", realRole !== "editor");
+            btn.textContent = (currentRole === "viewer") ? "✍️ 編集表示に戻す" : "👁️ 閲覧モードで表示";
+        }
+
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
         let memberPhotoUrls = {};
 
@@ -2632,6 +2671,9 @@
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
+            updateViewModeToggleButton();
         }
 
         // 枚数の不一致など、データ不整合が解消できない場合の最終手段として、
@@ -2703,6 +2745,9 @@
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
+            updateViewModeToggleButton();
             renderGlobalSearch();
             renderGallery();
         }
