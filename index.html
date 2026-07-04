@@ -334,31 +334,47 @@
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">トレカ画像（表面） <span class="text-rose-500 font-black">*必須</span></label>
                     <input type="file" id="formImage" accept="image/*" class="file-input-hidden" onchange="previewImage(this)">
-                    <label id="imgLabel" for="formImage" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group">
+                    <div id="imgLabel" onclick="handleImgAreaClick(event, 'formImage', 'imgPreview')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
                         <img id="imgPreview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                        <div id="imgPlaceholder" class="flex flex-col items-center justify-center gap-1.5">
+                        <div id="imgPlaceholder" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">📷</span>
                             <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">画像を選択</span>
                         </div>
-                    </label>
-                    <button type="button" onclick="openCameraCapture('front')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
-                        📸 カメラで撮影
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-2">
+                        <button type="button" onclick="openCameraCapture('front')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                            📸 撮影
+                        </button>
+                        <button type="button" onclick="document.getElementById('formImage').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                            🖼️ ギャラリー
+                        </button>
+                    </div>
+                    <button type="button" id="imgResetBtn" onclick="resetImageAdjust('front')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">
+                        ↺ 位置・ズームをリセット
                     </button>
                 </div>
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">トレカ画像（裏面） <span class="text-gray-600 font-bold">任意</span></label>
                     <input type="file" id="formImageBack" accept="image/*" class="file-input-hidden" onchange="previewImageBack(this)">
-                    <label id="imgLabelBack" for="formImageBack" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group">
+                    <div id="imgLabelBack" onclick="handleImgAreaClick(event, 'formImageBack', 'imgPreviewBack')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
                         <img id="imgPreviewBack" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <button type="button" id="removeBackBtn" onclick="event.preventDefault(); event.stopPropagation(); removeBackImage()" class="hidden absolute top-1 right-1 z-20 bg-black/70 hover:bg-rose-900 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">✕</button>
-                        <div id="imgPlaceholderBack" class="flex flex-col items-center justify-center gap-1.5">
+                        <div id="imgPlaceholderBack" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">🔄</span>
                             <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">裏面を追加（任意）</span>
                         </div>
-                    </label>
-                    <button type="button" onclick="openCameraCapture('back')" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1.5">
-                        📸 カメラで撮影
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-2">
+                        <button type="button" onclick="openCameraCapture('back')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                            📸 撮影
+                        </button>
+                        <button type="button" onclick="document.getElementById('formImageBack').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                            🖼️ ギャラリー
+                        </button>
+                    </div>
+                    <button type="button" id="imgResetBackBtn" onclick="resetImageAdjust('back')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">
+                        ↺ 位置・ズームをリセット
                     </button>
                 </div>
 
@@ -596,6 +612,21 @@
         </div>
     </div>
 
+    <div id="memberPhotoAdjustModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-[60]">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-xs w-full p-5 card-shadow">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📷 写真の位置・ズームを調整</h3>
+            <p class="text-[10px] text-gray-500 mb-3">2本指でピンチしてズーム、ドラッグで位置を調整できます。</p>
+            <div id="memberPhotoAdjustViewport" class="relative w-40 h-40 mx-auto rounded-full bg-gray-900 border border-gray-800 overflow-hidden touch-none">
+                <img id="memberPhotoAdjustImg" src="" class="absolute inset-0 w-full h-full object-cover">
+            </div>
+            <button onclick="resetMemberPhotoAdjust()" class="w-full mt-3 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">↺ リセット</button>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="closeMemberPhotoAdjustModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">キャンセル</button>
+                <button id="memberPhotoAdjustSaveBtn" onclick="saveMemberPhotoAdjust()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- PINゲート: セッション未確認時に画面全体を覆う。z-[200]で他のモーダルより必ず前面に出る -->
     <div id="pinGate" class="fixed inset-0 z-[200] bg-gray-950 flex items-center justify-center p-6">
         <div class="w-full max-w-xs space-y-8 text-center">
@@ -732,6 +763,177 @@
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // 画像のピンチズーム・ドラッグ位置調整（共通処理）
+        // トレカ写真プレビュー（表/裏）・メンバー写真設定の3箇所で共有する。
+        // viewportEl（固定サイズのコンテナ）内にimgElを「object-fit: cover」相当で配置し、
+        // ピンチでズーム・ドラッグで移動できるようにする。CSS transformではなく
+        // width/height/left/topを直接計算・設定する方式のため、実際の描画範囲を
+        // そのままcanvasへの書き出し(exportDataUrl)に使い回せる。
+        // ══════════════════════════════════════════════════════════════
+        function createImageAdjuster(viewportEl, imgEl, onReady) {
+            const MIN_ZOOM = 1, MAX_ZOOM = 4;
+            let naturalW = 0, naturalH = 0;
+            let baseScale = 1; // viewportをちょうど覆う倍率（object-fit: cover相当）
+            let zoom = 1;      // baseScaleに対する追加のピンチズーム倍率
+            let offsetX = 0, offsetY = 0; // ドラッグによる追加の移動量(px)
+            let loaded = false;      // 画像サイズが判明し、初期配置済みか
+            let interactive = false; // ピンチ/ドラッグ操作・書き出しを許可するか
+            let dirty = false;       // 初期配置から実際に動かされたか
+            let touchMode = null;    // "pinch" | "pan" | null
+            let pinchStartDist = 0, pinchBaseZoom = 1;
+            let panLastX = 0, panLastY = 0;
+
+            function touchDist(touches) {
+                return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+            }
+
+            function layout() {
+                if (!loaded) return;
+                const vw = viewportEl.clientWidth, vh = viewportEl.clientHeight;
+                const w = naturalW * baseScale * zoom;
+                const h = naturalH * baseScale * zoom;
+                imgEl.style.position = "absolute";
+                imgEl.style.maxWidth = "none";
+                imgEl.style.width = w + "px";
+                imgEl.style.height = h + "px";
+                imgEl.style.left = ((vw - w) / 2 + offsetX) + "px";
+                imgEl.style.top = ((vh - h) / 2 + offsetY) + "px";
+            }
+
+            function clampOffset() {
+                const vw = viewportEl.clientWidth, vh = viewportEl.clientHeight;
+                const w = naturalW * baseScale * zoom;
+                const h = naturalH * baseScale * zoom;
+                const maxOffsetX = Math.max(0, (w - vw) / 2);
+                const maxOffsetY = Math.max(0, (h - vh) / 2);
+                offsetX = Math.min(maxOffsetX, Math.max(-maxOffsetX, offsetX));
+                offsetY = Math.min(maxOffsetY, Math.max(-maxOffsetY, offsetY));
+            }
+
+            // 画像src変更時（新規選択・撮影・既存カード読込）に呼び、調整状態を初期化する。
+            // canvasSafeは、canvas書き出し（toDataURL）が可能な画像かどうか
+            // （data:/blob: URLはtrue、他サーバーのURLなど汚染の恐れがある場合はfalseにする）。
+            function setImage(canvasSafe) {
+                loaded = false;
+                interactive = false;
+                dirty = false;
+                const ready = () => {
+                    naturalW = imgEl.naturalWidth;
+                    naturalH = imgEl.naturalHeight;
+                    if (!naturalW || !naturalH) return;
+                    const vw = viewportEl.clientWidth, vh = viewportEl.clientHeight;
+                    baseScale = Math.max(vw / naturalW, vh / naturalH);
+                    zoom = 1; offsetX = 0; offsetY = 0;
+                    loaded = true;
+                    interactive = !!canvasSafe;
+                    layout();
+                    if (onReady) onReady();
+                };
+                if (imgEl.complete && imgEl.naturalWidth) {
+                    ready();
+                } else {
+                    imgEl.addEventListener("load", ready, { once: true });
+                }
+            }
+
+            function reset() {
+                if (!loaded) return;
+                zoom = 1; offsetX = 0; offsetY = 0;
+                dirty = false;
+                layout();
+            }
+
+            function onTouchStart(e) {
+                if (!interactive) return;
+                if (e.touches.length === 2) {
+                    touchMode = "pinch";
+                    pinchStartDist = touchDist(e.touches);
+                    pinchBaseZoom = zoom;
+                    e.preventDefault();
+                } else if (e.touches.length === 1) {
+                    touchMode = "pan";
+                    panLastX = e.touches[0].clientX;
+                    panLastY = e.touches[0].clientY;
+                    e.preventDefault();
+                }
+            }
+
+            function onTouchMove(e) {
+                if (!interactive || !touchMode) return;
+                if (touchMode === "pinch" && e.touches.length === 2) {
+                    e.preventDefault();
+                    const ratio = touchDist(e.touches) / pinchStartDist;
+                    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchBaseZoom * ratio));
+                    dirty = true;
+                    clampOffset();
+                    layout();
+                } else if (touchMode === "pan" && e.touches.length === 1) {
+                    e.preventDefault();
+                    const dx = e.touches[0].clientX - panLastX;
+                    const dy = e.touches[0].clientY - panLastY;
+                    panLastX = e.touches[0].clientX;
+                    panLastY = e.touches[0].clientY;
+                    if (dx || dy) dirty = true;
+                    offsetX += dx; offsetY += dy;
+                    clampOffset();
+                    layout();
+                }
+            }
+
+            function onTouchEnd(e) {
+                if (e.touches.length === 0) {
+                    touchMode = null;
+                } else if (e.touches.length === 1) {
+                    touchMode = "pan";
+                    panLastX = e.touches[0].clientX;
+                    panLastY = e.touches[0].clientY;
+                }
+            }
+
+            viewportEl.addEventListener("touchstart", onTouchStart, { passive: false });
+            viewportEl.addEventListener("touchmove", onTouchMove, { passive: false });
+            viewportEl.addEventListener("touchend", onTouchEnd, { passive: false });
+            viewportEl.addEventListener("touchcancel", onTouchEnd, { passive: false });
+
+            // 現在viewportに見えている範囲を、目標解像度のJPEG data URLとして書き出す
+            function exportDataUrl(outW, outH, quality) {
+                const vw = viewportEl.clientWidth, vh = viewportEl.clientHeight;
+                const w = naturalW * baseScale * zoom;
+                const h = naturalH * baseScale * zoom;
+                const left = (vw - w) / 2 + offsetX;
+                const top = (vh - h) / 2 + offsetY;
+                const toNatural = 1 / (baseScale * zoom);
+                const sx = -left * toNatural;
+                const sy = -top * toNatural;
+                const sw = vw * toNatural;
+                const sh = vh * toNatural;
+
+                const canvas = document.createElement("canvas");
+                canvas.width = outW; canvas.height = outH;
+                canvas.getContext("2d").drawImage(imgEl, sx, sy, sw, sh, 0, 0, outW, outH);
+                return canvas.toDataURL("image/jpeg", quality);
+            }
+
+            // このインスタンスを使い回す別のカード/セッションに切り替える際、
+            // 画像が無い状態にリセットする（前回のdirty/interactive状態を持ち越さないため）
+            function deactivate() {
+                loaded = false;
+                interactive = false;
+                dirty = false;
+                touchMode = null;
+            }
+
+            return {
+                setImage,
+                reset,
+                deactivate,
+                exportDataUrl,
+                isInteractive: () => interactive,
+                isDirty: () => dirty
+            };
         }
 
         // 背景画像を最大1280px・JPEG75%に圧縮する。Firestore 1MB制限に収めるため。
@@ -2898,34 +3100,62 @@
             input.click();
         }
 
+        // 選択した写真を、位置・ズーム調整モーダルに読み込んで表示する（この時点では保存しない）
         function handleMemberPhotoSelected(input) {
             const file = input.files[0];
             if (!file || !memberPhotoTargetName) return;
 
-            const img = new Image();
             const reader = new FileReader();
             reader.onload = (e) => {
-                img.onload = async () => {
-                    // 円形アイコン表示に十分な解像度(200x200)に正規化して容量を抑える
-                    const size = 200;
-                    const canvas = document.createElement("canvas");
-                    canvas.width = size; canvas.height = size;
-                    const ctx = canvas.getContext("2d");
-                    // 中央を正方形にクロップして描画
-                    const minSide = Math.min(img.width, img.height);
-                    const sx = (img.width - minSide) / 2;
-                    const sy = (img.height - minSide) / 2;
-                    ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-
-                    await saveImageBlob("member_" + memberPhotoTargetName, dataUrl);
-                    await loadMemberPhotos();
-                    renderMemberPhotoList();
-                    console.log(`「${memberPhotoTargetName}」の写真を設定しました`);
-                };
+                const img = document.getElementById("memberPhotoAdjustImg");
                 img.src = e.target.result;
+                getMemberPhotoAdjuster().setImage(true); // FileReader由来のdata URLなので常にcanvas書き出し可能
+                document.getElementById("memberPhotoAdjustModal").classList.remove("hidden");
+                pushModalHistory("closeMemberPhotoAdjustModal");
             };
             reader.readAsDataURL(file);
+        }
+
+        let memberPhotoAdjuster = null;
+        function getMemberPhotoAdjuster() {
+            if (!memberPhotoAdjuster) {
+                memberPhotoAdjuster = createImageAdjuster(
+                    document.getElementById("memberPhotoAdjustViewport"),
+                    document.getElementById("memberPhotoAdjustImg")
+                );
+            }
+            return memberPhotoAdjuster;
+        }
+
+        function closeMemberPhotoAdjustModal(skipHistory) {
+            document.getElementById("memberPhotoAdjustModal").classList.add("hidden");
+            if (!skipHistory) history.back();
+        }
+
+        function resetMemberPhotoAdjust() {
+            getMemberPhotoAdjuster().reset();
+        }
+
+        // 円形アイコン表示に十分な解像度(200x200)で、現在の調整結果を書き出して保存する
+        async function saveMemberPhotoAdjust() {
+            if (!memberPhotoTargetName) return;
+            const btn = document.getElementById("memberPhotoAdjustSaveBtn");
+            btn.disabled = true;
+            btn.textContent = "保存中...";
+            try {
+                const dataUrl = getMemberPhotoAdjuster().exportDataUrl(200, 200, 0.85);
+                await saveImageBlob("member_" + memberPhotoTargetName, dataUrl);
+                await loadMemberPhotos();
+                renderMemberPhotoList();
+                console.log(`「${memberPhotoTargetName}」の写真を設定しました`);
+                closeMemberPhotoAdjustModal();
+            } catch (err) {
+                console.error("メンバー写真の保存に失敗しました:", err);
+                alert("メンバー写真の保存に失敗しました: " + (err.message || err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "保存";
+            }
         }
 
         function renderApp() {
@@ -3279,12 +3509,16 @@
             document.getElementById("imgPreview").src = "";
             document.getElementById("imgPreview").classList.add("hidden");
             document.getElementById("imgPlaceholder").classList.remove("hidden");
+            document.getElementById("imgResetBtn").classList.add("hidden");
+            getFrontImgAdjuster().deactivate();
 
             document.getElementById("formImageBack").value = "";
             document.getElementById("imgPreviewBack").src = "";
             document.getElementById("imgPreviewBack").classList.add("hidden");
             document.getElementById("imgPlaceholderBack").classList.remove("hidden");
             document.getElementById("removeBackBtn").classList.add("hidden");
+            document.getElementById("imgResetBackBtn").classList.add("hidden");
+            getBackImgAdjuster().deactivate();
 
             updateThemeDatalist();
             document.getElementById("cardModal").classList.remove("hidden");
@@ -3350,6 +3584,42 @@
             if (!skipHistory) history.back();
         }
 
+        // カード表面/裏面プレビューの調整インスタンス（遅延生成し、モーダルが開いている間使い回す）
+        let frontImgAdjuster = null;
+        let backImgAdjuster = null;
+        function getFrontImgAdjuster() {
+            if (!frontImgAdjuster) {
+                frontImgAdjuster = createImageAdjuster(
+                    document.getElementById("imgLabel"),
+                    document.getElementById("imgPreview"),
+                    () => document.getElementById("imgResetBtn").classList.toggle("hidden", !frontImgAdjuster.isInteractive())
+                );
+            }
+            return frontImgAdjuster;
+        }
+        function getBackImgAdjuster() {
+            if (!backImgAdjuster) {
+                backImgAdjuster = createImageAdjuster(
+                    document.getElementById("imgLabelBack"),
+                    document.getElementById("imgPreviewBack"),
+                    () => document.getElementById("imgResetBackBtn").classList.toggle("hidden", !backImgAdjuster.isInteractive())
+                );
+            }
+            return backImgAdjuster;
+        }
+
+        // 画像プレビュー枠タップ時：画像が既に表示されている場合はピンチ/ドラッグ操作と
+        // 競合しないよう、タップでのファイル選択を無効化する（未設定時のみタップで選択できる）
+        function handleImgAreaClick(event, inputId, previewId) {
+            const preview = document.getElementById(previewId);
+            if (preview && !preview.classList.contains("hidden")) return;
+            document.getElementById(inputId).click();
+        }
+
+        function resetImageAdjust(face) {
+            (face === "back" ? getBackImgAdjuster() : getFrontImgAdjuster()).reset();
+        }
+
         function previewImage(input) {
             console.log("previewImage が呼び出されました。選択ファイル数:", input.files ? input.files.length : 0);
             const file = input.files[0];
@@ -3368,16 +3638,19 @@
                 }
                 currentTempImageUrl = dataUrl;
                 const imgPreview = document.getElementById("imgPreview");
-                imgPreview.src = currentTempImageUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
                 console.log("画像プレビューを設定しました。データ長:", currentTempImageUrl.length);
 
-                // ファイルから選んだ場合、実際の画像サイズから縦/横を自動判定する
+                // ファイルから選んだ場合、実際の画像サイズから縦/横を自動判定する。
+                // 枠のアスペクト比を確定させてから（枠サイズが調整用アダプタの計算に必要なため）
+                // imgPreview.srcを設定し、ピンチ/ドラッグ調整を初期化する。
                 const img = new Image();
                 img.onload = () => {
                     currentTempImageOrientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
                     updatePreviewFrameAspect("imgLabel", currentTempImageOrientation);
+                    imgPreview.src = currentTempImageUrl;
+                    getFrontImgAdjuster().setImage(true);
                 };
                 img.src = currentTempImageUrl;
             };
@@ -3407,6 +3680,7 @@
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
+                getBackImgAdjuster().setImage(true);
             };
             reader.onerror = function(err) {
                 console.error("FileReader(裏面) 読み込み失敗:", err);
@@ -3425,6 +3699,8 @@
             imgPreview.classList.add("hidden");
             document.getElementById("imgPlaceholderBack").classList.remove("hidden");
             document.getElementById("removeBackBtn").classList.add("hidden");
+            document.getElementById("imgResetBackBtn").classList.add("hidden");
+            getBackImgAdjuster().deactivate();
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -3669,6 +3945,7 @@
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
                 updatePreviewFrameAspect("imgLabelBack", cameraOrientation);
+                getBackImgAdjuster().setImage(true);
             } else {
                 currentTempImageUrl = dataUrl;
                 currentTempImageOrientation = cameraOrientation;
@@ -3677,6 +3954,7 @@
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
                 updatePreviewFrameAspect("imgLabel", cameraOrientation);
+                getFrontImgAdjuster().setImage(true);
             }
         }
 
@@ -3690,6 +3968,23 @@
             } else {
                 label.classList.remove("aspect-[3/2]");
                 label.classList.add("aspect-[2/3]");
+            }
+        }
+
+        // カード写真を保存する。ピンチ/ドラッグで調整可能な画像（新規選択・撮影した画像、
+        // またはこの端末にBlobがある既存画像）は常に現在の調整結果を書き出して保存し、
+        // 調整不可（Storageのみの既存画像等）の場合は新しい画像が選ばれた時だけ差し替える。
+        // これにより、調整していない既存カードの画像を無駄に再圧縮・再アップロードしない。
+        async function saveAdjustedCardImage(id, viewportEl, adjuster, tempDataUrl, forceSave) {
+            if (adjuster.isInteractive()) {
+                if (forceSave || tempDataUrl || adjuster.isDirty()) {
+                    const isLandscape = viewportEl.clientWidth > viewportEl.clientHeight;
+                    const outW = isLandscape ? 1200 : 800;
+                    const outH = isLandscape ? 800 : 1200;
+                    await saveCardImage(id, adjuster.exportDataUrl(outW, outH, 0.85));
+                }
+            } else if (tempDataUrl) {
+                await saveCardImage(id, tempDataUrl);
             }
         }
 
@@ -3730,15 +4025,19 @@
                             card.orientation = currentTempImageOrientation;
                         }
                         await saveCardToDB(card);
-                        // 新しい画像が選択された場合のみBlobを更新
-                        if (currentTempImageUrl) {
-                            await saveCardImage(card.id, currentTempImageUrl);
-                        }
-                        // 裏面: 新しい画像が選ばれていれば更新、削除フラグが立っていればBlobを削除
-                        if (currentTempImageUrlBack) {
-                            await saveCardImage(card.id + "_back", currentTempImageUrlBack);
-                        } else if (removeBackImageFlag) {
+                        // 新しい画像が選ばれた場合、または既存画像をピンチ/ドラッグで調整した場合に保存する
+                        await saveAdjustedCardImage(
+                            card.id, document.getElementById("imgLabel"), getFrontImgAdjuster(),
+                            currentTempImageUrl, false
+                        );
+                        // 裏面: 削除フラグが立っていればBlobを削除、そうでなければ表面と同様に保存判定する
+                        if (removeBackImageFlag) {
                             await deleteCardImage(card.id + "_back");
+                        } else {
+                            await saveAdjustedCardImage(
+                                card.id + "_back", document.getElementById("imgLabelBack"), getBackImgAdjuster(),
+                                currentTempImageUrlBack, false
+                            );
                         }
                     }
                 } else {
@@ -3758,9 +4057,15 @@
                     // admin以外（editor）が新規登録したカードは「未確認」として扱い、admin画面で目立たせる
                     if (currentRole !== "admin") newCard.needsReview = true;
                     await saveCardToDB(newCard);
-                    await saveCardImage(newId, currentTempImageUrl);
+                    await saveAdjustedCardImage(
+                        newId, document.getElementById("imgLabel"), getFrontImgAdjuster(),
+                        currentTempImageUrl, true
+                    );
                     if (currentTempImageUrlBack) {
-                        await saveCardImage(newId + "_back", currentTempImageUrlBack);
+                        await saveAdjustedCardImage(
+                            newId + "_back", document.getElementById("imgLabelBack"), getBackImgAdjuster(),
+                            currentTempImageUrlBack, true
+                        );
                     }
                 }
 
@@ -3838,9 +4143,14 @@
                 imgPreview.src = card.imgUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
+                // imgUrlがblob:（IndexedDB由来）の場合のみピンチ/ドラッグ調整・保存を許可する。
+                // Firebase Storageの https:// URL は他端末等でcanvas書き出しがCORSで失敗しうるため対象外。
+                getFrontImgAdjuster().setImage(card.imgUrl.startsWith("blob:"));
             } else {
                 imgPreview.classList.add("hidden");
                 document.getElementById("imgPlaceholder").classList.remove("hidden");
+                document.getElementById("imgResetBtn").classList.add("hidden");
+                getFrontImgAdjuster().deactivate();
             }
 
             // 裏面画像の表示
@@ -3853,11 +4163,14 @@
                 imgPreviewBack.classList.remove("hidden");
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
+                getBackImgAdjuster().setImage(card.imgUrlBack.startsWith("blob:"));
             } else {
                 imgPreviewBack.src = "";
                 imgPreviewBack.classList.add("hidden");
                 document.getElementById("imgPlaceholderBack").classList.remove("hidden");
                 document.getElementById("removeBackBtn").classList.add("hidden");
+                document.getElementById("imgResetBackBtn").classList.add("hidden");
+                getBackImgAdjuster().deactivate();
             }
 
             document.getElementById("cardModal").classList.remove("hidden");
