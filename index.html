@@ -44,6 +44,18 @@
                 width: 100lvw;
             }
         }
+        /* 背景画像はスマホの縦長画面向けにクロップ範囲が調整されているため、
+           PC（横長）幅でも同じcover表示のまま拡大すると顔が異常にズームインして見える。
+           768px以上ではcontainに切り替えて画像全体を収め、はみ出た余白はアプリの基調色で埋める。
+           JS側(applyBackgroundScale等)がインラインstyleでbackground-sizeを都度設定しているため、
+           ここでは!importantでPC幅の時だけ上書きする（スマホ表示のcover挙動には影響しない）。 */
+        @media (min-width: 768px) {
+            #appBackgroundLayer {
+                background-size: contain !important;
+                background-position: center !important;
+                background-color: #090a0f !important;
+            }
+        }
         input, select, button { color: #ffffff !important; }
         input::placeholder { color: #64748b !important; }
         .card-shadow { box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.2), 0 8px 10px -6px rgba(236, 72, 153, 0.2); }
