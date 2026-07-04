@@ -120,10 +120,13 @@
                         <button onclick="exportData(false)" class="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             📝 メタデータのみ出力
                         </button>
-                        <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer">
+                        <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer border-b border-gray-800">
                             📥 読込
                             <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
                         </label>
+                        <button id="logoutBtn" onclick="logoutApp()" class="w-full text-left px-3 py-2 text-[10px] font-bold text-rose-400 hover:bg-gray-800 transition-colors">
+                            🚪 ログアウト
+                        </button>
                     </div>
                 </div>
 
@@ -903,6 +906,21 @@
                     showPinError("Googleログインに失敗しました。\n(" + (err.message || "") + ")");
                 }
             }
+        }
+
+        // ログアウトしてPINゲート/ログイン前の状態に戻す。
+        // ローカルに残ったロール・PINセッション情報も消し、次回読み込み時に古い状態を引き継がないようにする。
+        async function logoutApp() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            if (!confirm("ログアウトしますか？")) return;
+            try {
+                await fbAuth.signOut();
+            } catch (err) {
+                console.error("ログアウトに失敗しました:", err);
+            }
+            localStorage.removeItem("izna_role");
+            localStorage.removeItem(PIN_SESSION_KEY);
+            location.reload();
         }
 
         async function copyPinToClipboard() {
