@@ -3470,7 +3470,9 @@
             const instance = Sortable.create(el, {
                 group: 'pcArchiveGroup',
                 animation: 180,
-                delay: 150,
+                // 触れてすぐドラッグが始まると通常タップ（カードを開く操作）と競合するため、
+                // 長押し（500ms）してから並び替えが始まるようにする（PC等のマウス操作には適用しない）
+                delay: 500,
                 delayOnTouchOnly: true,
                 touchStartThreshold: 5,
                 ghostClass: 'sortable-ghost',
