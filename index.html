@@ -1533,6 +1533,14 @@
         }
 
         async function init() {
+            // 匿名（共有PIN）セッションは常にviewer固定。
+            // 以前このブラウザでGoogleログイン(admin/editor)していた場合でも、
+            // localStorageに残ったizna_roleを引き継がないようにする。
+            if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
+                currentRole = "viewer";
+                localStorage.setItem("izna_role", "viewer");
+            }
+
             loadAlbumColorCacheFromStorage();
 
             let dbReady = false;
@@ -2424,12 +2432,10 @@
             document.getElementById("formMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
         }
 
+        // currentRoleはこの時点で既に確定している（Googleログイン時はfetchGoogleRole、
+        // 匿名PINセッションはinit()冒頭でviewer固定）ため、ここではUI表示を同期するのみ。
         function loadSavedRole() {
-            const savedRole = localStorage.getItem("izna_role");
-            if (savedRole) {
-                currentRole = savedRole;
-                document.getElementById("roleSelect").value = savedRole;
-            }
+            document.getElementById("roleSelect").value = currentRole;
         }
 
         function changeRole() {
