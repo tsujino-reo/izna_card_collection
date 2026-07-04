@@ -1760,6 +1760,29 @@
             });
         }
 
+        // トレカ画像をIndexedDB（ローカルキャッシュ）とFirebase Storage（他端末との同期用）の
+        // 両方に保存する。Storage側は失敗してもIndexedDBへの保存は既に完了しているため握りつぶす
+        // （オフライン時など。次にこのカードを保存し直せば改めてアップロードされる）。
+        async function saveCardImage(id, dataUrl) {
+            await saveImageBlob(id, dataUrl);
+            try {
+                await fbStorage.ref(`cards/${id}.jpg`).putString(dataUrl, "data_url");
+            } catch (err) {
+                console.warn(`Storageへの画像アップロードに失敗しました (cards/${id}.jpg):`, err);
+            }
+        }
+
+        async function deleteCardImage(id) {
+            await deleteImageBlob(id);
+            try {
+                await fbStorage.ref(`cards/${id}.jpg`).delete();
+            } catch (err) {
+                if (err.code !== "storage/object-not-found") {
+                    console.warn(`Storageからの画像削除に失敗しました (cards/${id}.jpg):`, err);
+                }
+            }
+        }
+
         function clearImageStore() {
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(IMAGE_STORE_NAME, "readwrite");
@@ -2127,7 +2150,7 @@
 
         async function deleteCardFromDB(id) {
             await FS_CARDS_COL().doc(id).delete();
-            await Promise.all([deleteImageBlob(id), deleteImageBlob(id + "_back")]);
+            await Promise.all([deleteCardImage(id), deleteCardImage(id + "_back")]);
         }
 
         // Firebase Storage からダウンロードURLを取得する（存在しなければnullを返す）
@@ -3337,13 +3360,13 @@
                         await saveCardToDB(card);
                         // 新しい画像が選択された場合のみBlobを更新
                         if (currentTempImageUrl) {
-                            await saveImageBlob(card.id, currentTempImageUrl);
+                            await saveCardImage(card.id, currentTempImageUrl);
                         }
                         // 裏面: 新しい画像が選ばれていれば更新、削除フラグが立っていればBlobを削除
                         if (currentTempImageUrlBack) {
-                            await saveImageBlob(card.id + "_back", currentTempImageUrlBack);
+                            await saveCardImage(card.id + "_back", currentTempImageUrlBack);
                         } else if (removeBackImageFlag) {
-                            await deleteImageBlob(card.id + "_back");
+                            await deleteCardImage(card.id + "_back");
                         }
                     }
                 } else {
@@ -3363,9 +3386,9 @@
                     // admin以外（editor）が新規登録したカードは「未確認」として扱い、admin画面で目立たせる
                     if (currentRole !== "admin") newCard.needsReview = true;
                     await saveCardToDB(newCard);
-                    await saveImageBlob(newId, currentTempImageUrl);
+                    await saveCardImage(newId, currentTempImageUrl);
                     if (currentTempImageUrlBack) {
-                        await saveImageBlob(newId + "_back", currentTempImageUrlBack);
+                        await saveCardImage(newId + "_back", currentTempImageUrlBack);
                     }
                 }
 
@@ -4310,9 +4333,9 @@
             await saveCardsToDB(cards);
             for (const card of cards) {
                 const dataUrl = images.get(card.id);
-                if (dataUrl) await saveImageBlob(card.id, dataUrl);
+                if (dataUrl) await saveCardImage(card.id, dataUrl);
                 const backDataUrl = images.get(card.id + "_back");
-                if (backDataUrl) await saveImageBlob(card.id + "_back", backDataUrl);
+                if (backDataUrl) await saveCardImage(card.id + "_back", backDataUrl);
             }
 
             lastDeletedSnapshot = null;

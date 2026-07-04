@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAnonymous() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // 匿名（共有PIN）ユーザーは常に viewer 扱い。
+    // Googleユーザーは Firestore の config/users/{uid}.role を参照する（Cross Service Rules）。
+    function myRole() {
+      return isAnonymous()
+        ? 'viewer'
+        : (firestore.exists(/databases/(default)/documents/config/users)
+            ? firestore.get(/databases/(default)/documents/config/users).data.get(request.auth.uid, {}).get('role', null)
+            : null);
+    }
+
+    function isAdmin()  { return isSignedIn() && myRole() == 'admin'; }
+    function isEditor() { return isSignedIn() && (myRole() == 'admin' || myRole() == 'editor'); }
+    function isViewer() { return isSignedIn() && myRole() != null; }
+
+    match /cards/{fileName} {
+      allow read: if isViewer();
+      // Storage Rulesには create/update/delete の区別が無く write に統合されているため、
+      // request.resource の有無でアップロード(create/update)と削除を区別する。
+      allow write: if (request.resource != null
+                          && isEditor()
+                          && request.resource.size < 5 * 1024 * 1024
+                          && request.resource.contentType.matches('image/.*'))
+                       || (request.resource == null && isAdmin());
+    }
+
+    // 上記以外の全パスはデフォルトで拒否
+  }
+}
