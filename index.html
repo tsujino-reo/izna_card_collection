@@ -368,8 +368,12 @@
 
                 <div>
                     <label class="text-gray-400 font-bold block mb-1">テーマ (例: AWAKENING Ver.A)</label>
-                    <input type="text" id="formTheme" list="formThemeList" placeholder="トレカの名称やバージョン名" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
-                    <datalist id="formThemeList"></datalist>
+                    <div class="relative">
+                        <input type="text" id="formTheme" placeholder="トレカの名称やバージョン名" autocomplete="off"
+                            oninput="renderThemeSuggestions()" onfocus="renderThemeSuggestions()"
+                            class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                        <div id="formThemeSuggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto"></div>
+                    </div>
                 </div>
 
                 <div>
@@ -3061,16 +3065,50 @@
         }
 
         // 現在フォームで選択中のアルバムに登録済みのテーマ名を重複なく集め、
-        // ローマ字(Unicode)順に並べてdatalistに反映する（メンバーが違っても同アルバムなら候補に含める）。
-        // input要素はlist属性で参照しているだけなので、直接入力もそのまま可能。
+        // ローマ字(Unicode)順に並べて候補配列に反映する（メンバーが違っても同アルバムなら候補に含める）。
+        let themeCandidates = [];
         function updateThemeDatalist() {
             const albumName = document.getElementById("formAlbum").value;
-            const uniqueThemes = Array.from(new Set(
+            themeCandidates = Array.from(new Set(
                 pcData.filter(d => d.album === albumName).map(d => d.theme).filter(t => t && t.trim())
-            ));
-            uniqueThemes.sort((a, b) => a.localeCompare(b, "en"));
-            document.getElementById("formThemeList").innerHTML =
-                uniqueThemes.map(t => `<option value="${t.replace(/"/g, '&quot;')}"></option>`).join('');
+            )).sort((a, b) => a.localeCompare(b, "en"));
+            hideThemeSuggestions();
+        }
+
+        // テーマ入力欄の候補ドロップダウンを自前実装で表示する。
+        // ネイティブ<datalist>は、backdrop-filter持ちの祖先要素＋スクロールコンテナ内では
+        // Chrome系ブラウザで候補ポップアップが描画されないことがあるため、通常のDOM要素で表示している。
+        function renderThemeSuggestions() {
+            const input = document.getElementById("formTheme");
+            const box = document.getElementById("formThemeSuggestions");
+            const query = input.value.trim().toLowerCase();
+            const matches = themeCandidates.filter(t => !query || t.toLowerCase().includes(query));
+
+            box.innerHTML = "";
+            if (matches.length === 0) {
+                box.classList.add("hidden");
+                return;
+            }
+            matches.forEach(theme => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.textContent = theme;
+                item.className = "block w-full text-left px-2.5 py-1.5 text-xs text-gray-200 hover:bg-gray-800 transition-colors";
+                item.onclick = () => selectThemeSuggestion(theme);
+                box.appendChild(item);
+            });
+            box.classList.remove("hidden");
+        }
+
+        function selectThemeSuggestion(theme) {
+            document.getElementById("formTheme").value = theme;
+            hideThemeSuggestions();
+        }
+
+        function hideThemeSuggestions() {
+            const box = document.getElementById("formThemeSuggestions");
+            box.classList.add("hidden");
+            box.innerHTML = "";
         }
 
         function closeModal(skipHistory) {
@@ -4368,6 +4406,13 @@
             if (menu && !menu.classList.contains("hidden")) {
                 const clickedToggle = btn && btn.getAttribute("onclick") === "toggleHeaderMenu()";
                 if (!menu.contains(e.target) && !clickedToggle) menu.classList.add("hidden");
+            }
+
+            // テーマ候補ドロップダウンの外をタップしたら閉じる
+            const themeBox = document.getElementById("formThemeSuggestions");
+            const themeInput = document.getElementById("formTheme");
+            if (themeBox && !themeBox.classList.contains("hidden")) {
+                if (!themeBox.contains(e.target) && e.target !== themeInput) themeBox.classList.add("hidden");
             }
         });
 
