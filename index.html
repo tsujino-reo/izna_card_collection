@@ -2768,8 +2768,16 @@
                 : (currentTabMobData ? currentTabMobData.icon : "👤");
 
             const isViewer = (currentRole === "viewer");
-            // 見出しの並び順は固定の優先リストではなく、種類名の50音・アルファベット順で機械的にソートする
-            const albumCategories = getCategoriesForAlbum(currentAlbum).slice().sort((a, b) => a.localeCompare(b, "ja"));
+            // 見出しの並び順は「アルバム封入→店舗特典・ラキドロ→サノク→その他」の固定順。
+            // categories配列に存在しない値（今後追加された種類）は末尾に50音順で並べる。
+            const albumCategories = getCategoriesForAlbum(currentAlbum).slice().sort((a, b) => {
+                const ia = categories.indexOf(a);
+                const ib = categories.indexOf(b);
+                if (ia === -1 && ib === -1) return a.localeCompare(b, "ja");
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+            });
 
             if (albumCategories.length === 0) {
                 // I-LAND2のようにカテゴリ指定がないアルバムは、フラットな1行4枚グリッドで表示する
