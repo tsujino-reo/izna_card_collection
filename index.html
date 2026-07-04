@@ -478,6 +478,10 @@
                         <option value="viewer">👁️ 閲覧者</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">ニックネーム（誰に渡すかのメモ、任意）</label>
+                    <input type="text" id="inviteNicknameInput" placeholder="例: ゆうさん" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                </div>
                 <button id="inviteCreateBtn" onclick="createInviteLink()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">🔗 招待リンクを発行</button>
 
                 <div id="inviteResultBox" class="hidden pt-3 border-t border-gray-800 space-y-2">
@@ -945,7 +949,7 @@
                 await result.user.getIdToken(true);
 
                 // 招待トークンを保持している場合は、既存のadmin判定チェックより先に適用する
-                await applyInviteIfPresent(uid, result.user.displayName, result.user.email);
+                await applyInviteIfPresent(uid);
 
                 const role = await fetchGoogleRole(uid);
                 if (role === "admin" || role === "editor" || role === "viewer") {
@@ -1042,12 +1046,14 @@
         async function createInviteLink() {
             const btn = document.getElementById("inviteCreateBtn");
             const role = document.getElementById("inviteRoleSelect").value;
+            const nickname = document.getElementById("inviteNicknameInput").value.trim();
             if (btn) { btn.disabled = true; btn.textContent = "発行中..."; }
             try {
                 const token = generateInviteToken();
                 const expiresAt = firebase.firestore.Timestamp.fromMillis(Date.now() + INVITE_EXPIRY_MS);
                 await FS_INVITES_COL().doc(token).set({
                     role,
+                    nickname,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     createdBy: fbAuth.currentUser ? fbAuth.currentUser.uid : null,
                     expiresAt,
@@ -1056,6 +1062,7 @@
                 const url = `${location.origin}${location.pathname}?invite=${token}`;
                 document.getElementById("inviteResultUrl").value = url;
                 document.getElementById("inviteResultBox").classList.remove("hidden");
+                document.getElementById("inviteNicknameInput").value = "";
             } catch (err) {
                 alert("招待リンクの発行に失敗しました: " + (err.message || err));
             } finally {
@@ -1131,14 +1138,12 @@
 
                 const roleLabel = { editor: "✍️ 編集者", viewer: "👁️ 閲覧者" };
                 container.innerHTML = entries.map(([uid, info]) => {
-                    const name = info.displayName || info.email || `不明なユーザー（${uid.slice(0, 8)}…）`;
-                    const sub = (info.displayName && info.email) ? info.email : "";
+                    const name = info.nickname || `（ニックネーム未設定・${uid.slice(0, 8)}…）`;
                     const grantedAt = grantedAtMap[uid] ? grantedAtMap[uid].toLocaleDateString("ja-JP") : "不明";
                     return `
                         <div class="flex items-center justify-between gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                             <div class="min-w-0">
                                 <p class="text-xs font-bold text-gray-200 truncate">${escapeHtml(name)}</p>
-                                ${sub ? `<p class="text-[10px] text-gray-500 truncate">${escapeHtml(sub)}</p>` : ''}
                                 <p class="text-[9px] text-gray-500">${roleLabel[info.role] || info.role} ・ 付与日: ${grantedAt}</p>
                             </div>
                             <button onclick="revokeAccess('${uid}')" class="shrink-0 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
@@ -1191,7 +1196,7 @@
                     alert("この招待リンクの有効期限が切れています。");
                     return;
                 }
-                pendingInvite = { token, role: data.role };
+                pendingInvite = { token, role: data.role, nickname: data.nickname || "" };
             } catch (err) {
                 console.error("招待リンクの確認に失敗しました:", err);
             }
@@ -1199,12 +1204,12 @@
 
         // Googleログイン成功時に呼ばれる。有効な招待を保持していれば、そのロールをuidに付与し、
         // invites/{token}を使用済みにして、URLから?inviteパラメータを除去する。
-        async function applyInviteIfPresent(uid, displayName, email) {
+        async function applyInviteIfPresent(uid) {
             if (!pendingInvite) return;
-            const { token, role } = pendingInvite;
+            const { token, role, nickname } = pendingInvite;
             try {
-                // アクセス管理画面で識別しやすいよう、招待消費時点のGoogleアカウント名・メールも保存する
-                await FS_USERS_DOC().set({ [uid]: { role, invitedVia: token, displayName: displayName || "", email: email || "" } }, { merge: true });
+                // アクセス管理画面で識別できるよう、招待作成時に管理者が入力したニックネームを引き継ぐ
+                await FS_USERS_DOC().set({ [uid]: { role, invitedVia: token, nickname: nickname || "" } }, { merge: true });
                 await FS_INVITES_COL().doc(token).update({
                     used: true,
                     usedBy: uid,

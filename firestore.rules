@@ -74,7 +74,7 @@ service cloud.firestore {
       let invitePath = /databases/$(database)/documents/invites/$(token);
       return isSignedIn() && !isAnonymous()
         && after.diff(before).affectedKeys().hasOnly([uid])
-        && entry.keys().hasOnly(['role', 'invitedVia', 'displayName', 'email'])
+        && entry.keys().hasOnly(['role', 'invitedVia', 'nickname'])
         && exists(invitePath)
         && get(invitePath).data.used == false
         && get(invitePath).data.role == entry.role
