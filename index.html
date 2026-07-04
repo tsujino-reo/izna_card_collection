@@ -269,7 +269,7 @@
             <button onclick="closeCameraCapture()" class="text-white text-lg px-2">✕</button>
         </div>
 
-        <div class="relative flex-1 overflow-hidden bg-black flex items-center justify-center">
+        <div id="cameraViewport" class="relative flex-1 overflow-hidden bg-black flex items-center justify-center touch-none">
             <video id="cameraVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
 
             <!-- トレカ比率のガイド枠。中央固定で表示し、枠外を暗くして合わせやすくする -->
@@ -281,8 +281,10 @@
                 🔄 縦/横を切り替え
             </button>
 
-            <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6">
-                トレカを枠の中にきっちり収めてください
+            <span id="cameraZoomLabel" class="hidden absolute top-3 left-3 z-10 bg-black/70 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full pointer-events-none">🔍 1.0x</span>
+
+            <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6 pointer-events-none">
+                トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）
             </p>
 
             <canvas id="cameraCanvas" class="hidden"></canvas>
@@ -3435,9 +3437,20 @@
         let cameraFacingMode = "environment"; // "environment"=背面カメラ, "user"=前面カメラ
         let cameraOrientation = "portrait"; // "portrait"(縦) or "landscape"(横)
 
+        // ── ピンチズーム ──────────────────────────────────────────
+        // ハードウェアズーム（MediaStreamTrackのzoom制約）に対応していればそれを使い、
+        // 非対応端末ではvideo要素へのCSS transform: scale()によるデジタルズームにフォールバックする。
+        let cameraZoom = 1;
+        let cameraZoomBase = 1;
+        let cameraPinchStartDist = 0;
+        let isPinchingCamera = false;
+        let cameraZoomCapability = null; // {min, max, step} 取得できなければnull（デジタルズーム）
+        const CAMERA_DIGITAL_ZOOM_MAX = 4;
+
         async function openCameraCapture(targetFace) {
             cameraTargetFace = targetFace;
             cameraOrientation = "portrait";
+            isPinchingCamera = false;
             updateCameraGuideOrientation();
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -3465,6 +3478,20 @@
                 });
                 const video = document.getElementById("cameraVideo");
                 video.srcObject = cameraStream;
+
+                // ストリームが変わるたびにズーム状態をリセットし、
+                // 新しいカメラがハードウェアズームに対応しているか確認する
+                cameraZoom = 1;
+                cameraZoomCapability = null;
+                video.style.transform = "";
+                const track = cameraStream.getVideoTracks()[0];
+                if (track && typeof track.getCapabilities === "function") {
+                    const caps = track.getCapabilities();
+                    if (caps && caps.zoom && caps.zoom.max > caps.zoom.min) {
+                        cameraZoomCapability = caps.zoom;
+                    }
+                }
+                updateCameraZoomLabel();
             } catch (err) {
                 console.error("カメラの起動に失敗しました:", err);
                 alert("カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: " + (err && err.message ? err.message : err));
@@ -3476,6 +3503,74 @@
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
                 cameraStream = null;
+            }
+        }
+
+        // 2本指の距離を計測し、ピンチ開始時からの比率でズーム倍率を決める
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function handleCameraTouchStart(e) {
+            if (e.touches.length === 2) {
+                isPinchingCamera = true;
+                cameraPinchStartDist = getTouchDistance(e.touches);
+                cameraZoomBase = cameraZoom;
+                e.preventDefault();
+            }
+        }
+
+        function handleCameraTouchMove(e) {
+            if (!isPinchingCamera || e.touches.length !== 2) return;
+            e.preventDefault();
+            if (cameraPinchStartDist <= 0) return;
+            const dist = getTouchDistance(e.touches);
+            const ratio = dist / cameraPinchStartDist;
+            const maxZoom = cameraZoomCapability ? cameraZoomCapability.max : CAMERA_DIGITAL_ZOOM_MAX;
+            const minZoom = cameraZoomCapability ? cameraZoomCapability.min : 1;
+            const newZoom = Math.min(maxZoom, Math.max(minZoom, cameraZoomBase * ratio));
+            setCameraZoom(newZoom);
+        }
+
+        function handleCameraTouchEnd(e) {
+            if (e.touches.length < 2) {
+                isPinchingCamera = false;
+            }
+        }
+
+        // ハードウェアズーム対応端末ではMediaStreamTrackのzoom制約を使い、
+        // 非対応・失敗時はvideo要素へのCSS transform: scale()によるデジタルズームにフォールバックする
+        async function setCameraZoom(zoom) {
+            cameraZoom = zoom;
+            if (cameraZoomCapability) {
+                try {
+                    const track = cameraStream && cameraStream.getVideoTracks()[0];
+                    if (track) await track.applyConstraints({ advanced: [{ zoom }] });
+                } catch (err) {
+                    console.warn("ハードウェアズームの適用に失敗しました。デジタルズームにフォールバックします:", err);
+                    cameraZoomCapability = null;
+                    applyDigitalZoom(zoom);
+                }
+            } else {
+                applyDigitalZoom(zoom);
+            }
+            updateCameraZoomLabel();
+        }
+
+        function applyDigitalZoom(zoom) {
+            document.getElementById("cameraVideo").style.transform = `scale(${zoom})`;
+        }
+
+        function updateCameraZoomLabel() {
+            const label = document.getElementById("cameraZoomLabel");
+            if (!label) return;
+            if (cameraZoom > 1.01) {
+                label.textContent = `🔍 ${cameraZoom.toFixed(1)}x`;
+                label.classList.remove("hidden");
+            } else {
+                label.classList.add("hidden");
             }
         }
 
@@ -3513,6 +3608,8 @@
         // 撮影ボタン押下時：video映像のうち、画面上のガイド枠に対応する実ピクセル範囲だけを
         // canvasに描画して切り出す（クレジットカードスキャナーと同じ考え方）
         function captureCardPhoto() {
+            if (isPinchingCamera) return; // ピンチ操作中の誤タップによる誤動作を防ぐ
+
             const video = document.getElementById("cameraVideo");
             const frameEl = document.getElementById("cameraGuideFrame");
 
@@ -4691,6 +4788,17 @@
                 if (!themeBox.contains(e.target) && e.target !== themeInput) themeBox.classList.add("hidden");
             }
         });
+
+        // カメラ撮影画面の2本指ピンチズーム。{ passive: false }でpreventDefault()を有効にし、
+        // ブラウザ標準のページピンチズームやスクロールと競合しないようにする。
+        (function() {
+            const viewport = document.getElementById("cameraViewport");
+            if (!viewport) return;
+            viewport.addEventListener("touchstart", handleCameraTouchStart, { passive: false });
+            viewport.addEventListener("touchmove", handleCameraTouchMove, { passive: false });
+            viewport.addEventListener("touchend", handleCameraTouchEnd, { passive: false });
+            viewport.addEventListener("touchcancel", handleCameraTouchEnd, { passive: false });
+        })();
 
         // トレカ画像・アルバムカバー画像の長押しで、ブラウザ標準の「画像を保存」「Googleレンズで検索」等の
         // コンテキストメニューが出てしまうのを防ぐ（イベントデリゲーションで動的生成された画像にも効かせる）。
