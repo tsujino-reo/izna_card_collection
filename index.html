@@ -2626,6 +2626,9 @@
             document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("migrateBgBtn").classList.toggle("hidden", currentRole !== "admin");
+            // ヘッダーの「⋮」メニューはギャラリー画面と共有のため、renderApp()と同じ判定をここでも適用する
+            document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
