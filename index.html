@@ -99,8 +99,11 @@
             </div>
             
             <div class="flex items-center gap-1.5">
-                <div class="relative">
-                    <button onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
+                <!-- editor/viewer（表示上）には「⋮」メニューの中身が「ログアウト」しか残らないため、
+                     メニュー自体を隠し、代わりにログアウトボタンを直接ヘッダーに出す -->
+                <button id="headerLogoutBtn" onclick="logoutApp()" title="ログアウト" class="hidden bg-gray-800 hover:bg-rose-950 border border-gray-700 text-rose-400 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">🚪</button>
+                <div id="headerMenuWrap" class="relative">
+                    <button id="headerMenuBtn" onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
                         <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🏞️ 背景設定
@@ -130,8 +133,8 @@
                     </div>
                 </div>
 
-                <!-- editorのみ、見た目だけを一時的に閲覧モードへ切り替えられる（実権限は変わらない） -->
-                <button id="viewModeToggleBtn" onclick="toggleEditorViewerPreview()" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold text-gray-300 hover:bg-gray-800 transition-colors"></button>
+                <!-- editor・adminのみ、見た目だけを一時的に閲覧モードへ切り替えられる（実権限は変わらない） -->
+                <button id="viewModeToggleBtn" onclick="toggleViewerPreviewMode()" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold text-gray-300 hover:bg-gray-800 transition-colors whitespace-nowrap"></button>
 
                 <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら常にviewerで
                      サーバー側により確定しており、自己申告で変更できてはならないため常にdisabled表示にする -->
@@ -2520,12 +2523,12 @@
             document.getElementById("roleSelect").value = currentRole;
         }
 
-        // editorが「見た目だけ」閲覧モードに切り替える／戻すためのトグル。
+        // editor・adminが「見た目だけ」閲覧モードに切り替える／戻すためのトグル。
         // 実際の権限（realRole、およびFirestoreルール側の判定）は一切変わらず、
-        // UI表示用のcurrentRoleだけを一時的にeditor⇔viewerで切り替える。
-        function toggleEditorViewerPreview() {
-            if (realRole !== "editor") return; // editor以外はこの機能を使えない
-            currentRole = (currentRole === "viewer") ? "editor" : "viewer";
+        // UI表示用のcurrentRoleだけを一時的にrealRole⇔viewerで切り替える。
+        function toggleViewerPreviewMode() {
+            if (realRole !== "editor" && realRole !== "admin") return; // viewerはこの機能を使えない
+            currentRole = (currentRole === "viewer") ? realRole : "viewer";
             if (currentRole === "viewer" && isMultiSelectMode) {
                 isMultiSelectMode = false;
                 selectedCardIds.clear();
@@ -2545,8 +2548,8 @@
         // ヘッダーはトップ階層・ギャラリー画面で共有のため、両方のrender関数から呼ぶ必要がある。
         function updateViewModeToggleButton() {
             const btn = document.getElementById("viewModeToggleBtn");
-            btn.classList.toggle("hidden", realRole !== "editor");
-            btn.textContent = (currentRole === "viewer") ? "✍️ 編集表示に戻す" : "👁️ 閲覧モードで表示";
+            btn.classList.toggle("hidden", realRole !== "editor" && realRole !== "admin");
+            btn.textContent = (currentRole === "viewer") ? "✍️ 編集に戻す" : "👁 閲覧モード";
         }
 
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
@@ -2665,7 +2668,14 @@
             document.getElementById("manageStoresBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("resetAllDataBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("migrateBgBtn").classList.toggle("hidden", currentRole !== "admin");
-            // ヘッダーの「⋮」メニューはギャラリー画面と共有のため、renderApp()と同じ判定をここでも適用する
+            // ヘッダー共通部分（「⋮」メニュー等）はギャラリー画面と共有のため、まとめて1関数に集約している
+            updateHeaderMenuVisibility();
+        }
+
+        // ヘッダー共通部分（「⋮」メニューの中身・メニューボタン自体・ログアウトボタン・閲覧モード切替ボタン）の
+        // 表示/非表示をロールに応じてまとめて適用する。トップ階層・ギャラリー画面のどちらの再描画からも呼ぶ
+        // （片方だけ更新して食い違うのを防ぐため、判定はここに集約する）。
+        function updateHeaderMenuVisibility() {
             document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
@@ -2673,6 +2683,8 @@
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("headerMenuBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("headerLogoutBtn").classList.toggle("hidden", currentRole === "admin");
             updateViewModeToggleButton();
         }
 
@@ -2740,14 +2752,7 @@
             document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
             document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
             // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
-            document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
-            document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
-            updateViewModeToggleButton();
+            updateHeaderMenuVisibility();
             renderGlobalSearch();
             renderGallery();
         }
