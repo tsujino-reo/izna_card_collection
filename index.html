@@ -720,6 +720,29 @@
             return result;
         }
 
+        // ギャラリーから選択したトレカ写真を、カメラ撮影時と同程度（長辺1200px・JPEG85%）に圧縮する。
+        // アスペクト比は元画像のまま維持し、長辺のみ縮小する（カメラ撮影のような固定枠クロップは行わない）。
+        async function compressCardPhotoDataUrl(dataUrl) {
+            if (!dataUrl || !dataUrl.startsWith("data:image")) return dataUrl || "";
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 1200;
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    if (w > MAX || h > MAX) {
+                        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                        else       { w = Math.round(w * MAX / h); h = MAX; }
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", 0.85));
+                };
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+
         // 100000〜999999 のランダムな6桁PINを生成する
         function generatePin() {
             return String(Math.floor(100000 + Math.random() * 900000));
@@ -3042,8 +3065,14 @@
             }
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                currentTempImageUrl = e.target.result;
+            reader.onload = async function(e) {
+                let dataUrl = e.target.result;
+                try {
+                    dataUrl = await compressCardPhotoDataUrl(dataUrl);
+                } catch (err) {
+                    console.warn("画像の圧縮に失敗しました。元画像をそのまま使用します:", err);
+                }
+                currentTempImageUrl = dataUrl;
                 const imgPreview = document.getElementById("imgPreview");
                 imgPreview.src = currentTempImageUrl;
                 imgPreview.classList.remove("hidden");
@@ -3070,8 +3099,14 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                currentTempImageUrlBack = e.target.result;
+            reader.onload = async function(e) {
+                let dataUrl = e.target.result;
+                try {
+                    dataUrl = await compressCardPhotoDataUrl(dataUrl);
+                } catch (err) {
+                    console.warn("画像の圧縮に失敗しました。元画像をそのまま使用します:", err);
+                }
+                currentTempImageUrlBack = dataUrl;
                 removeBackImageFlag = false;
                 const imgPreview = document.getElementById("imgPreviewBack");
                 imgPreview.src = currentTempImageUrlBack;
