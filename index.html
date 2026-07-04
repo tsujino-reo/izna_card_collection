@@ -130,7 +130,9 @@
                     </div>
                 </div>
 
-                <select id="roleSelect" onchange="changeRole()" class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">
+                <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら常にviewerで
+                     サーバー側により確定しており、自己申告で変更できてはならないため常にdisabled表示にする -->
+                <select id="roleSelect" disabled class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400 disabled:opacity-80 cursor-default">
                     <option value="admin">👑 管理</option>
                     <option value="editor">✍️ 編集</option>
                     <option value="viewer">👁️ 閲覧</option>
@@ -774,7 +776,6 @@
                     const role = await fetchGoogleRole(uid);
                     if (role === "admin" || role === "editor" || role === "viewer") {
                         currentRole = role;
-                        localStorage.setItem("izna_role", role);
                         hidePinGate();
                         await init();
                         return;
@@ -923,7 +924,6 @@
                 const role = await fetchGoogleRole(uid);
                 if (role === "admin" || role === "editor" || role === "viewer") {
                     currentRole = role;
-                    localStorage.setItem("izna_role", role);
                     hidePinGate();
                     await init();
                     return;
@@ -1586,11 +1586,8 @@
 
         async function init() {
             // 匿名（共有PIN）セッションは常にviewer固定。
-            // 以前このブラウザでGoogleログイン(admin/editor)していた場合でも、
-            // localStorageに残ったizna_roleを引き継がないようにする。
             if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
                 currentRole = "viewer";
-                localStorage.setItem("izna_role", "viewer");
             }
 
             loadAlbumColorCacheFromStorage();
@@ -2511,23 +2508,6 @@
         // 匿名PINセッションはinit()冒頭でviewer固定）ため、ここではUI表示を同期するのみ。
         function loadSavedRole() {
             document.getElementById("roleSelect").value = currentRole;
-        }
-
-        function changeRole() {
-            currentRole = document.getElementById("roleSelect").value;
-            localStorage.setItem("izna_role", currentRole);
-            if (currentRole === "viewer" && isMultiSelectMode) {
-                isMultiSelectMode = false;
-                selectedCardIds.clear();
-                document.getElementById("multiSelectBar").classList.add("hidden");
-            }
-            // 現在表示中の画面に応じて、ロール変更を反映する
-            renderAlbumTabs();
-            if (currentView === "gallery") {
-                renderGalleryMemberSwitchBar();
-                renderApp();
-            }
-            updateStorageEstimate();
         }
 
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
