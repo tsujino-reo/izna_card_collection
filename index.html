@@ -381,7 +381,7 @@
             
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
                 <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">閉じる</button>
-                <button onclick="saveCard()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white">保存</button>
+                <button id="saveCardBtn" onclick="saveCard()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50">保存</button>
             </div>
         </div>
     </div>
@@ -3328,6 +3328,9 @@
         }
 
         async function saveCard() {
+            const btn = document.getElementById("saveCardBtn");
+            if (btn.disabled) return; // 保存処理中の二重タップを防ぐ
+
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
             const member = document.getElementById("formMember").value;
             const album = document.getElementById("formAlbum").value;
@@ -3341,6 +3344,9 @@
                 alert("トレカ画像を登録してください！");
                 return;
             }
+
+            btn.disabled = true;
+            btn.textContent = "保存中...";
 
             try {
                 let newId = null;
@@ -3411,6 +3417,9 @@
             } catch (err) {
                 console.error("saveCard failed:", err);
                 alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "保存";
             }
         }
 
