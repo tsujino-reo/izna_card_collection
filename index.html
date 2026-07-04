@@ -2922,6 +2922,11 @@
                         catCards = catCards.slice().sort((a, b) =>
                             (a.store || "").localeCompare(b.store || "", "en", { sensitivity: "base" })
                         );
+                    } else if (cat === "その他") {
+                        // その他は、並び順の設定に関わらず常にテーマ名の50音・アルファベット順で固定表示する
+                        catCards = catCards.slice().sort((a, b) =>
+                            (a.theme || "").localeCompare(b.theme || "", "ja")
+                        );
                     } else {
                         catCards = sortCards(catCards);
                     }
@@ -2944,6 +2949,7 @@
 
                 albumCategories.forEach(cat => {
                     if (cat === "店舗特典・ラキドロ") return; // 店舗名アルファベット順固定のため並び替え不可
+                    if (cat === "その他") return; // テーマ名50音順固定のため並び替え不可
                     const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
                     const el = document.getElementById(listId);
                     if (el) initSortableForList(el);
