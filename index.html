@@ -117,9 +117,6 @@
                 <div id="headerMenuWrap" class="relative">
                     <button id="headerMenuBtn" onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
-                        <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🏞️ 背景設定
-                        </button>
                         <button id="pinViewBtn" onclick="showCurrentPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔑 PINコードを確認
                         </button>
@@ -152,12 +149,9 @@
                 <button id="viewModeToggleBtn" onclick="toggleViewerPreviewMode()" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold text-gray-300 hover:bg-gray-800 transition-colors whitespace-nowrap"></button>
 
                 <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら常にviewerで
-                     サーバー側により確定しており、自己申告で変更できてはならないため常にdisabled表示にする -->
-                <select id="roleSelect" disabled class="bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400 disabled:opacity-80 cursor-default">
-                    <option value="admin">👑 管理</option>
-                    <option value="editor">✍️ 編集</option>
-                    <option value="viewer">👁️ 閲覧</option>
-                </select>
+                     サーバー側により確定しており、自己申告で変更できるUIは持たせない。
+                     adminの時だけ、クリック不可のラベルとして表示する -->
+                <span id="adminRoleLabel" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">👑 管理</span>
             </div>
         </header>
 
@@ -187,6 +181,9 @@
             <div class="grid grid-cols-2 gap-2 mb-4" id="albumTabs"></div>
 
             <div class="flex justify-end gap-2 mb-4 flex-wrap">
+                <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                    🏞️ 背景設定
+                </button>
                 <button id="migrateBgBtn" onclick="migrateLocalBackgroundsToFirestore()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     ☁️ 背景をFirestoreへ移行
                 </button>
@@ -2931,7 +2928,7 @@
         // currentRoleはこの時点で既に確定している（Googleログイン時はfetchGoogleRole、
         // 匿名PINセッションはinit()冒頭でviewer固定）ため、ここではUI表示を同期するのみ。
         function loadSavedRole() {
-            document.getElementById("roleSelect").value = currentRole;
+            document.getElementById("adminRoleLabel").classList.toggle("hidden", currentRole !== "admin");
         }
 
         // editor・adminが「見た目だけ」閲覧モードに切り替える／戻すためのトグル。
