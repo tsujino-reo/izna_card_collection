@@ -225,15 +225,8 @@
             <div id="filterSection" class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
                 <div class="space-y-2 relative z-10">
-                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
+                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..."
                            class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
-                    <select id="sortSelect" onchange="renderApp()"
-                            class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-pink-500 transition-colors">
-                        <option value="custom" selected>↕ 並び順（ドラッグで並び替え）</option>
-                        <option value="newest">🆕 追加日が新しい順</option>
-                        <option value="oldest">📅 追加日が古い順</option>
-                        <option value="theme">🔤 テーマ名順</option>
-                    </select>
                 </div>
             </div>
 
@@ -3199,8 +3192,6 @@
             document.getElementById("currentMemberName").innerText = currentMember;
             document.getElementById("addBtn").classList.toggle("hidden", currentRole === "viewer");
             document.getElementById("multiSelectToggleBtn").classList.toggle("hidden", currentRole === "viewer");
-            // 並び替え(ドラッグ)機能はadmin限定のため、並び順セレクタもadmin以外には表示しない
-            document.getElementById("sortSelect").classList.toggle("hidden", currentRole !== "admin");
             // 編集者・閲覧者はトレカ以外（背景・全データ上書き系の読込）を操作できないようにする
             updateHeaderMenuVisibility();
             renderGlobalSearch();
@@ -3380,30 +3371,16 @@
                             : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
                         bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">${cardsHtml}</div>`;
                     } else if (cat === "その他") {
-                        // その他はテーマ名でグループ化する。グループの並び順(50音・アルファベット順)自体は固定だが、
-                        // 同じテーマ名グループ内のカードだけは並び順設定に従う(customなら手動で並び替えた順)。
-                        const themeGroups = new Map();
-                        catCards.forEach(card => {
-                            const theme = card.theme || "";
-                            if (!themeGroups.has(theme)) themeGroups.set(theme, []);
-                            themeGroups.get(theme).push(card);
+                        // その他はテーマ名の50音・アルファベット順で固定表示する(1つの詰めたグリッド)。
+                        // 同じテーマ名同士のカードの間でだけ、ドラッグでの手動並び替え(sortOrder)を許可する。
+                        catCards = catCards.slice().sort((a, b) => {
+                            const themeDiff = (a.theme || "").localeCompare(b.theme || "", "ja");
+                            return themeDiff !== 0 ? themeDiff : (a.sortOrder || 0) - (b.sortOrder || 0);
                         });
-                        const sortedThemes = Array.from(themeGroups.keys()).sort((a, b) => a.localeCompare(b, "ja"));
-                        bodyHtml = catCards.length
-                            ? sortedThemes.map(theme => {
-                                const groupCards = sortCards(themeGroups.get(theme));
-                                const groupListId = `${listId}-theme-${btoa(encodeURIComponent(theme)).replace(/=/g, '')}`;
-                                const cardsHtml = groupCards.map(card => renderCard(card, isViewer)).join('');
-                                return `
-                                    <div class="mb-3 last:mb-0">
-                                        <div class="text-[9px] font-bold text-gray-500 mb-1 pl-2 border-l border-gray-700">${theme || "未指定"} (${groupCards.length})</div>
-                                        <div id="${groupListId}" data-album="${currentAlbum}" data-category="${cat}" data-theme="${theme}" class="grid grid-cols-4 gap-2">
-                                            ${cardsHtml}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')
-                            : `<div class="grid grid-cols-4 gap-2"><div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div></div>`;
+                        const cardsHtml = catCards.length
+                            ? catCards.map(card => renderCard(card, isViewer)).join('')
+                            : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">${cardsHtml}</div>`;
                     } else {
                         catCards = sortCards(catCards);
                         const cardsHtml = catCards.length
@@ -3425,36 +3402,27 @@
 
                 if (currentRole === "admin") albumCategories.forEach(cat => {
                     if (cat === "店舗特典・ラキドロ") return; // 店舗名アルファベット順固定のため並び替え不可
+                    const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
+                    const el = document.getElementById(listId);
+                    if (!el) return;
                     if (cat === "その他") {
-                        // テーマグループの並び順自体は固定のため、グループ外枠ではなく
-                        // 同一テーマ名グループの内側だけをSortable化する(グループを跨いだドラッグは不可にする)
-                        const baseListId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
-                        document.querySelectorAll(`[id^="${baseListId}-theme-"]`).forEach(el => {
-                            initSortableForList(el, el.id);
+                        // テーマ名の並び順自体は固定のため、同じテーマ名同士のカードの間でだけ
+                        // ドラッグを許可する(異なるテーマ名の位置には割り込めないようにonMoveで制限する)。
+                        initSortableForList(el, el.id, {
+                            onMove: function (evt) {
+                                return evt.dragged.dataset.theme === evt.related.dataset.theme;
+                            }
                         });
                         return;
                     }
-                    const listId = `catlist-${btoa(encodeURIComponent(cat)).replace(/=/g, '')}`;
-                    const el = document.getElementById(listId);
-                    if (el) initSortableForList(el);
+                    initSortableForList(el);
                 });
             }
         }
 
-        // 並び順設定に応じてカード配列をソートする
+        // カード配列を手動並び順(sortOrder)でソートする
         function sortCards(cards) {
-            const sortBy = document.getElementById("sortSelect").value;
-            const sorted = [...cards];
-            if (sortBy === "custom") {
-                sorted.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-            } else if (sortBy === "newest") {
-                sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-            } else if (sortBy === "oldest") {
-                sorted.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-            } else if (sortBy === "theme") {
-                sorted.sort((a, b) => a.theme.localeCompare(b.theme, 'ja'));
-            }
-            return sorted;
+            return [...cards].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
         }
 
         function renderCard(card, isViewer) {
@@ -3488,7 +3456,7 @@
             const imgAspectClass = isLandscape ? "aspect-[3/2]" : "aspect-[2/3]";
 
             return `
-                <div data-id="${card.id}" class="bg-gray-950/95 ${needsReviewClass} rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}"
+                <div data-id="${card.id}" data-theme="${card.theme || ''}" class="bg-gray-950/95 ${needsReviewClass} rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}"
                      onclick="${clickHandler}">
                     ${checkboxHtml}
                     ${backBadgeHtml}
@@ -3512,17 +3480,19 @@
         // 指定したグリッド要素にドラッグ並び替えを設定する。
         // カテゴリがある場合は、異なるカテゴリ間でのドラッグ移動も許可する(group指定)。
         // group引数を渡した場合はそのリスト専用のグループ名になり、他のリストとの間でのドラッグ移動ができなくなる
-        // (「その他」のテーマ別グループのように、グループを跨いだドラッグを禁止したい場合に使う)。
-        function initSortableForList(el, group) {
+        // (「その他」のように、他カテゴリとの間でのドラッグ移動を禁止したい場合に使う)。
+        // extraOptions引数はSortableJSの設定にそのままマージされる
+        // (「その他」で、同じテーマ名同士の間でしか並び替えできないようonMoveを追加する場合などに使う)。
+        function initSortableForList(el, group, extraOptions) {
             // 並び替え(ドラッグ)機能はadmin限定
-            if (currentRole !== "admin" || document.getElementById("sortSelect").value !== "custom" || isMultiSelectMode) return;
+            if (currentRole !== "admin" || isMultiSelectMode) return;
 
             if (typeof Sortable === "undefined") {
                 console.warn("SortableJSが読み込まれていないため、ドラッグ並び替えは無効です。");
                 return;
             }
 
-            const instance = Sortable.create(el, {
+            const instance = Sortable.create(el, Object.assign({
                 group: group || 'pcArchiveGroup',
                 animation: 180,
                 // 触れてすぐドラッグが始まると通常タップ（カードを開く操作）と競合するため、
@@ -3547,7 +3517,7 @@
                     await saveOrder(evt.to);
                     renderApp();
                 }
-            });
+            }, extraOptions || {}));
 
             sortableInstances.push(instance);
         }
