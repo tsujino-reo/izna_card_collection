@@ -48,11 +48,12 @@
            PC（横長）幅でも同じcover表示のまま拡大すると顔が異常にズームインして見える。
            768px以上ではcontainに切り替えて画像全体を収め、はみ出た余白はアプリの基調色で埋める。
            JS側(applyBackgroundScale等)がインラインstyleでbackground-sizeを都度設定しているため、
-           ここでは!importantでPC幅の時だけ上書きする（スマホ表示のcover挙動には影響しない）。 */
+           ここでは!importantでPC幅の時だけ上書きする（スマホ表示のcover挙動には影響しない）。
+           background-positionは、背景設定モーダルで画像ごとに調整できるPC専用位置(pcOffsetX/Y)を
+           JS側(applyBackgroundTransform)がPC幅の時だけ都度設定するため、ここでは上書きしない。 */
         @media (min-width: 768px) {
             #appBackgroundLayer {
                 background-size: contain !important;
-                background-position: center !important;
                 background-color: #090a0f !important;
             }
         }
@@ -608,6 +609,27 @@
                         <button id="bgNudgeRight" data-dx="0.5" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
                         <div></div>
                         <button id="bgNudgeDown" data-dx="0" data-dy="0.5" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
+                        <div></div>
+                    </div>
+                </div>
+
+                <!-- PC幅(768px以上)では画像全体が欠けずに収まる表示(contain)になるため、
+                     拡大率・クロップ範囲ではなく「余白の中でどちらに寄せるか」だけを個別に調整する。 -->
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-3 mt-1 border-t border-gray-800">PC画面での表示位置</p>
+                <p class="text-[9px] text-gray-600 leading-relaxed">PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。</p>
+                <div id="bgPcPreviewWrap" class="w-full aspect-video rounded-xl border border-gray-800 overflow-hidden bg-black">
+                    <div id="bgPcPreview" class="w-full h-full" style="background-repeat:no-repeat;"></div>
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    <div class="grid grid-cols-3 gap-1.5 w-32">
+                        <div></div>
+                        <button id="bgPcNudgeUp" data-dx="0" data-dy="-2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
+                        <div></div>
+                        <button id="bgPcNudgeLeft" data-dx="-2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
+                        <button onclick="resetBgPcPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
+                        <button id="bgPcNudgeRight" data-dx="2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
+                        <div></div>
+                        <button id="bgPcNudgeDown" data-dx="0" data-dy="2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
                         <div></div>
                     </div>
                 </div>
@@ -2396,12 +2418,26 @@
         // 現在の背景画像の自然サイズ（読み込み済みのもの）。cover基準の拡大計算に使う。
         let currentBgNaturalSize = null;
         let currentBgScale = 100; // 画面回転時の再計算用に、現在適用中の拡大率を保持する
+        let currentBgTransform = null; // 画面幅がPC/スマホの境界をまたいだ時の再適用用に、直近のtransformを保持する
         let bgCache = {}; // Firestoreから読み込んだ背景データのキャッシュ { key: { data, transform } }
+
+        // PC幅（768px以上）かどうかを、CSS側の@media (min-width: 768px)と揃えて判定する
+        function isPcWidth() {
+            return window.matchMedia("(min-width: 768px)").matches;
+        }
 
         function applyBackgroundTransform(transform) {
             const layer = document.getElementById("appBackgroundLayer");
             const t = transform || { ...BG_TRANSFORM_DEFAULT };
-            layer.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            currentBgTransform = t;
+            // PC幅ではbackground-sizeがCSS側でcontainに固定されるため、
+            // スマホ向けのcoverクロップ位置(offsetX/offsetY)ではなく、
+            // 画像ごとに個別調整できるPC専用の位置(pcOffsetX/pcOffsetY)を使う。
+            if (isPcWidth()) {
+                layer.style.backgroundPosition = `${t.pcOffsetX ?? 50}% ${t.pcOffsetY ?? 50}%`;
+            } else {
+                layer.style.backgroundPosition = `${t.offsetX}% ${t.offsetY}%`;
+            }
             layer.style.backgroundColor = t.fillColor || "#000000"; // scale<100%で空いた余白を埋める色
             applyBackgroundScale(t.scale);
         }
@@ -2436,7 +2472,9 @@
         }
 
         const BG_TRANSFORM_STORAGE_KEY = "izna_bg_transform_v1";
-        const BG_TRANSFORM_DEFAULT = { scale: 100, offsetX: 50, offsetY: 50, fillColor: "#000000" };
+        // pcOffsetX/pcOffsetYは、PC幅(contain表示)での画像位置調整専用。
+        // スマホ向けのoffsetX/offsetY(coverクロップ位置)とは独立して背景画像ごとに保存する。
+        const BG_TRANSFORM_DEFAULT = { scale: 100, offsetX: 50, offsetY: 50, fillColor: "#000000", pcOffsetX: 50, pcOffsetY: 50 };
 
         function getBgTransform(key) {
             try {
@@ -4648,6 +4686,13 @@
                 previewEl.style.backgroundColor = t.fillColor || "#000000";
                 previewEl.style.backgroundRepeat = "no-repeat";
 
+                // PC幅(contain表示)専用のプレビュー。実際の画面表示と同じくbackground-size:containで、
+                // pcOffsetX/pcOffsetYの位置調整結果をそのまま確認できるようにする。
+                const pcPreviewEl = document.getElementById("bgPcPreview");
+                pcPreviewEl.style.backgroundImage = `url('${url}')`;
+                pcPreviewEl.style.backgroundSize = "contain";
+                pcPreviewEl.style.backgroundPosition = `${t.pcOffsetX ?? 50}% ${t.pcOffsetY ?? 50}%`;
+
                 const img = new Image();
                 img.onload = () => {
                     const rect = previewEl.getBoundingClientRect();
@@ -4671,6 +4716,7 @@
                 previewEl.style.backgroundImage = "";
                 previewEl.innerHTML = "未設定";
                 document.getElementById("bgSourceImg").src = "";
+                document.getElementById("bgPcPreview").style.backgroundImage = "";
                 adjustPanel.classList.add("hidden");
             }
         }
@@ -4730,10 +4776,32 @@
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
+        // PC幅(contain表示)専用の位置(pcOffsetX/pcOffsetY)を調整する。
+        // スマホ向けのnudgeBgPositionとは独立して、画像ごとに保存される。
+        function nudgeBgPcPosition(dx, dy) {
+            const key = getCurrentBgModalKey();
+            const t = getBgTransform(key);
+            t.pcOffsetX = Math.max(0, Math.min(100, (t.pcOffsetX ?? 50) + dx));
+            t.pcOffsetY = Math.max(0, Math.min(100, (t.pcOffsetY ?? 50) + dy));
+            saveBgTransform(key, t);
+            updateBgPcPreviewPosition(t);
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
+        function updateBgPcPreviewPosition(t) {
+            const el = document.getElementById("bgPcPreview");
+            if (el) el.style.backgroundPosition = `${t.pcOffsetX ?? 50}% ${t.pcOffsetY ?? 50}%`;
+        }
+
         // 上下左右ボタンを長押しすると、一定間隔で連続的に移動し続けるようにする。
         // 単発タップは1回だけ移動、300ms以上押し続けると80ms間隔の連続移動に切り替わる。
+        // スマホ向け(offsetX/Y)・PC向け(pcOffsetX/Y)の2セットのボタンで共有する汎用実装。
         function setupBgNudgeButtonHold() {
-            const buttonIds = ["bgNudgeUp", "bgNudgeLeft", "bgNudgeRight", "bgNudgeDown"];
+            bindNudgeButtonHold(["bgNudgeUp", "bgNudgeLeft", "bgNudgeRight", "bgNudgeDown"], nudgeBgPosition);
+            bindNudgeButtonHold(["bgPcNudgeUp", "bgPcNudgeLeft", "bgPcNudgeRight", "bgPcNudgeDown"], nudgeBgPcPosition);
+        }
+
+        function bindNudgeButtonHold(buttonIds, nudgeFn) {
             buttonIds.forEach(id => {
                 const btn = document.getElementById(id);
                 if (!btn || btn._holdSetup) return; // 二重セットアップ防止
@@ -4748,14 +4816,14 @@
                 const startHold = (e) => {
                     e.preventDefault();
                     // スマホではtouchstartの後に合成されたmousedownイベントが追加で発火することがあり、
-                    // 何もしないとnudgeBgPositionが1タップで2回実行されてしまう（移動幅が倍になって見える原因）。
+                    // 何もしないとnudgeFnが1タップで2回実行されてしまう（移動幅が倍になって見える原因）。
                     // touchstartが発火した直後のmousedownは無視する。
                     if (e.type === "mousedown" && Date.now() - lastTouchTime < 500) return;
                     if (e.type === "touchstart") lastTouchTime = Date.now();
 
-                    nudgeBgPosition(dx, dy); // 押した瞬間に1回動かす（タップ操作と同じ即時反応）
+                    nudgeFn(dx, dy); // 押した瞬間に1回動かす（タップ操作と同じ即時反応）
                     holdTimer = setTimeout(() => {
-                        repeatInterval = setInterval(() => nudgeBgPosition(dx, dy), 80);
+                        repeatInterval = setInterval(() => nudgeFn(dx, dy), 80);
                     }, 300);
                 };
                 const stopHold = () => {
@@ -4783,6 +4851,16 @@
             saveBgTransform(key, t);
             getCurrentBgPreviewEl().style.backgroundPosition = "50% 50%";
             renderBgCropFrame(t);
+            if (currentView === "gallery") updateBackgroundForCurrentContext();
+        }
+
+        function resetBgPcPosition() {
+            const key = getCurrentBgModalKey();
+            const t = getBgTransform(key);
+            t.pcOffsetX = 50;
+            t.pcOffsetY = 50;
+            saveBgTransform(key, t);
+            updateBgPcPreviewPosition(t);
             if (currentView === "gallery") updateBackgroundForCurrentContext();
         }
 
@@ -5500,9 +5578,15 @@
             }
         });
 
-        // 画面回転・サイズ変更時に、現在の拡大率設定を維持したままcover計算を再実行する
+        // 画面回転・サイズ変更時に、現在の設定を維持したままcover/contain計算を再実行する。
+        // ウィンドウ幅がPC/スマホの768pxをまたいだ場合、position(offsetX/Y ⇔ pcOffsetX/Y)も
+        // 切り替える必要があるため、サイズだけでなくtransform全体を再適用する。
         window.addEventListener("resize", () => {
-            applyBackgroundScale(currentBgScale);
+            if (currentBgTransform) {
+                applyBackgroundTransform(currentBgTransform);
+            } else {
+                applyBackgroundScale(currentBgScale);
+            }
         });
 
         // Firebase 認証・PINゲートを経由してから既存の init() を呼ぶ
