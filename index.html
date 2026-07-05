@@ -56,6 +56,17 @@
                 background-color: #090a0f !important;
             }
         }
+        /* PC幅（768px以上）ではアプリ全体の横幅を広げ、メンバー選択グリッドやトレカ一覧を
+           横に広く使えるようにする。スマホ幅ではmax-w-md(28rem)のまま変えない。 */
+        @media (min-width: 768px) {
+            #appShell {
+                max-width: 60rem;
+            }
+        }
+        /* マウスのドラッグ・ホイールで横スクロールできるタブ列（メンバー/アルバム切り替えバー）用のカーソル。
+           マウス操作でのみ意味を持つため、タッチ操作の見た目には影響しない。 */
+        .drag-scroll-x { cursor: grab; }
+        .drag-scroll-x.dragging-scroll { cursor: grabbing; }
         input, select, button { color: #ffffff !important; }
         input::placeholder { color: #64748b !important; }
         .card-shadow { box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.2), 0 8px 10px -6px rgba(236, 72, 153, 0.2); }
@@ -103,7 +114,7 @@
 <body id="appBody" class="p-3 min-h-screen pb-24">
 <div id="appBackgroundLayer"></div>
 
-    <div class="max-w-md mx-auto">
+    <div id="appShell" class="max-w-md mx-auto">
         <header class="flex justify-between items-center border-b border-gray-800 pb-3 mb-4 bg-black/60 p-2 rounded-xl">
             <div>
                 <h1 class="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-rose-400">izna ARCHIVE</h1>
@@ -178,7 +189,7 @@
             </div>
 
             <label class="block text-[9px] text-gray-400 font-black uppercase tracking-wider mb-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">MEMBER SELECT</label>
-            <div class="grid grid-cols-2 gap-2 mb-4" id="albumTabs"></div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4" id="albumTabs"></div>
 
             <div class="flex justify-end gap-2 mb-4 flex-wrap">
                 <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
@@ -215,9 +226,9 @@
                 <span id="galleryViewTitle" class="text-base font-black text-white drop-shadow-lg truncate relative z-10"></span>
             </div>
 
-            <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-2 hide-scrollbar"></div>
+            <div id="galleryMemberSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-2 hide-scrollbar drag-scroll-x"></div>
 
-            <div id="galleryAlbumSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar"></div>
+            <div id="galleryAlbumSwitchBar" class="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar drag-scroll-x"></div>
 
             <div id="filterSection" class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
@@ -2042,6 +2053,60 @@
             updateFormSelectOptions();
             showView("albumList");
             updateStorageEstimate();
+
+            // メンバー/アルバム切り替えバーは横幅からはみ出た項目がマウス操作では選べなかったため、
+            // PC向けにドラッグ・ホイールでの横スクロールを有効にする（要素自体は固定でrenderのたびに
+            // 作り直されないため、ここで一度だけバインドすれば十分）。
+            enableDragScroll(document.getElementById("galleryMemberSwitchBar"));
+            enableDragScroll(document.getElementById("galleryAlbumSwitchBar"));
+        }
+
+        // 指定した要素に、マウスのドラッグおよびホイールでの横スクロールを追加する。
+        // overflow-x-autoな横並びタブ列（メンバー/アルバム切り替えバー）が画面幅からはみ出た時に、
+        // タッチ操作は効くがマウス操作では隠れた項目を選べない、という問題への対応。
+        // タッチ操作はmousedown/wheelイベントを発火しないため、スマホの挙動には影響しない。
+        function enableDragScroll(el) {
+            if (!el || el.dataset.dragScrollBound) return;
+            el.dataset.dragScrollBound = "1";
+
+            let isDown = false;
+            let moved = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+
+            el.addEventListener("mousedown", (e) => {
+                isDown = true;
+                moved = false;
+                startX = e.pageX;
+                startScrollLeft = el.scrollLeft;
+                el.classList.add("dragging-scroll");
+            });
+            window.addEventListener("mousemove", (e) => {
+                if (!isDown) return;
+                const dx = e.pageX - startX;
+                if (Math.abs(dx) > 3) moved = true;
+                el.scrollLeft = startScrollLeft - dx;
+            });
+            window.addEventListener("mouseup", () => {
+                isDown = false;
+                el.classList.remove("dragging-scroll");
+            });
+            // ドラッグ操作の直後に発火するclickでタブが誤って切り替わらないよう、
+            // 実際に動いた場合はcaptureフェーズでボタン本体のonclickより先に止める
+            el.addEventListener("click", (e) => {
+                if (moved) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            }, true);
+            // マウスホイールの縦スクロールを横スクロールに変換する
+            el.addEventListener("wheel", (e) => {
+                if (el.scrollWidth <= el.clientWidth) return;
+                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                    el.scrollLeft += e.deltaY;
+                    e.preventDefault();
+                }
+            }, { passive: false });
         }
 
         function openDB() {
@@ -3401,11 +3466,11 @@
             if (albumCategories.length === 0) {
                 // I-LAND2のようにカテゴリ指定がないアルバムは、フラットな1行4枚グリッドで表示する
                 const sortedCards = sortCards(filteredCards);
-                container.className = "grid grid-cols-4 gap-2 pb-10";
+                container.className = "grid grid-cols-4 md:grid-cols-6 gap-2 pb-10";
                 container.dataset.album = currentAlbum;
                 container.innerHTML = sortedCards.length
                     ? sortedCards.map(card => renderCard(card, isViewer)).join('')
-                    : `<div class="col-span-4 text-center text-gray-400 italic py-8 text-xs">登録されたトレカはありません</div>`;
+                    : `<div class="col-span-full text-center text-gray-400 italic py-8 text-xs">登録されたトレカはありません</div>`;
                 if (currentRole === "admin") initSortableForList(container);
             } else {
                 // category が未設定、または現在のアルバムで無効な値になっているカードは
@@ -3432,8 +3497,8 @@
                         );
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
-                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">${cardsHtml}</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     } else if (cat === "その他") {
                         // その他はテーマ名の50音・アルファベット順で固定表示する(1つの詰めたグリッド)。
                         // 同じテーマ名同士のカードの間でだけ、ドラッグでの手動並び替え(sortOrder)を許可する。
@@ -3443,14 +3508,14 @@
                         });
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
-                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">${cardsHtml}</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     } else {
                         catCards = sortCards(catCards);
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-4 text-gray-400 italic text-[10px] py-2">未登録</div>`;
-                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 gap-2">${cardsHtml}</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                        bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     }
 
                     return `
