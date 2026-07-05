@@ -385,8 +385,8 @@
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">メンバー</label>
-                    <select id="formMember" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
+                    <label class="text-gray-400 font-bold block mb-1">メンバー（複数選択可）</label>
+                    <div id="formMemberOptions" class="flex flex-wrap gap-1.5"></div>
                 </div>
 
                 <div>
@@ -1592,6 +1592,29 @@
             return false;
         }
 
+        // カードのメンバー一覧を配列で返す。
+        // 新形式（card.members配列）と旧形式（card.member単一値）の両方に対応する後方互換ヘルパー。
+        // 移行が完了していないカードや、移行前のFirestoreキャッシュを読んだ場合でも安全に扱えるようにする。
+        function getCardMembers(card) {
+            if (Array.isArray(card.members)) return card.members;
+            return card.member ? [card.member] : [];
+        }
+
+        // 指定したメンバーが、そのカードに含まれるかどうかを判定する
+        function cardHasMember(card, memberName) {
+            return getCardMembers(card).includes(memberName);
+        }
+
+        // カードのメンバー名を「MAI, JEEMIN, SAEBI」のように並べて表示用の文字列にする
+        function formatMemberNames(card) {
+            return getCardMembers(card).join(", ");
+        }
+
+        // カードに含まれるメンバーのいずれかが検索語にマッチするかを判定する
+        function cardMembersMatchSearch(card, searchVal) {
+            return getCardMembers(card).some(m => memberMatchesSearch(m, searchVal));
+        }
+
         const DEFAULT_ALBUMS = [
             { name: "I-LAND2", coverUrl: "", categories: [] },
             { name: "N/a", coverUrl: "" },
@@ -1644,6 +1667,27 @@
             }
 
             localStorage.setItem(FLAG_KEY, "true");
+        }
+
+        // 単一メンバー（member: "MAI"）形式 → 複数メンバー（members: ["MAI"]）配列形式への一回限りの移行。
+        // 既にmembers配列を持つカードは対象外。移行後はmemberフィールド自体を削除する
+        // （saveCardsToDB → Firestoreのset()はドキュメント全体を置き換えるため、
+        // JS側のオブジェクトからmemberキーを消しておけばFirestore上でも自動的に消える）。
+        const MEMBERS_ARRAY_MIGRATED_FLAG_KEY = "izna_members_array_migrated_v1";
+        async function migrateMembersToArray() {
+            if (localStorage.getItem(MEMBERS_ARRAY_MIGRATED_FLAG_KEY)) return;
+
+            const toFix = pcData.filter(card => !Array.isArray(card.members) && card.member);
+            if (toFix.length > 0) {
+                toFix.forEach(card => {
+                    card.members = [card.member];
+                    delete card.member;
+                });
+                await saveCardsToDB(toFix);
+                console.log(`複数メンバー対応のため${toFix.length}枚のカードをmembers配列形式に更新しました`);
+            }
+
+            localStorage.setItem(MEMBERS_ARRAY_MIGRATED_FLAG_KEY, "true");
         }
 
         // データ移行（カテゴリ機能の廃止→復活など）の影響で category が欠落・無効な値の
@@ -1714,16 +1758,37 @@
             }
         }
 
-        // 選択中のアルバムに応じて、formMemberの選択肢を制限する（例: JIYOONはI-LAND2/N/a以外不可）
+        // 選択中のアルバムに応じて、formMemberOptionsのチェックボックス選択肢を制限する
+        // （例: JIYOONはI-LAND2/N/a以外不可）。既にチェック済みのメンバーは、
+        // 引き続き選択可能な範囲であればチェック状態を維持する。
         function updateFormMemberOptions() {
             const albumName = document.getElementById("formAlbum").value;
             const allowed = getAllowedMembersForAlbum(albumName);
-            const select = document.getElementById("formMember");
-            const prevValue = select.value;
-            select.innerHTML = allowed.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
-            if (allowed.some(m => m.name === prevValue)) {
-                select.value = prevValue;
-            }
+            const container = document.getElementById("formMemberOptions");
+            const prevChecked = new Set(getFormSelectedMembers());
+            container.innerHTML = allowed.map(m => {
+                const inputId = `formMemberOpt_${m.name}`;
+                const checked = prevChecked.has(m.name) ? "checked" : "";
+                return `
+                    <label for="${inputId}" class="flex items-center gap-1.5 bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 cursor-pointer select-none">
+                        <input type="checkbox" id="${inputId}" value="${m.name}" ${checked} class="w-3.5 h-3.5 accent-pink-500">
+                        <span class="text-[11px] font-bold text-white">${m.icon} ${m.name}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        // formMemberOptionsでチェックされているメンバー名の配列を返す
+        function getFormSelectedMembers() {
+            return Array.from(document.querySelectorAll('#formMemberOptions input[type="checkbox"]:checked')).map(el => el.value);
+        }
+
+        // formMemberOptionsのチェック状態を、指定したメンバー名の配列に合わせて設定する
+        function setFormSelectedMembers(names) {
+            const set = new Set(names);
+            document.querySelectorAll('#formMemberOptions input[type="checkbox"]').forEach(el => {
+                el.checked = set.has(el.value);
+            });
         }
 
         const STORAGE_KEY_ALBUMS = "izna_albums_v3";
@@ -1949,6 +2014,7 @@
                 await migrateIndexedDBCardsToFirestore();
                 await loadPCData();
                 await migrateMemberNamesToEnglish();
+                await migrateMembersToArray();
                 await normalizeCardCategories();
             } catch (err) {
                 console.error("カードデータの読み込みに失敗しました:", err);
@@ -2922,7 +2988,6 @@
 
         function updateFormSelectOptions() {
             document.getElementById("formAlbum").innerHTML = albums.map(a => `<option value="${a.name}">💿 ${a.name}</option>`).join('');
-            document.getElementById("formMember").innerHTML = memberData.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
         }
 
         // currentRoleはこの時点で既に確定している（Googleログイン時はfetchGoogleRole、
@@ -3057,7 +3122,7 @@
                 const imgHtml = photoUrl
                     ? `<img src="${photoUrl}" draggable="false" oncontextmenu="return false" class="photocard-img absolute inset-0 w-full h-full object-cover">`
                     : `<div class="absolute inset-0 flex items-center justify-center text-4xl">${m.icon}</div>`;
-                const count = pcData.filter(d => d.member === m.name).length;
+                const count = pcData.filter(d => cardHasMember(d, m.name)).length;
                 return `
                 <div onclick="selectMemberTop('${m.name}')" role="button" tabindex="0"
                      class="bg-gray-900/50 border border-gray-800/80 rounded-2xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
@@ -3210,7 +3275,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
-                memberMatchesSearch(card.member, searchVal) ||
+                cardMembersMatchSearch(card, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -3221,13 +3286,14 @@
 
             resultsBox.classList.remove("hidden");
             listBox.innerHTML = matches.slice(0, 30).map(card => {
-                const mob = memberData.find(m => m.name === card.member);
+                const firstMemberName = getCardMembers(card)[0];
+                const mob = memberData.find(m => m.name === firstMemberName);
                 return `
-                    <div onclick="jumpToCard('${card.album}', '${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
+                    <div onclick="jumpToCard('${card.album}', '${firstMemberName}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
                         <span class="text-base shrink-0">${mob ? mob.icon : "👤"}</span>
                         <div class="min-w-0 flex-1">
                             <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
-                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${formatMemberNames(card)} ・ ${card.album}</p>
                         </div>
                         <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
                     </div>
@@ -3252,7 +3318,7 @@
                 textMatchesSearch(card.theme, searchVal) ||
                 textMatchesSearch(card.album, searchVal) ||
                 textMatchesSearch(card.store, searchVal) ||
-                memberMatchesSearch(card.member, searchVal) ||
+                cardMembersMatchSearch(card, searchVal) ||
                 (card.tags || []).some(t => textMatchesSearch(t, searchVal))
             );
 
@@ -3264,13 +3330,14 @@
 
             resultsBox.classList.remove("hidden");
             listBox.innerHTML = matches.slice(0, 30).map(card => {
-                const mob = memberData.find(m => m.name === card.member);
+                const firstMemberName = getCardMembers(card)[0];
+                const mob = memberData.find(m => m.name === firstMemberName);
                 return `
-                    <div onclick="jumpToCard('${card.album}', '${card.member}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
+                    <div onclick="jumpToCard('${card.album}', '${firstMemberName}')" class="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-gray-800 transition-colors">
                         <span class="text-base shrink-0">${mob ? mob.icon : "👤"}</span>
                         <div class="min-w-0 flex-1">
                             <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
-                            <p class="text-[9px] text-gray-400 truncate">${card.member} ・ ${card.album}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${formatMemberNames(card)} ・ ${card.album}</p>
                         </div>
                         <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
                     </div>
@@ -3300,7 +3367,7 @@
             const container = document.getElementById("galleryContainer");
             container.innerHTML = "";
 
-            const albumCards = pcData.filter(d => d.album === currentAlbum && d.member === currentMember);
+            const albumCards = pcData.filter(d => d.album === currentAlbum && cardHasMember(d, currentMember));
             const searchVal = document.getElementById("searchBar").value.toLowerCase().trim();
 
             const filteredCards = albumCards.filter(card => {
@@ -3308,7 +3375,7 @@
                 return textMatchesSearch(card.theme, searchVal) ||
                        textMatchesSearch(card.album, searchVal) ||
                        textMatchesSearch(card.store, searchVal) ||
-                       memberMatchesSearch(card.member, searchVal) ||
+                       cardMembersMatchSearch(card, searchVal) ||
                        (card.tags || []).some(t => textMatchesSearch(t, searchVal));
             });
 
@@ -3545,7 +3612,7 @@
             document.getElementById("formTags").value = "";
             document.getElementById("formAlbum").value = currentAlbum;
             updateFormMemberOptions();
-            document.getElementById("formMember").value = currentMember;
+            setFormSelectedMembers([currentMember]);
             updateFormCategoryOptions();
             currentTempImageUrl = "";
             currentTempImageUrlBack = "";
@@ -4038,7 +4105,7 @@
             if (btn.disabled) return; // 保存処理中の二重タップを防ぐ
 
             const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
-            const member = document.getElementById("formMember").value;
+            const members = getFormSelectedMembers();
             const album = document.getElementById("formAlbum").value;
             const albumCats = getCategoriesForAlbum(album);
             const category = albumCats.length > 0 ? document.getElementById("formCategory").value : null;
@@ -4051,6 +4118,11 @@
                 return;
             }
 
+            if (members.length === 0) {
+                alert("メンバーを1人以上選択してください！");
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = "保存中...";
 
@@ -4060,7 +4132,8 @@
                     const card = pcData.find(d => d.id === editId);
                     if (card) {
                         card.theme = theme;
-                        card.member = member;
+                        card.members = members;
+                        delete card.member;
                         card.album = album;
                         card.category = category;
                         card.store = store;
@@ -4089,7 +4162,7 @@
                     newId = generateId();
                     const newCard = {
                         id: newId,
-                        member: member,
+                        members: members,
                         album: album,
                         category: category,
                         store: store,
@@ -4171,7 +4244,7 @@
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formAlbum").value = card.album;
             updateFormMemberOptions();
-            document.getElementById("formMember").value = card.member;
+            setFormSelectedMembers(getCardMembers(card));
             updateFormCategoryOptions();
             if (card.category) {
                 document.getElementById("formCategory").value = card.category;
@@ -4257,7 +4330,7 @@
             renderPreviewFace(card);
             updatePreviewFrameAspect("viewModalImgWrap", card.orientation || "portrait");
 
-            document.getElementById("viewModalMember").innerText = card.member;
+            document.getElementById("viewModalMember").innerText = formatMemberNames(card);
             document.getElementById("viewModalAlbum").innerText = card.album;
             document.getElementById("viewModalTheme").innerText = card.theme;
             const catRow = document.getElementById("viewModalCategoryRow");
@@ -4323,7 +4396,7 @@
             currentPreviewCardId = null;
             isShowingBackFace = false;
             if (!skipHistory) history.back();
-            if (card) jumpToCard(card.album, card.member);
+            if (card) jumpToCard(card.album, getCardMembers(card)[0] || currentMember);
         }
 
         function openAlbumModal() {
@@ -4944,7 +5017,7 @@
         }
 
         function selectAllCards() {
-            const memberCards = pcData.filter(d => d.member === currentMember);
+            const memberCards = pcData.filter(d => cardHasMember(d, currentMember));
             memberCards.forEach(card => selectedCardIds.add(card.id));
             updateSelectedCountLabel();
             renderGallery();
@@ -5029,10 +5102,19 @@
             const targetCategory = albumCats.length > 0 ? document.getElementById("bulkMoveCategory").value : null;
             const targetStore = (targetCategory === "店舗特典・ラキドロ") ? document.getElementById("bulkMoveStore").value : null;
 
+            const targets = pcData.filter(d => selectedCardIds.has(d.id));
+            // まとめて移動は移動先メンバーを1人に確定させる操作のため、
+            // 複数メンバーが登録されているカードが混ざっていると他のメンバー情報が消えてしまう。
+            // そのため、対象に複数メンバーカードが1件でもあれば移動自体を中止する。
+            if (targets.some(card => getCardMembers(card).length > 1)) {
+                alert("複数メンバーのカードが含まれているため一括移動できません。");
+                return;
+            }
+
             try {
-                const targets = pcData.filter(d => selectedCardIds.has(d.id));
                 targets.forEach(card => {
-                    card.member = targetMember;
+                    card.members = [targetMember];
+                    delete card.member;
                     card.album = targetAlbum;
                     card.category = targetCategory;
                     card.store = targetStore;
