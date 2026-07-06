@@ -103,6 +103,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── 更新履歴（カード追加・編集・削除ログ。閲覧はadminのみ、記録は追記専用） ──
+    match /activityLog/{logId} {
+      allow read: if isAdmin();
+      allow create: if isEditor();
+      allow update, delete: if false;
+    }
+
     // 上記以外の全パスはデフォルトで拒否
   }
 }

@@ -141,6 +141,9 @@
                         <button id="accessManageBtn" onclick="openAccessManageModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             👥 アクセス管理
                         </button>
+                        <button id="activityLogBtn" onclick="openActivityLogModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            📜 更新履歴
+                        </button>
                         <button id="exportFullBtn" onclick="exportData(true)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
@@ -549,6 +552,19 @@
         </div>
     </div>
 
+    <div id="activityLogModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📜 更新履歴</h3>
+            <p class="text-[10px] text-gray-500 mb-4">直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。</p>
+
+            <div id="activityLogList" class="space-y-2"></div>
+
+            <div class="flex justify-end mt-4">
+                <button onclick="closeActivityLogModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <div id="backgroundModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
             <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏞️ 背景設定</h3>
@@ -769,6 +785,7 @@
         const FS_CARDS_COL   = () => fbDb.collection("cards");
         const FS_USERS_DOC   = () => fbDb.doc("config/users");
         const FS_INVITES_COL = () => fbDb.collection("invites");
+        const FS_ACTIVITY_LOG_COL = () => fbDb.collection("activityLog");
         const FS_BATCH_LIMIT = 450; // Firestoreのバッチ上限500件に対する安全マージン
 
         // アルバムカバー画像をFirestoreドキュメントサイズ上限（1MB）に収まるよう圧縮する。
@@ -1175,6 +1192,9 @@
             const doc = await fbDb.doc("config/users").get();
             if (!doc.exists) return null;
             const entry = doc.data()[uid];
+            // activityLogに記録するuserNicknameは毎回Firestoreを読みに行かず、
+            // ロール確認と同じタイミングで一度だけ取得してキャッシュしておく
+            currentUserNickname = (entry && entry.nickname) || "";
             return (entry && entry.role) || null;
         }
 
@@ -1411,6 +1431,59 @@
             } catch (err) {
                 console.error("アクセス取り消しに失敗しました:", err);
                 alert("アクセス取り消しに失敗しました: " + (err.message || err));
+            }
+        }
+
+        // ── 更新履歴（トレカの追加・編集・削除ログ、admin専用） ──────────────
+        function openActivityLogModal() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            document.getElementById("activityLogModal").classList.remove("hidden");
+            pushModalHistory("closeActivityLogModal");
+            renderActivityLogList();
+        }
+
+        function closeActivityLogModal(skipHistory) {
+            document.getElementById("activityLogModal").classList.add("hidden");
+            if (!skipHistory) history.back();
+        }
+
+        const ACTIVITY_LOG_ACTION_LABEL = { create: "🆕 追加", update: "✏️ 編集", delete: "🗑️ 削除" };
+
+        // activityLogコレクションから直近60日分を新しい順に取得して一覧表示する
+        async function renderActivityLogList() {
+            const container = document.getElementById("activityLogList");
+            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">読み込み中...</p>`;
+            try {
+                const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+                const snapshot = await FS_ACTIVITY_LOG_COL()
+                    .where("timestamp", ">=", sixtyDaysAgo)
+                    .orderBy("timestamp", "desc")
+                    .get();
+
+                if (snapshot.empty) {
+                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">直近60日間の更新履歴はありません</p>`;
+                    return;
+                }
+
+                container.innerHTML = snapshot.docs.map(doc => {
+                    const log = doc.data();
+                    const actionLabel = ACTIVITY_LOG_ACTION_LABEL[log.action] || log.action;
+                    const dateLabel = log.timestamp ? log.timestamp.toDate().toLocaleString("ja-JP") : "記録中...";
+                    const nickname = log.userNickname || "（ニックネーム未設定）";
+                    return `
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-gray-200">${actionLabel}</span>
+                                <span class="text-[9px] text-gray-500 shrink-0">${dateLabel}</span>
+                            </div>
+                            <p class="text-[11px] text-gray-300 mt-1 truncate">${escapeHtml(log.cardSummary || "")}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5">${escapeHtml(nickname)}${log.note ? ` ・ ${escapeHtml(log.note)}` : ""}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("更新履歴の取得に失敗しました:", err);
+                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">読み込みに失敗しました</p>`;
             }
         }
 
@@ -1847,6 +1920,8 @@
         let currentRole = "admin";
         // realRole: サーバー側で確定した本当のロール。閲覧モード表示のON/OFFの基準・復元先として使う。
         let realRole = "admin";
+        // activityLogのuserNicknameに使う、ログイン中ユーザーのニックネーム（fetchGoogleRoleで一度だけ取得してキャッシュ）
+        let currentUserNickname = "";
         let currentView = "albumList"; // "albumList" | "gallery"
         let currentAlbum = "I-LAND2"; // 選択中のアルバム名（初期値は固定6アルバムの先頭）
         let currentTempImageUrl = "";
@@ -2737,6 +2812,30 @@
             await FS_CARDS_COL().doc(card.id).set(stripImgUrl(card));
         }
 
+        // ログ一覧で分かりやすいよう、メンバー名・テーマ・アルバムをまとめた簡易サマリーを作る
+        function buildCardActivitySummary(card) {
+            return [formatMemberNames(card), card.theme, card.album].filter(Boolean).join(" / ");
+        }
+
+        // カードの追加・編集・削除をactivityLogコレクションに記録する。
+        // 記録失敗が本来の保存/削除処理を止めてしまわないよう、ここでエラーを握りつぶす。
+        async function logCardActivity(action, card, note) {
+            if (!fbAuth.currentUser || fbAuth.currentUser.isAnonymous) return;
+            try {
+                await FS_ACTIVITY_LOG_COL().add({
+                    action,
+                    cardId: card.id,
+                    userId: fbAuth.currentUser.uid,
+                    userNickname: currentUserNickname || "",
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    cardSummary: buildCardActivitySummary(card),
+                    note: note || ""
+                });
+            } catch (err) {
+                console.warn("activityLogの記録に失敗しました:", err);
+            }
+        }
+
         async function deleteCardFromDB(id) {
             await FS_CARDS_COL().doc(id).delete();
             await Promise.all([deleteCardImage(id), deleteCardImage(id + "_back")]);
@@ -3259,6 +3358,7 @@
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("accessManageBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("activityLogBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportFullBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("exportMetaBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("headerMenuBtn").classList.toggle("hidden", currentRole !== "admin");
@@ -3680,6 +3780,7 @@
                     if (card && newCategory) {
                         card.category = newCategory;
                         await saveCardToDB(card);
+                        await logCardActivity("update", card, "ドラッグでカテゴリ変更");
                     }
                     await saveOrder(evt.to);
                     renderApp();
@@ -4246,6 +4347,7 @@
                             card.orientation = currentTempImageOrientation;
                         }
                         await saveCardToDB(card);
+                        await logCardActivity("update", card);
                         // 新しい画像が選ばれた場合、または既存画像をピンチ/ドラッグで調整した場合に保存する
                         await saveAdjustedCardImage(
                             card.id, document.getElementById("imgLabel"), getFrontImgAdjuster(),
@@ -4278,6 +4380,7 @@
                     // admin以外（editor）が新規登録したカードは「未確認」として扱い、admin画面で目立たせる
                     if (currentRole !== "admin") newCard.needsReview = true;
                     await saveCardToDB(newCard);
+                    await logCardActivity("create", newCard);
                     await saveAdjustedCardImage(
                         newId, document.getElementById("imgLabel"), getFrontImgAdjuster(),
                         currentTempImageUrl, true
@@ -4404,6 +4507,7 @@
                 const target = pcData.find(d => d.id === id);
                 if (target) await captureUndoSnapshot([target]);
                 await deleteCardFromDB(id);
+                if (target) await logCardActivity("delete", target);
                 await loadPCData();
                 renderApp();
                 updateStorageEstimate();
@@ -4425,6 +4529,7 @@
             if (currentRole === "admin" && card.needsReview) {
                 card.needsReview = false;
                 saveCardToDB(card).catch(err => console.error("needsReviewの更新に失敗しました:", err));
+                logCardActivity("update", card, "未確認フラグを解除");
                 renderApp();
             }
 
@@ -5176,6 +5281,7 @@
 
                 for (const card of targets) {
                     await deleteCardFromDB(card.id);
+                    await logCardActivity("delete", card, "一括削除");
                 }
 
                 selectedCardIds.clear();
@@ -5263,6 +5369,9 @@
                     card.store = targetStore;
                 });
                 await saveCardsToDB(targets);
+                for (const card of targets) {
+                    await logCardActivity("update", card, "まとめて移動");
+                }
 
                 closeBulkMoveModal();
                 selectedCardIds.clear();
