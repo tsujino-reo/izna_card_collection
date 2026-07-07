@@ -1667,7 +1667,7 @@
 
         function textMatchesSearch(text, searchVal) {
             if (!searchVal) return true;
-            if (!text) return false;
+            if (typeof text !== "string" || !text) return false;
             const targetLower = text.toLowerCase();
             const targetKatakana = hiraganaToKatakana(targetLower);
             const targetKatakanaLoose = normalizeSmallKana(targetKatakana);
