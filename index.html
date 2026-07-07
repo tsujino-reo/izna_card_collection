@@ -3719,14 +3719,14 @@
 
             // 1行4枚のグリッドではカード自体の幅はグリッドセルに合わせる。
             // 画像コンテナの高さは縦向き・横向きに関わらずaspect-[2/3]で統一し、
-            // object-coverで中央基準にトリミングして枠に収める(タイトル/ボタンの位置ズレ防止)
+            // object-containで画像全体(枠外にはみ出さず)を中央配置する(タイトル/ボタンの位置ズレ防止)
             return `
                 <div data-id="${card.id}" data-theme="${card.theme || ''}" class="bg-gray-950/95 ${needsReviewClass} rounded-xl p-1.5 card-shadow photocard-element transition-transform hover:scale-[1.02] cursor-pointer select-none relative ${selectedRingClass}"
                      onclick="${clickHandler}">
                     ${checkboxHtml}
                     ${backBadgeHtml}
                     <div class="aspect-[2/3] bg-gray-900 rounded-lg mb-1 flex items-center justify-center border border-gray-800 overflow-hidden relative">
-                        ${card.imgUrl ? `<img src="${card.imgUrl}" draggable="false" oncontextmenu="return false" loading="lazy" decoding="async" class="photocard-img absolute inset-0 w-full h-full object-cover">` : `<span class="text-base">📸</span>`}
+                        ${card.imgUrl ? `<img src="${card.imgUrl}" draggable="false" oncontextmenu="return false" loading="lazy" decoding="async" class="photocard-img absolute inset-0 w-full h-full object-contain">` : `<span class="text-base">📸</span>`}
                     </div>
                     <div class="text-white font-bold text-[9px] truncate w-full">${(card.category === "店舗特典・ラキドロ") ? (card.store || '店舗未設定') : (card.theme || '未指定')}</div>
                     ${actionButtons}
