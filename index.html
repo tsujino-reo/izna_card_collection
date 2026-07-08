@@ -125,7 +125,7 @@
             <div class="flex items-center gap-1.5">
                 <!-- editor/viewer（表示上）には「⋮」メニューの中身が「ログアウト」しか残らないため、
                      メニュー自体を隠し、代わりにログアウトボタンを直接ヘッダーに出す -->
-                <button id="headerLogoutBtn" onclick="logoutApp()" title="ログアウト" class="hidden bg-gray-800 hover:bg-rose-950 border border-gray-700 text-rose-400 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">🚪</button>
+                <button id="headerLogoutBtn" onclick="logoutApp()" class="hidden bg-gray-800 hover:bg-rose-950 border border-gray-700 text-rose-400 text-[10px] rounded-lg px-2 py-1.5 font-bold whitespace-nowrap transition-colors">ログアウト</button>
                 <div id="headerMenuWrap" class="relative">
                     <button id="headerMenuBtn" onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
@@ -704,6 +704,8 @@
 
             <!-- PIN入力フォーム -->
             <div id="pinGateEntry" class="hidden space-y-4">
+                <!-- Googleログイン等の失敗はこの中に追加表示するだけにし、ログイン画面自体は消さない -->
+                <p id="pinGateLoginErrorMsg" class="hidden text-rose-400 text-xs font-bold bg-rose-950/50 border border-rose-800/50 rounded-xl p-3 whitespace-pre-wrap text-left"></p>
                 <p class="text-gray-300 text-sm font-bold">PINコードを入力してください</p>
                 <input type="text" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6"
                        placeholder="6桁のPIN"
@@ -1055,6 +1057,10 @@
                 const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u); });
             });
 
+            // 招待されていないGoogleアカウントで権限が無かった場合、この後PIN入力画面に
+            // 戻るためのメッセージ。showPinEntryScreen表示後にshowLoginError()で出す。
+            let pendingLoginError = null;
+
             // Googleログイン済みの場合は権限チェックしてから入室
             if (fbAuth.currentUser && !fbAuth.currentUser.isAnonymous) {
                 const uid = fbAuth.currentUser.uid;
@@ -1070,12 +1076,20 @@
                         await init();
                         return;
                     }
+                    // ロールが見つからない = 招待されていないアカウント。認証自体は成功しているので、
+                    // その旨をPIN入力画面に戻ってから伝える。
+                    await fbAuth.signOut().catch(() => {});
+                    pendingLoginError = "アクセス権限がありません。\n管理者に招待を依頼してください。";
                 } catch (err) {
-                    showPinError("権限の確認に失敗しました。\nインターネット接続を確認して再読み込みしてください。\n(" + (err.message || "") + ")");
-                    return;
+                    if (err.code === "permission-denied") {
+                        // Firestoreへのアクセス権限が無いだけで、Google認証自体は成功している
+                        await fbAuth.signOut().catch(() => {});
+                        pendingLoginError = "アクセス権限がありません。\n管理者に招待を依頼してください。";
+                    } else {
+                        showPinError("権限の確認に失敗しました。\nインターネット接続を確認して再読み込みしてください。\n(" + (err.message || "") + ")");
+                        return;
+                    }
                 }
-                showPinError("アクセス権限がありません。\n管理者にお問い合わせください。");
-                return;
             }
 
             if (!fbAuth.currentUser) {
@@ -1132,6 +1146,7 @@
             }
 
             showPinEntryScreen(currentPin);
+            if (pendingLoginError) showLoginError(pendingLoginError);
         }
 
         function showPinError(message) {
@@ -1140,6 +1155,17 @@
             document.getElementById("pinGateFirstRun").classList.add("hidden");
             document.getElementById("pinGateErrorMsg").textContent = message;
             document.getElementById("pinGateErrorBox").classList.remove("hidden");
+        }
+
+        // Googleログイン失敗など「ログイン画面自体には戻れる」エラー用。
+        // showPinErrorと違い、PIN入力/Googleログインボタンは表示したままエラーだけを追加表示する。
+        function showLoginError(message) {
+            document.getElementById("pinGateLoginErrorMsg").textContent = message;
+            document.getElementById("pinGateLoginErrorMsg").classList.remove("hidden");
+        }
+
+        function clearLoginError() {
+            document.getElementById("pinGateLoginErrorMsg").classList.add("hidden");
         }
 
         function showFirstRunScreen(pin) {
@@ -1201,6 +1227,7 @@
         async function signInWithGoogle() {
             const btn = document.getElementById("googleSignInBtn");
             const googleBtnHTML = `<svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> Googleでログイン`;
+            clearLoginError();
             if (btn) { btn.disabled = true; btn.textContent = "接続中..."; }
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
@@ -1222,11 +1249,22 @@
                     await init();
                     return;
                 }
-                showPinError("アクセス権限がありません。\n管理者にお問い合わせください。");
+                // 認証自体は成功しているが招待されていないアカウント。ログイン画面には留まらせ、
+                // 別アカウントやPINでの再試行ができるようサインアウトしておく。
+                await fbAuth.signOut().catch(() => {});
+                if (btn) { btn.disabled = false; btn.innerHTML = googleBtnHTML; }
+                showLoginError("アクセス権限がありません。\n管理者に招待を依頼してください。");
             } catch (err) {
                 if (btn) { btn.disabled = false; btn.innerHTML = googleBtnHTML; }
-                if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
-                    showPinError("Googleログインに失敗しました。\n(" + (err.message || "") + ")");
+                if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+                    return;
+                }
+                if (err.code === "permission-denied") {
+                    // Firestoreへのアクセス権限が無いだけで、Google認証自体は成功している
+                    await fbAuth.signOut().catch(() => {});
+                    showLoginError("アクセス権限がありません。\n管理者に招待を依頼してください。");
+                } else {
+                    showLoginError("Googleログインに失敗しました。\n(" + (err.message || "") + ")");
                 }
             }
         }
@@ -3224,7 +3262,15 @@
         function updateViewModeToggleButton() {
             const btn = document.getElementById("viewModeToggleBtn");
             btn.classList.toggle("hidden", realRole !== "editor" && realRole !== "admin");
-            btn.textContent = (currentRole === "viewer") ? "✍️ 編集に戻す" : "👁 閲覧モード";
+            // ラベルは「今の状態」を主役にし、押した後どうなるかを補足で示す
+            // （切替先だけを表示すると現在の状態と誤解されやすいため）
+            if (currentRole === "viewer") {
+                btn.textContent = "👁 閲覧中 → ✍️";
+                btn.title = "現在: 閲覧モード（タップで編集モードに戻ります）";
+            } else {
+                btn.textContent = "✍️ 編集中 → 👁";
+                btn.title = "現在: 編集モード（タップで閲覧モードに切り替わります）";
+            }
         }
 
         // メンバーの顔写真ObjectURLを保持するマップ（id: "member_<名前>"）
