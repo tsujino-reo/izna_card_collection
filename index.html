@@ -135,6 +135,12 @@
                         <button id="pinRegenBtn" onclick="regeneratePin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔄 PINコードを再生成
                         </button>
+                        <button id="editPinViewBtn" onclick="showCurrentEditPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🛠️ 編集用PINコードを確認
+                        </button>
+                        <button id="editPinRegenBtn" onclick="regenerateEditPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🛠️🔄 編集用PINコードを再生成
+                        </button>
                         <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔗 招待リンクを作成
                         </button>
@@ -163,7 +169,8 @@
                 <!-- editor・adminのみ、見た目だけを一時的に閲覧モードへ切り替えられる（実権限は変わらない） -->
                 <button id="viewModeToggleBtn" onclick="toggleViewerPreviewMode()" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-2 py-1 font-bold text-gray-300 hover:bg-gray-800 transition-colors whitespace-nowrap"></button>
 
-                <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら常にviewerで
+                <!-- 実際の権限はGoogleログインならconfig/usersのロール、匿名PINセッションなら基本viewer
+                     （editorPinGrantsに応急処置用の編集用PIN付与記録がある場合のみeditor）で
                      サーバー側により確定しており、自己申告で変更できるUIは持たせない。
                      adminの時だけ、クリック不可のラベルとして表示する -->
                 <span id="adminRoleLabel" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">👑 管理</span>
@@ -779,6 +786,10 @@
         const PIN_SESSION_KEY = "izna_pin_verified_v1";
         const PIN_DOC_REF    = () => fbDb.doc("config/pin");
 
+        // 編集用PIN（応急処置：招待経由のGoogleログインができない編集者向けの一時バイパス）
+        const EDIT_PIN_DOC_REF     = () => fbDb.doc("config/editPin");
+        const EDITOR_PIN_GRANT_REF = (uid) => fbDb.doc("editorPinGrants/" + uid);
+
         // ══════════════════════════════════════════════════════════════
         // Firestore — 共有データの読み書き参照
         // ══════════════════════════════════════════════════════════════
@@ -1137,6 +1148,19 @@
 
             const currentPin = pinDoc.data().value;
 
+            // 匿名セッションが既に編集用PIN（応急処置）でeditor付与を受けている場合は、
+            // 通常PINとの一致を待たずそのまま入室する（Firebase匿名認証はuidが端末に永続化されるため）。
+            if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
+                try {
+                    const grantDoc = await EDITOR_PIN_GRANT_REF(fbAuth.currentUser.uid).get();
+                    if (grantDoc.exists && grantDoc.data().role === "editor") {
+                        hidePinGate();
+                        await init();
+                        return;
+                    }
+                } catch (_) { /* 取得に失敗しても通常のPIN照合にフォールバックする */ }
+            }
+
             // ローカルに保存済みのPINセッションと照合する。
             // 管理者がPINを再生成した場合、保存値が変わるためセッションは自動的に無効になる。
             if (localStorage.getItem(PIN_SESSION_KEY) === currentPin) {
@@ -1182,15 +1206,31 @@
             const wrongMsg  = document.getElementById("pinWrongMsg");
 
             const tryPin = async () => {
-                if (input.value.trim() === currentPin) {
+                const entered = input.value.trim();
+                if (entered === currentPin) {
                     localStorage.setItem(PIN_SESSION_KEY, currentPin);
                     hidePinGate();
                     await init();
-                } else {
-                    wrongMsg.classList.remove("hidden");
-                    input.value = "";
-                    input.focus();
+                    return;
                 }
+                // 通常PINと不一致の場合、応急処置用の編集用PINとして判定を試みる。
+                // 正誤の照合はFirestoreルール側（config/editPinとの一致）で行われ、
+                // 不一致ならpermission-deniedで拒否される（＝ここでは編集用PINの値を知る必要がない）。
+                if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
+                    try {
+                        await EDITOR_PIN_GRANT_REF(fbAuth.currentUser.uid).set({
+                            role: "editor",
+                            pin: entered,
+                            grantedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        hidePinGate();
+                        await init();
+                        return;
+                    } catch (_) { /* 編集用PINとしても不一致 → 通常のPIN不一致表示にフォールバック */ }
+                }
+                wrongMsg.classList.remove("hidden");
+                input.value = "";
+                input.focus();
             };
 
             submitBtn.addEventListener("click", tryPin);
@@ -1331,6 +1371,48 @@
             }
         }
 
+        // 管理者向け: 現在の編集用PIN（応急処置用の一時的な編集権限バイパス）をアラートで表示する
+        async function showCurrentEditPin() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            try {
+                const doc = await EDIT_PIN_DOC_REF().get();
+                if (doc.exists) {
+                    alert(
+                        "現在の編集用PINコード: " + doc.data().value + "\n\n" +
+                        "※このPINを知っていれば誰でも編集権限で入室できます。\n" +
+                        "応急処置が不要になったら、必ず再生成するかアクセス管理から取り消してください。"
+                    );
+                } else {
+                    alert("編集用PINはまだ発行されていません。「編集用PINコードを再生成」から発行できます。");
+                }
+            } catch (err) {
+                alert("取得に失敗しました: " + (err.message || err));
+            }
+        }
+
+        // 管理者向け: 編集用PINを発行・再生成する（応急処置用）。
+        // 再生成しても、既にこのPINで入室済みのセッション（editorPinGrants）は自動失効しない。
+        // 完全に締め出したい場合はアクセス管理から個別に取り消す。
+        async function regenerateEditPin() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            if (!confirm(
+                "編集用PIN（応急処置用の一時的な編集権限バイパス）を発行・再生成しますか？\n\n" +
+                "このPINを知っている人は誰でも編集権限で入室できます。\n" +
+                "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。"
+            )) return;
+            const newPin = generatePin();
+            try {
+                await EDIT_PIN_DOC_REF().set({ value: newPin });
+                alert(
+                    "新しい編集用PINコード: " + newPin + "\n\n" +
+                    "対象の編集者にのみ共有してください。応急処置が不要になったら、\n" +
+                    "忘れずに再生成またはアクセス管理から取り消してください。"
+                );
+            } catch (err) {
+                alert("再生成に失敗しました: " + (err.message || err));
+            }
+        }
+
         // ══════════════════════════════════════════════════════════════
         // 招待リンク（トークン方式） — 管理者がeditor/viewerロールを付与するためのリンクを発行する
         // ══════════════════════════════════════════════════════════════
@@ -1411,43 +1493,56 @@
             if (!skipHistory) history.back();
         }
 
-        // config/usersの一覧から、admin以外（editor/viewer）のエントリだけを一覧表示する。
+        // config/usersの一覧（Googleログイン、admin以外のeditor/viewer）と、
+        // editorPinGrantsコレクション（編集用PIN経由の一時アクセス）を統合して一覧表示する。
         // invitedViaが記録されている場合は、対応するinvites/{token}のusedAtを付与日として表示する。
         async function renderAccessManageList() {
             const container = document.getElementById("accessManageList");
             container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">読み込み中...</p>`;
             try {
-                const doc = await FS_USERS_DOC().get();
-                const data = doc.exists ? doc.data() : {};
-                const entries = Object.entries(data).filter(([, info]) => info && info.role && info.role !== "admin");
+                const [usersDoc, editPinGrantsSnap] = await Promise.all([
+                    FS_USERS_DOC().get(),
+                    fbDb.collection("editorPinGrants").get().catch(() => ({ docs: [] }))
+                ]);
+                const data = usersDoc.exists ? usersDoc.data() : {};
+                const entries = Object.entries(data)
+                    .filter(([, info]) => info && info.role && info.role !== "admin")
+                    .map(([uid, info]) => ({ uid, role: info.role, nickname: info.nickname, invitedVia: info.invitedVia, source: "users" }));
 
-                if (entries.length === 0) {
+                const editPinEntries = editPinGrantsSnap.docs.map(doc => ({
+                    uid: doc.id, role: doc.data().role, source: "editPin"
+                }));
+
+                const allEntries = [...entries, ...editPinEntries];
+                if (allEntries.length === 0) {
                     container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">editor/viewer権限を持つユーザーはいません</p>`;
                     return;
                 }
 
                 const grantedAtMap = {};
-                await Promise.all(entries.map(async ([uid, info]) => {
-                    if (!info.invitedVia) return;
+                await Promise.all(entries.map(async (e) => {
+                    if (!e.invitedVia) return;
                     try {
-                        const inviteDoc = await FS_INVITES_COL().doc(info.invitedVia).get();
+                        const inviteDoc = await FS_INVITES_COL().doc(e.invitedVia).get();
                         if (inviteDoc.exists && inviteDoc.data().usedAt) {
-                            grantedAtMap[uid] = inviteDoc.data().usedAt.toDate();
+                            grantedAtMap[e.uid] = inviteDoc.data().usedAt.toDate();
                         }
                     } catch (_) { /* 招待情報が取得できなくても一覧表示自体は継続する */ }
                 }));
 
                 const roleLabel = { editor: "✍️ 編集者", viewer: "👁️ 閲覧者" };
-                container.innerHTML = entries.map(([uid, info]) => {
-                    const name = info.nickname || `（ニックネーム未設定・${uid.slice(0, 8)}…）`;
-                    const grantedAt = grantedAtMap[uid] ? grantedAtMap[uid].toLocaleDateString("ja-JP") : "不明";
+                container.innerHTML = allEntries.map(e => {
+                    const name = e.source === "editPin"
+                        ? "🛠️ 編集用PIN経由（一時アクセス）"
+                        : (e.nickname || `（ニックネーム未設定・${e.uid.slice(0, 8)}…）`);
+                    const grantedAt = grantedAtMap[e.uid] ? grantedAtMap[e.uid].toLocaleDateString("ja-JP") : "不明";
                     return `
                         <div class="flex items-center justify-between gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                             <div class="min-w-0">
                                 <p class="text-xs font-bold text-gray-200 truncate">${escapeHtml(name)}</p>
-                                <p class="text-[9px] text-gray-500">${roleLabel[info.role] || info.role} ・ 付与日: ${grantedAt}</p>
+                                <p class="text-[9px] text-gray-500">${roleLabel[e.role] || e.role} ・ 付与日: ${grantedAt}</p>
                             </div>
-                            <button onclick="revokeAccess('${uid}')" class="shrink-0 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                            <button onclick="revokeAccess('${e.uid}', '${e.source}')" class="shrink-0 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
                                 取り消し
                             </button>
                         </div>
@@ -1459,12 +1554,17 @@
             }
         }
 
-        // 指定uidのconfig/usersエントリを削除する。次回そのユーザーがログインを試みると、
-        // fetchGoogleRole()がnullを返し、既存の「アクセス権限がありません」表示になる。
-        async function revokeAccess(uid) {
+        // 指定uidのアクセス権を取り消す。source==="editPin"の場合はeditorPinGrantsのドキュメントを、
+        // それ以外はconfig/usersのエントリを削除する。次回そのユーザーがアクセスを試みると
+        // 権限なし（editor付与ならviewer、Google未招待なら「アクセス権限がありません」）に戻る。
+        async function revokeAccess(uid, source) {
             if (!confirm("このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。")) return;
             try {
-                await FS_USERS_DOC().update({ [uid]: firebase.firestore.FieldValue.delete() });
+                if (source === "editPin") {
+                    await fbDb.doc("editorPinGrants/" + uid).delete();
+                } else {
+                    await FS_USERS_DOC().update({ [uid]: firebase.firestore.FieldValue.delete() });
+                }
                 await renderAccessManageList();
             } catch (err) {
                 console.error("アクセス取り消しに失敗しました:", err);
@@ -2119,10 +2219,17 @@
         }
 
         async function init() {
-            // 匿名（共有PIN）セッションは常にviewer固定。
+            // 匿名（共有PIN）セッションは基本viewer固定。ただし応急処置用の編集用PINで
+            // editorPinGrantsにeditor付与が記録されている場合のみeditorになる。
             if (fbAuth.currentUser && fbAuth.currentUser.isAnonymous) {
-                currentRole = "viewer";
-                realRole = "viewer";
+                let grantedEditor = false;
+                try {
+                    const grantDoc = await EDITOR_PIN_GRANT_REF(fbAuth.currentUser.uid).get();
+                    grantedEditor = grantDoc.exists && grantDoc.data().role === "editor";
+                } catch (_) { /* 取得に失敗した場合はviewer扱いのまま */ }
+                currentRole = grantedEditor ? "editor" : "viewer";
+                realRole = currentRole;
+                if (grantedEditor) currentUserNickname = "編集用PIN経由";
             }
 
             loadAlbumColorCacheFromStorage();
@@ -2857,8 +2964,10 @@
 
         // カードの追加・編集・削除をactivityLogコレクションに記録する。
         // 記録失敗が本来の保存/削除処理を止めてしまわないよう、ここでエラーを握りつぶす。
+        // 編集用PIN経由のeditorセッション（匿名）による操作も、監査のため記録対象に含める
+        // （currentUserNicknameに「編集用PIN経由」が入るため、誰が使ったかは区別できないが使用有無は分かる）。
         async function logCardActivity(action, card, note) {
-            if (!fbAuth.currentUser || fbAuth.currentUser.isAnonymous) return;
+            if (!fbAuth.currentUser) return;
             try {
                 await FS_ACTIVITY_LOG_COL().add({
                     action,
@@ -3402,6 +3511,8 @@
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("editPinViewBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("editPinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("accessManageBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("activityLogBtn").classList.toggle("hidden", currentRole !== "admin");
