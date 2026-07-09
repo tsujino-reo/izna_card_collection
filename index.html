@@ -125,45 +125,45 @@
             <div class="flex items-center gap-1.5">
                 <!-- editor/viewer（表示上）には「⋮」メニューの中身が「ログアウト」しか残らないため、
                      メニュー自体を隠し、代わりにログアウトボタンを直接ヘッダーに出す -->
-                <button id="headerLogoutBtn" onclick="logoutApp()" class="hidden bg-gray-800 hover:bg-rose-950 border border-gray-700 text-rose-400 text-[10px] rounded-lg px-2 py-1.5 font-bold whitespace-nowrap transition-colors">ログアウト</button>
+                <button id="headerLogoutBtn" onclick="logoutApp()" data-i18n="ログアウト" class="hidden bg-gray-800 hover:bg-rose-950 border border-gray-700 text-rose-400 text-[10px] rounded-lg px-2 py-1.5 font-bold whitespace-nowrap transition-colors">ログアウト</button>
                 <div id="headerMenuWrap" class="relative">
                     <button id="headerMenuBtn" onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
-                        <button id="pinViewBtn" onclick="showCurrentPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="pinViewBtn" onclick="showCurrentPin()" data-i18n="🔑 PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔑 PINコードを確認
                         </button>
-                        <button id="pinRegenBtn" onclick="regeneratePin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="pinRegenBtn" onclick="regeneratePin()" data-i18n="🔄 PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔄 PINコードを再生成
                         </button>
-                        <button id="editPinViewBtn" onclick="showCurrentEditPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="editPinViewBtn" onclick="showCurrentEditPin()" data-i18n="🛠️ 編集用PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🛠️ 編集用PINコードを確認
                         </button>
-                        <button id="editPinRegenBtn" onclick="regenerateEditPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="editPinRegenBtn" onclick="regenerateEditPin()" data-i18n="🛠️🔄 編集用PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🛠️🔄 編集用PINコードを再生成
                         </button>
-                        <button id="setNicknameBtn" onclick="setMyNickname()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="setNicknameBtn" onclick="setMyNickname()" data-i18n="🙋 ニックネームを設定" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🙋 ニックネームを設定
                         </button>
-                        <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="inviteLinkBtn" onclick="openInviteModal()" data-i18n="🔗 招待リンクを作成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔗 招待リンクを作成
                         </button>
-                        <button id="accessManageBtn" onclick="openAccessManageModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="accessManageBtn" onclick="openAccessManageModal()" data-i18n="👥 アクセス管理" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             👥 アクセス管理
                         </button>
-                        <button id="activityLogBtn" onclick="openActivityLogModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="activityLogBtn" onclick="openActivityLogModal()" data-i18n="📜 更新履歴" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             📜 更新履歴
                         </button>
-                        <button id="exportFullBtn" onclick="exportData(true)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="exportFullBtn" onclick="exportData(true)" data-i18n="🖼️ フル出力（画像含む）" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🖼️ フル出力（画像含む）
                         </button>
-                        <button id="exportMetaBtn" onclick="exportData(false)" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                        <button id="exportMetaBtn" onclick="exportData(false)" data-i18n="📝 メタデータのみ出力" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             📝 メタデータのみ出力
                         </button>
                         <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer border-b border-gray-800">
-                            📥 読込
+                            <span data-i18n="📥 読込">📥 読込</span>
                             <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
                         </label>
-                        <button id="logoutBtn" onclick="logoutApp()" class="w-full text-left px-3 py-2 text-[10px] font-bold text-rose-400 hover:bg-gray-800 transition-colors">
+                        <button id="logoutBtn" onclick="logoutApp()" data-i18n="🚪 ログアウト" class="w-full text-left px-3 py-2 text-[10px] font-bold text-rose-400 hover:bg-gray-800 transition-colors">
                             🚪 ログアウト
                         </button>
                     </div>
@@ -176,7 +176,14 @@
                      （editorPinGrantsに応急処置用の編集用PIN付与記録がある場合のみeditor）で
                      サーバー側により確定しており、自己申告で変更できるUIは持たせない。
                      adminの時だけ、クリック不可のラベルとして表示する -->
-                <span id="adminRoleLabel" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">👑 管理</span>
+                <span id="adminRoleLabel" data-i18n="👑 管理" class="hidden bg-gray-900 border border-gray-700 text-[10px] rounded-lg px-1.5 py-1 font-bold text-purple-400">👑 管理</span>
+
+                <!-- 表示言語の切替。ロールに関わらず全員が使う個人設定のため常に表示する -->
+                <select id="langSelect" onchange="setLanguage(this.value)" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[10px] rounded-lg px-1.5 py-1.5 font-bold focus:outline-none">
+                    <option value="ja">Japanese</option>
+                    <option value="en">English</option>
+                    <option value="ko">Korean</option>
+                </select>
             </div>
         </header>
 
@@ -194,7 +201,7 @@
         <div id="albumListView">
             <div class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
-                <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
+                <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." data-i18n-placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
                        class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors relative z-10">
                 <div id="topSearchResults" class="hidden mt-3 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3 relative z-10">
                     <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
@@ -215,7 +222,7 @@
                 <button id="migrateCardImagesBtn" onclick="migrateCardImagesToStorage()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     ☁️ トレカ画像をStorageへ移行
                 </button>
-                <button id="resetAllDataBtn" onclick="confirmResetAllCards()" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                <button id="resetAllDataBtn" onclick="confirmResetAllCards()" data-i18n="🗑️ トレカ全削除" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
                     🗑️ トレカ全削除
                 </button>
                 <button id="manageMemberPhotosBtn" onclick="openMemberPhotoModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
@@ -247,7 +254,7 @@
             <div id="filterSection" class="bg-gray-950/95 border border-gray-800/80 p-3 rounded-2xl mb-4 relative overflow-hidden shadow-xl">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-900/20 rounded-full blur-3xl"></div>
                 <div class="space-y-2 relative z-10">
-                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..."
+                    <input type="text" id="searchBar" oninput="renderApp()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." data-i18n-placeholder="🔍 メンバー名、店舗名、テーマ等で検索..."
                            class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors">
                 </div>
             </div>
@@ -269,7 +276,7 @@
                     <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
                         ☑ 複数選択
                     </button>
-                    <button id="addBtn" onclick="openModal()" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
+                    <button id="addBtn" onclick="openModal()" data-i18n="＋ 新規トレカ追加" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
                         ＋ 新規トレカ追加
                     </button>
                 </div>
@@ -280,7 +287,7 @@
                 <div class="flex gap-2">
                     <button onclick="selectAllCards()" class="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-1 rounded-lg">全選択</button>
                     <button onclick="openBulkMoveModal()" class="text-[10px] text-blue-300 font-bold bg-blue-900/40 px-2 py-1 rounded-lg">移動</button>
-                    <button id="bulkDeleteBtn" onclick="bulkDeleteCards()" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
+                    <button id="bulkDeleteBtn" onclick="bulkDeleteCards()" data-i18n="削除" class="text-[10px] text-rose-300 font-bold bg-rose-900/40 px-2 py-1 rounded-lg">削除</button>
                     <button onclick="toggleMultiSelectMode()" class="text-[10px] text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded-lg">✕</button>
                 </div>
             </div>
@@ -448,7 +455,7 @@
             
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
                 <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">閉じる</button>
-                <button id="saveCardBtn" onclick="saveCard()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50">保存</button>
+                <button id="saveCardBtn" onclick="saveCard()" data-i18n="保存" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50">保存</button>
             </div>
         </div>
     </div>
@@ -703,45 +710,48 @@
             <!-- 接続中スピナー -->
             <div id="pinGateLoading" class="flex flex-col items-center gap-3">
                 <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-gray-400 text-xs">接続中...</p>
+                <p class="text-gray-400 text-xs" data-i18n="接続中...">接続中...</p>
             </div>
 
             <!-- エラー表示 -->
             <div id="pinGateErrorBox" class="hidden space-y-3">
                 <p id="pinGateErrorMsg" class="text-rose-400 text-xs font-bold bg-rose-950/50 border border-rose-800/50 rounded-xl p-3 whitespace-pre-wrap text-left"></p>
-                <button onclick="location.reload()" class="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold text-xs transition-colors">再読み込み</button>
+                <button onclick="location.reload()" data-i18n="再読み込み" class="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold text-xs transition-colors">再読み込み</button>
             </div>
 
             <!-- PIN入力フォーム -->
             <div id="pinGateEntry" class="hidden space-y-4">
                 <!-- Googleログイン等の失敗はこの中に追加表示するだけにし、ログイン画面自体は消さない -->
                 <p id="pinGateLoginErrorMsg" class="hidden text-rose-400 text-xs font-bold bg-rose-950/50 border border-rose-800/50 rounded-xl p-3 whitespace-pre-wrap text-left"></p>
-                <p class="text-gray-300 text-sm font-bold">PINコードを入力してください</p>
+                <p class="text-gray-300 text-sm font-bold" data-i18n="PINコードを入力してください">PINコードを入力してください</p>
                 <input type="text" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6"
-                       placeholder="6桁のPIN"
+                       placeholder="6桁のPIN" data-i18n-placeholder="6桁のPIN"
                        class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-center text-xl font-black tracking-[0.3em] focus:outline-none focus:border-pink-500 transition-colors">
-                <p id="pinWrongMsg" class="hidden text-rose-400 text-xs font-bold">PINコードが違います</p>
-                <button id="pinSubmitBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm shadow-lg shadow-purple-900/30 active:scale-95 transition-all">入室する</button>
+                <p id="pinWrongMsg" class="hidden text-rose-400 text-xs font-bold" data-i18n="PINコードが違います">PINコードが違います</p>
+                <button id="pinSubmitBtn" data-i18n="入室する" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm shadow-lg shadow-purple-900/30 active:scale-95 transition-all">入室する</button>
                 <div class="flex items-center gap-2">
                     <div class="flex-1 h-px bg-gray-800"></div>
-                    <span class="text-gray-600 text-[10px] font-bold">または</span>
+                    <span class="text-gray-600 text-[10px] font-bold" data-i18n="または">または</span>
                     <div class="flex-1 h-px bg-gray-800"></div>
                 </div>
                 <button id="googleSignInBtn" onclick="signInWithGoogle()" class="w-full py-3 rounded-xl bg-gray-900 hover:bg-gray-800 border border-purple-900/40 text-white font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
                     <svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-                    <span>Googleでログイン</span>
+                    <span data-i18n="Googleでログイン">Googleでログイン</span>
                 </button>
             </div>
 
             <!-- 初回起動: 生成されたPINを表示 -->
             <div id="pinGateFirstRun" class="hidden space-y-4">
                 <div class="bg-emerald-950/50 border border-emerald-800/50 rounded-xl p-4 space-y-3">
-                    <p class="text-emerald-400 text-[10px] font-black uppercase tracking-wider">初期設定完了</p>
-                    <p class="text-gray-300 text-xs leading-relaxed">共有PINコードが生成されました。<br>参加メンバーに共有してください。</p>
+                    <p class="text-emerald-400 text-[10px] font-black uppercase tracking-wider" data-i18n="初期設定完了">初期設定完了</p>
+                    <p class="text-gray-300 text-xs leading-relaxed">
+                        <span data-i18n="共有PINコードが生成されました。">共有PINコードが生成されました。</span><br>
+                        <span data-i18n="参加メンバーに共有してください。">参加メンバーに共有してください。</span>
+                    </p>
                     <div id="firstRunPinValue" class="text-3xl font-black text-white tracking-[0.3em] bg-black/40 rounded-lg py-3 border border-emerald-800/30"></div>
-                    <button id="pinCopyBtn" onclick="copyPinToClipboard()" class="w-full py-2 rounded-lg bg-black/30 border border-emerald-800/40 text-emerald-300 text-xs font-bold active:scale-95 transition-all">📋 クリップボードにコピー</button>
+                    <button id="pinCopyBtn" onclick="copyPinToClipboard()" data-i18n="📋 クリップボードにコピー" class="w-full py-2 rounded-lg bg-black/30 border border-emerald-800/40 text-emerald-300 text-xs font-bold active:scale-95 transition-all">📋 クリップボードにコピー</button>
                 </div>
-                <button onclick="finishFirstRun()" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm active:scale-95 transition-all">アプリを開く →</button>
+                <button onclick="finishFirstRun()" data-i18n="アプリを開く →" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-sm active:scale-95 transition-all">アプリを開く →</button>
             </div>
         </div>
     </div>
@@ -754,6 +764,154 @@
     <div id="errorToast" class="hidden fixed top-4 right-4 max-w-[80vw] bg-rose-950 border border-rose-700/60 text-rose-200 text-[11px] font-bold rounded-lg px-3 py-2.5 shadow-2xl z-[70]"></div>
 
     <script>
+        // ══════════════════════════════════════════════════════════════
+        // 多言語対応（UI固定テキストのみ。カード名・店舗名・ニックネーム等の
+        // ユーザー入力データは翻訳対象外）
+        // 日本語の原文そのものを辞書キーにする。未登録キーは日本語のままフォールバックし、
+        // 第2弾以降で未翻訳の文字列があっても表示は壊れない。
+        // ══════════════════════════════════════════════════════════════
+        const I18N = {
+            en: {
+                // ── ヘッダー・「⋮」メニュー ──
+                "ログアウト": "Logout",
+                "🔑 PINコードを確認": "🔑 View PIN Code",
+                "🔄 PINコードを再生成": "🔄 Regenerate PIN Code",
+                "🛠️ 編集用PINコードを確認": "🛠️ View Editor PIN Code",
+                "🛠️🔄 編集用PINコードを再生成": "🛠️🔄 Regenerate Editor PIN Code",
+                "🙋 ニックネームを設定": "🙋 Set Nickname",
+                "🔗 招待リンクを作成": "🔗 Create Invite Link",
+                "👥 アクセス管理": "👥 Manage Access",
+                "📜 更新履歴": "📜 Activity Log",
+                "🖼️ フル出力（画像含む）": "🖼️ Full Export (with images)",
+                "📝 メタデータのみ出力": "📝 Metadata Only Export",
+                "📥 読込": "📥 Import",
+                "🚪 ログアウト": "🚪 Logout",
+                "👑 管理": "👑 Admin",
+                // ── PINゲート ──
+                "接続中...": "Connecting...",
+                "再読み込み": "Reload",
+                "PINコードを入力してください": "Enter your PIN code",
+                "6桁のPIN": "6-digit PIN",
+                "PINコードが違います": "Incorrect PIN code",
+                "入室する": "Enter",
+                "または": "or",
+                "Googleでログイン": "Sign in with Google",
+                "初期設定完了": "Initial Setup Complete",
+                "共有PINコードが生成されました。": "A shared PIN code has been generated.",
+                "参加メンバーに共有してください。": "Please share it with members.",
+                "📋 クリップボードにコピー": "📋 Copy to Clipboard",
+                "アプリを開く →": "Open App →",
+                "権限の確認に失敗しました。\n": "Failed to verify permissions.\n",
+                "インターネット接続を確認して再読み込みしてください。\n": "Please check your internet connection and reload.\n",
+                "アクセス権限がありません。\n管理者に招待を依頼してください。": "You don't have access.\nPlease ask an admin to invite you.",
+                "サーバーへの接続に失敗しました。\n": "Failed to connect to the server.\n",
+                "データの取得に失敗しました。\n": "Failed to retrieve data.\n",
+                "初期設定に失敗しました。\n": "Initial setup failed.\n",
+                "Googleログインに失敗しました。\n(": "Google sign-in failed.\n(",
+                "✓ コピーしました": "✓ Copied",
+                "PINコード: ": "PIN code: ",
+                // ── 主要ボタン ──
+                "🔍 メンバー名、店舗名、テーマ等で検索...": "🔍 Search by member, store, theme, etc...",
+                "🗑️ トレカ全削除": "🗑️ Delete All Cards",
+                "＋ 新規トレカ追加": "＋ Add New Card",
+                "削除": "Delete",
+                "保存": "Save",
+                "保存中...": "Saving..."
+                // 第1弾（主な確認ダイアログ）で順次追加
+            },
+            ko: {
+                // ── ヘッダー・「⋮」メニュー ──
+                "ログアウト": "로그아웃",
+                "🔑 PINコードを確認": "🔑 PIN 코드 확인",
+                "🔄 PINコードを再生成": "🔄 PIN 코드 재발급",
+                "🛠️ 編集用PINコードを確認": "🛠️ 편집용 PIN 코드 확인",
+                "🛠️🔄 編集用PINコードを再生成": "🛠️🔄 편집용 PIN 코드 재발급",
+                "🙋 ニックネームを設定": "🙋 닉네임 설정",
+                "🔗 招待リンクを作成": "🔗 초대 링크 생성",
+                "👥 アクセス管理": "👥 접근 권한 관리",
+                "📜 更新履歴": "📜 활동 기록",
+                "🖼️ フル出力（画像含む）": "🖼️ 전체 내보내기 (이미지 포함)",
+                "📝 メタデータのみ出力": "📝 메타데이터만 내보내기",
+                "📥 読込": "📥 불러오기",
+                "🚪 ログアウト": "🚪 로그아웃",
+                "👑 管理": "👑 관리자",
+                // ── PINゲート ──
+                "接続中...": "연결 중...",
+                "再読み込み": "새로고침",
+                "PINコードを入力してください": "PIN 코드를 입력하세요",
+                "6桁のPIN": "6자리 PIN",
+                "PINコードが違います": "PIN 코드가 올바르지 않습니다",
+                "入室する": "입장하기",
+                "または": "또는",
+                "Googleでログイン": "Google로 로그인",
+                "初期設定完了": "초기 설정 완료",
+                "共有PINコードが生成されました。": "공유 PIN 코드가 생성되었습니다.",
+                "参加メンバーに共有してください。": "참여 멤버에게 공유해 주세요.",
+                "📋 クリップボードにコピー": "📋 클립보드에 복사",
+                "アプリを開く →": "앱 열기 →",
+                "権限の確認に失敗しました。\n": "권한 확인에 실패했습니다.\n",
+                "インターネット接続を確認して再読み込みしてください。\n": "인터넷 연결을 확인하고 새로고침해 주세요.\n",
+                "アクセス権限がありません。\n管理者に招待を依頼してください。": "접근 권한이 없습니다.\n관리자에게 초대를 요청해 주세요.",
+                "サーバーへの接続に失敗しました。\n": "서버 연결에 실패했습니다.\n",
+                "データの取得に失敗しました。\n": "데이터를 가져오지 못했습니다.\n",
+                "初期設定に失敗しました。\n": "초기 설정에 실패했습니다.\n",
+                "Googleログインに失敗しました。\n(": "Google 로그인에 실패했습니다.\n(",
+                "✓ コピーしました": "✓ 복사했습니다",
+                "PINコード: ": "PIN 코드: ",
+                // ── 主要ボタン ──
+                "🔍 メンバー名、店舗名、テーマ等で検索...": "🔍 멤버, 매장, 테마 등으로 검색...",
+                "🗑️ トレカ全削除": "🗑️ 전체 카드 삭제",
+                "＋ 新規トレカ追加": "＋ 새 카드 추가",
+                "削除": "삭제",
+                "保存": "저장",
+                "保存中...": "저장 중..."
+                // 第1弾（主な確認ダイアログ）で順次追加
+            }
+        };
+
+        const LANG_STORAGE_KEY = "izna_lang_v1";
+
+        function detectDefaultLang() {
+            const nav = (navigator.language || "").toLowerCase();
+            if (nav.startsWith("en")) return "en";
+            if (nav.startsWith("ko")) return "ko";
+            return "ja";
+        }
+
+        let currentLang = localStorage.getItem(LANG_STORAGE_KEY) || detectDefaultLang();
+
+        // 日本語原文 → 現在の言語の訳文。currentLangが"ja"、または辞書に未登録の場合は原文をそのまま返す。
+        function t(ja) {
+            if (currentLang === "ja") return ja;
+            return (I18N[currentLang] && I18N[currentLang][ja]) || ja;
+        }
+
+        // data-i18n / data-i18n-placeholder / data-i18n-title を持つ要素のテキストを
+        // 現在の言語に一括で差し替える。静的HTML側の翻訳はこの関数経由でのみ行う。
+        function applyTranslations() {
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll("[data-i18n-title]").forEach(el => {
+                el.title = t(el.dataset.i18nTitle);
+            });
+            const langSelect = document.getElementById("langSelect");
+            if (langSelect) langSelect.value = currentLang;
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem(LANG_STORAGE_KEY, lang);
+            applyTranslations();
+        }
+
+        // PINゲートは認証状態に関わらずページ読み込み直後に表示されるため、
+        // Firebase初期化やbootstrapAppを待たずこの時点で一度適用しておく。
+        applyTranslations();
+
         // ══════════════════════════════════════════════════════════════
         // Firebase 設定
         // Firebase Console > プロジェクトの設定 > マイアプリ > SDK の設定と構成
@@ -1093,14 +1251,14 @@
                     // ロールが見つからない = 招待されていないアカウント。認証自体は成功しているので、
                     // その旨をPIN入力画面に戻ってから伝える。
                     await fbAuth.signOut().catch(() => {});
-                    pendingLoginError = "アクセス権限がありません。\n管理者に招待を依頼してください。";
+                    pendingLoginError = t("アクセス権限がありません。\n管理者に招待を依頼してください。");
                 } catch (err) {
                     if (err.code === "permission-denied") {
                         // Firestoreへのアクセス権限が無いだけで、Google認証自体は成功している
                         await fbAuth.signOut().catch(() => {});
-                        pendingLoginError = "アクセス権限がありません。\n管理者に招待を依頼してください。";
+                        pendingLoginError = t("アクセス権限がありません。\n管理者に招待を依頼してください。");
                     } else {
-                        showPinError("権限の確認に失敗しました。\nインターネット接続を確認して再読み込みしてください。\n(" + (err.message || "") + ")");
+                        showPinError(t("権限の確認に失敗しました。\n") + t("インターネット接続を確認して再読み込みしてください。\n") + "(" + (err.message || "") + ")");
                         return;
                     }
                 }
@@ -1111,8 +1269,8 @@
                     await fbAuth.signInAnonymously();
                 } catch (err) {
                     showPinError(
-                        "サーバーへの接続に失敗しました。\n" +
-                        "インターネット接続を確認して再読み込みしてください。\n" +
+                        t("サーバーへの接続に失敗しました。\n") +
+                        t("インターネット接続を確認して再読み込みしてください。\n") +
                         "(" + (err.message || "") + ")"
                     );
                     return;
@@ -1129,8 +1287,8 @@
                 pinDoc = await PIN_DOC_REF().get();
             } catch (err) {
                 showPinError(
-                    "データの取得に失敗しました。\n" +
-                    "インターネット接続を確認して再読み込みしてください。\n" +
+                    t("データの取得に失敗しました。\n") +
+                    t("インターネット接続を確認して再読み込みしてください。\n") +
                     "(" + (err.message || "") + ")"
                 );
                 return;
@@ -1142,7 +1300,7 @@
                 try {
                     await PIN_DOC_REF().set({ value: newPin });
                 } catch (err) {
-                    showPinError("初期設定に失敗しました。\n(" + (err.message || "") + ")");
+                    showPinError(t("初期設定に失敗しました。\n") + "(" + (err.message || "") + ")");
                     return;
                 }
                 showFirstRunScreen(newPin);
@@ -1269,9 +1427,9 @@
 
         async function signInWithGoogle() {
             const btn = document.getElementById("googleSignInBtn");
-            const googleBtnHTML = `<svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> Googleでログイン`;
+            const googleBtnHTML = `<svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> ${t("Googleでログイン")}`;
             clearLoginError();
-            if (btn) { btn.disabled = true; btn.textContent = "接続中..."; }
+            if (btn) { btn.disabled = true; btn.textContent = t("接続中..."); }
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 const result = await fbAuth.signInWithPopup(provider);
@@ -1296,7 +1454,7 @@
                 // 別アカウントやPINでの再試行ができるようサインアウトしておく。
                 await fbAuth.signOut().catch(() => {});
                 if (btn) { btn.disabled = false; btn.innerHTML = googleBtnHTML; }
-                showLoginError("アクセス権限がありません。\n管理者に招待を依頼してください。");
+                showLoginError(t("アクセス権限がありません。\n管理者に招待を依頼してください。"));
             } catch (err) {
                 if (btn) { btn.disabled = false; btn.innerHTML = googleBtnHTML; }
                 if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
@@ -1305,9 +1463,9 @@
                 if (err.code === "permission-denied") {
                     // Firestoreへのアクセス権限が無いだけで、Google認証自体は成功している
                     await fbAuth.signOut().catch(() => {});
-                    showLoginError("アクセス権限がありません。\n管理者に招待を依頼してください。");
+                    showLoginError(t("アクセス権限がありません。\n管理者に招待を依頼してください。"));
                 } else {
-                    showLoginError("Googleログインに失敗しました。\n(" + (err.message || "") + ")");
+                    showLoginError(t("Googleログインに失敗しました。\n(") + (err.message || "") + ")");
                 }
             }
         }
@@ -1333,12 +1491,12 @@
                 await navigator.clipboard.writeText(pin);
                 const btn = document.getElementById("pinCopyBtn");
                 if (btn) {
-                    btn.textContent = "✓ コピーしました";
-                    setTimeout(() => { btn.textContent = "📋 クリップボードにコピー"; }, 2000);
+                    btn.textContent = t("✓ コピーしました");
+                    setTimeout(() => { btn.textContent = t("📋 クリップボードにコピー"); }, 2000);
                 }
             } catch (_) {
                 // clipboard API が使えない場合はフォールバックとしてalertで表示
-                alert("PINコード: " + pin);
+                alert(t("PINコード: ") + pin);
             }
         }
 
@@ -4511,7 +4669,7 @@
             }
 
             btn.disabled = true;
-            btn.textContent = "保存中...";
+            btn.textContent = t("保存中...");
 
             try {
                 let newId = null;
@@ -4597,7 +4755,7 @@
                 alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
             } finally {
                 btn.disabled = false;
-                btn.textContent = "保存";
+                btn.textContent = t("保存");
             }
         }
 
