@@ -141,6 +141,9 @@
                         <button id="editPinRegenBtn" onclick="regenerateEditPin()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🛠️🔄 編集用PINコードを再生成
                         </button>
+                        <button id="setNicknameBtn" onclick="setMyNickname()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            🙋 ニックネームを設定
+                        </button>
                         <button id="inviteLinkBtn" onclick="openInviteModal()" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
                             🔗 招待リンクを作成
                         </button>
@@ -1413,6 +1416,27 @@
             }
         }
 
+        // 自分（Googleログイン中のユーザー）のニックネームを設定・変更する。
+        // config/users/{自分のuid}.nicknameだけを更新するため、adminが自分自身の
+        // ニックネームを後から設定したい場合（手動登録でnicknameが無いアカウント等）に使う。
+        async function setMyNickname() {
+            document.getElementById("headerMenu").classList.add("hidden");
+            if (!fbAuth.currentUser || fbAuth.currentUser.isAnonymous) {
+                alert("Googleログイン中のみニックネームを設定できます。");
+                return;
+            }
+            const input = prompt("表示用のニックネームを入力してください。", currentUserNickname || "");
+            if (input === null) return; // キャンセル
+            const trimmed = input.trim().slice(0, 20);
+            try {
+                await FS_USERS_DOC().update({ [fbAuth.currentUser.uid + ".nickname"]: trimmed });
+                currentUserNickname = trimmed;
+                alert("ニックネームを更新しました: " + (trimmed || "（空欄）"));
+            } catch (err) {
+                alert("更新に失敗しました: " + (err.message || err));
+            }
+        }
+
         // ══════════════════════════════════════════════════════════════
         // 招待リンク（トークン方式） — 管理者がeditor/viewerロールを付与するためのリンクを発行する
         // ══════════════════════════════════════════════════════════════
@@ -1607,7 +1631,9 @@
                     const log = doc.data();
                     const actionLabel = ACTIVITY_LOG_ACTION_LABEL[log.action] || log.action;
                     const dateLabel = log.timestamp ? log.timestamp.toDate().toLocaleString("ja-JP") : "記録中...";
-                    const nickname = log.userNickname || "（ニックネーム未設定）";
+                    // userNicknameが空でも、記録時のロールがadminなら「未設定」ではなく管理者と分かる表示にする。
+                    // userRoleは今回追加したフィールドのため、過去ログには無く従来通りの表示になる。
+                    const nickname = log.userNickname || (log.userRole === "admin" ? "👑 管理者" : "（ニックネーム未設定）");
                     return `
                         <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                             <div class="flex items-center justify-between gap-2">
@@ -2974,6 +3000,7 @@
                     cardId: card.id,
                     userId: fbAuth.currentUser.uid,
                     userNickname: currentUserNickname || "",
+                    userRole: currentRole || "",
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     cardSummary: buildCardActivitySummary(card),
                     note: note || ""
@@ -3513,6 +3540,7 @@
             document.getElementById("pinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("editPinViewBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("editPinRegenBtn").classList.toggle("hidden", currentRole !== "admin");
+            document.getElementById("setNicknameBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("inviteLinkBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("accessManageBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("activityLogBtn").classList.toggle("hidden", currentRole !== "admin");
