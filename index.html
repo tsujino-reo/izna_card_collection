@@ -816,7 +816,17 @@
                 "＋ 新規トレカ追加": "＋ Add New Card",
                 "削除": "Delete",
                 "保存": "Save",
-                "保存中...": "Saving..."
+                "保存中...": "Saving...",
+                // ── 主な確認ダイアログ ──
+                "ログアウトしますか？": "Log out?",
+                "PINコードを再生成しますか？\n": "Regenerate the PIN code?\n",
+                "現在のPINは無効になり、全メンバーが次回起動時に新しいPINの入力を求められます。": "The current PIN will be invalidated, and all members will be asked to enter the new PIN the next time they open the app.",
+                "編集用PIN（応急処置用の一時的な編集権限バイパス）を発行・再生成しますか？\n\n": "Issue or regenerate the editor PIN (a temporary editor-access bypass for emergency use)?\n\n",
+                "このPINを知っている人は誰でも編集権限で入室できます。\n": "Anyone who knows this PIN can enter with editor access.\n",
+                "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。": "Sessions that already entered with this PIN are not automatically revoked when it's regenerated (you can revoke them individually from Access Management).",
+                "このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。": "Revoke this user's access?\nThey will no longer be able to access the app the next time they log in.",
+                "登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？": "This will permanently delete all registered cards (including images).\nThis action cannot be undone. Are you sure?",
+                "最終確認です。本当に全部削除してよろしいですか？": "Final confirmation. Are you sure you want to delete everything?"
                 // 第1弾（主な確認ダイアログ）で順次追加
             },
             ko: {
@@ -864,7 +874,17 @@
                 "＋ 新規トレカ追加": "＋ 새 카드 추가",
                 "削除": "삭제",
                 "保存": "저장",
-                "保存中...": "저장 중..."
+                "保存中...": "저장 중...",
+                // ── 주요 확인 대화상자 ──
+                "ログアウトしますか？": "로그아웃하시겠습니까?",
+                "PINコードを再生成しますか？\n": "PIN 코드를 재발급하시겠습니까?\n",
+                "現在のPINは無効になり、全メンバーが次回起動時に新しいPINの入力を求められます。": "현재 PIN은 무효화되며, 모든 멤버는 다음 접속 시 새 PIN 입력을 요청받습니다.",
+                "編集用PIN（応急処置用の一時的な編集権限バイパス）を発行・再生成しますか？\n\n": "편집용 PIN(응급 조치용 임시 편집 권한 우회)을 발급・재발급하시겠습니까?\n\n",
+                "このPINを知っている人は誰でも編集権限で入室できます。\n": "이 PIN을 아는 사람은 누구나 편집 권한으로 입장할 수 있습니다.\n",
+                "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。": "이미 이 PIN으로 입장한 세션은 재발급해도 자동으로 만료되지 않습니다(접근 권한 관리에서 개별적으로 취소할 수 있습니다).",
+                "このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。": "이 사용자의 접근 권한을 취소하시겠습니까?\n다음 로그인 시 접근할 수 없게 됩니다.",
+                "登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？": "등록된 모든 카드(이미지 포함)를 완전히 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 정말 진행하시겠습니까?",
+                "最終確認です。本当に全部削除してよろしいですか？": "최종 확인입니다. 정말 전부 삭제하시겠습니까?"
                 // 第1弾（主な確認ダイアログ）で順次追加
             }
         };
@@ -1474,7 +1494,7 @@
         // ローカルに残ったロール・PINセッション情報も消し、次回読み込み時に古い状態を引き継がないようにする。
         async function logoutApp() {
             document.getElementById("headerMenu").classList.add("hidden");
-            if (!confirm("ログアウトしますか？")) return;
+            if (!confirm(t("ログアウトしますか？"))) return;
             try {
                 await fbAuth.signOut();
             } catch (err) {
@@ -1518,8 +1538,8 @@
         async function regeneratePin() {
             document.getElementById("headerMenu").classList.add("hidden");
             if (!confirm(
-                "PINコードを再生成しますか？\n" +
-                "現在のPINは無効になり、全メンバーが次回起動時に新しいPINの入力を求められます。"
+                t("PINコードを再生成しますか？\n") +
+                t("現在のPINは無効になり、全メンバーが次回起動時に新しいPINの入力を求められます。")
             )) return;
             const newPin = generatePin();
             try {
@@ -1557,9 +1577,9 @@
         async function regenerateEditPin() {
             document.getElementById("headerMenu").classList.add("hidden");
             if (!confirm(
-                "編集用PIN（応急処置用の一時的な編集権限バイパス）を発行・再生成しますか？\n\n" +
-                "このPINを知っている人は誰でも編集権限で入室できます。\n" +
-                "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。"
+                t("編集用PIN（応急処置用の一時的な編集権限バイパス）を発行・再生成しますか？\n\n") +
+                t("このPINを知っている人は誰でも編集権限で入室できます。\n") +
+                t("既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。")
             )) return;
             const newPin = generatePin();
             try {
@@ -1740,7 +1760,7 @@
         // それ以外はconfig/usersのエントリを削除する。次回そのユーザーがアクセスを試みると
         // 権限なし（editor付与ならviewer、Google未招待なら「アクセス権限がありません」）に戻る。
         async function revokeAccess(uid, source) {
-            if (!confirm("このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。")) return;
+            if (!confirm(t("このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。"))) return;
             try {
                 if (source === "editPin") {
                     await fbDb.doc("editorPinGrants/" + uid).delete();
@@ -3712,8 +3732,8 @@
         // 枚数の不一致など、データ不整合が解消できない場合の最終手段として、
         // 登録済みの全トレカ（メタデータ＋画像）を完全に削除する。アルバム・メンバー写真・背景は残す。
         async function confirmResetAllCards() {
-            if (!confirm("登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？")) return;
-            if (!confirm("最終確認です。本当に全部削除してよろしいですか？")) return;
+            if (!confirm(t("登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？"))) return;
+            if (!confirm(t("最終確認です。本当に全部削除してよろしいですか？"))) return;
 
             try {
                 await clearCardStore();
