@@ -370,76 +370,76 @@
             
             <div class="space-y-4 text-xs">
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">トレカ画像（表面） <span class="text-rose-500 font-black">*必須</span></label>
+                    <label class="text-gray-400 font-bold block mb-1"><span data-i18n="トレカ画像（表面） ">トレカ画像（表面） </span><span class="text-rose-500 font-black" data-i18n="*必須">*必須</span></label>
                     <input type="file" id="formImage" accept="image/*" class="file-input-hidden" onchange="previewImage(this)">
                     <div id="imgLabel" onclick="handleImgAreaClick(event, 'formImage', 'imgPreview')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
                         <img id="imgPreview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <div id="imgPlaceholder" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">📷</span>
-                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">画像未登録</span>
+                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors" data-i18n="画像未登録">画像未登録</span>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 mt-2">
-                        <button type="button" onclick="openCameraCapture('front')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                        <button type="button" onclick="openCameraCapture('front')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="📸 撮影">
                             📸 撮影
                         </button>
-                        <button type="button" onclick="document.getElementById('formImage').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                        <button type="button" onclick="document.getElementById('formImage').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
                             🖼️ ギャラリー
                         </button>
                     </div>
-                    <button type="button" id="imgResetBtn" onclick="resetImageAdjust('front')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">
+                    <button type="button" id="imgResetBtn" onclick="resetImageAdjust('front')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors" data-i18n="↺ 位置・ズームをリセット">
                         ↺ 位置・ズームをリセット
                     </button>
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">トレカ画像（裏面） <span class="text-gray-600 font-bold">任意</span></label>
+                    <label class="text-gray-400 font-bold block mb-1"><span data-i18n="トレカ画像（裏面） ">トレカ画像（裏面） </span><span class="text-gray-600 font-bold" data-i18n="任意">任意</span></label>
                     <input type="file" id="formImageBack" accept="image/*" class="file-input-hidden" onchange="previewImageBack(this)">
                     <div id="imgLabelBack" onclick="handleImgAreaClick(event, 'formImageBack', 'imgPreviewBack')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
                         <img id="imgPreviewBack" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <button type="button" id="removeBackBtn" onclick="event.preventDefault(); event.stopPropagation(); removeBackImage()" class="hidden absolute top-1 right-1 z-20 bg-black/70 hover:bg-rose-900 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">✕</button>
                         <div id="imgPlaceholderBack" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">🔄</span>
-                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors">裏面を追加（任意）</span>
+                            <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors" data-i18n="裏面を追加（任意）">裏面を追加（任意）</span>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 mt-2">
-                        <button type="button" onclick="openCameraCapture('back')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                        <button type="button" onclick="openCameraCapture('back')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="📸 撮影">
                             📸 撮影
                         </button>
-                        <button type="button" onclick="document.getElementById('formImageBack').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1">
+                        <button type="button" onclick="document.getElementById('formImageBack').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
                             🖼️ ギャラリー
                         </button>
                     </div>
-                    <button type="button" id="imgResetBackBtn" onclick="resetImageAdjust('back')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">
+                    <button type="button" id="imgResetBackBtn" onclick="resetImageAdjust('back')" class="hidden w-full mt-1.5 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors" data-i18n="↺ 位置・ズームをリセット">
                         ↺ 位置・ズームをリセット
                     </button>
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">メンバー（複数選択可）</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="メンバー（複数選択可）">メンバー（複数選択可）</label>
                     <div id="formMemberOptions" class="flex flex-wrap gap-1.5"></div>
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">アルバム</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="アルバム">アルバム</label>
                     <select id="formAlbum" onchange="updateFormCategoryOptions(); updateFormMemberOptions(); updateThemeDatalist();" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white font-medium"></select>
                 </div>
 
                 <div id="formCategoryWrap">
-                    <label class="text-gray-400 font-bold block mb-1">種類</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="種類">種類</label>
                     <select id="formCategory" onchange="updateFormStoreVisibility(); updateThemeDatalist();" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div id="formStoreWrap" class="hidden">
-                    <label class="text-gray-400 font-bold block mb-1">店舗</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="店舗">店舗</label>
                     <select id="formStore" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">テーマ (例: AWAKENING Ver.A)</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="テーマ (例: AWAKENING Ver.A)">テーマ (例: AWAKENING Ver.A)</label>
                     <div class="relative">
-                        <input type="text" id="formTheme" placeholder="トレカの名称やバージョン名" autocomplete="off"
+                        <input type="text" id="formTheme" placeholder="トレカの名称やバージョン名" data-i18n-placeholder="トレカの名称やバージョン名" autocomplete="off"
                             oninput="renderThemeSuggestions()" onfocus="renderThemeSuggestions()"
                             class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
                         <div id="formThemeSuggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto"></div>
@@ -447,14 +447,14 @@
                 </div>
 
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">検索タグ <span class="text-gray-600 font-bold">任意・スペース区切り</span></label>
-                    <input type="text" id="formTags" placeholder="例: ウインク 私服 ぬいぐるみ" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
-                    <p class="text-[9px] text-gray-500 mt-1">ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります</p>
+                    <label class="text-gray-400 font-bold block mb-1"><span data-i18n="検索タグ ">検索タグ </span><span class="text-gray-600 font-bold" data-i18n="任意・スペース区切り">任意・スペース区切り</span></label>
+                    <input type="text" id="formTags" placeholder="例: ウインク 私服 ぬいぐるみ" data-i18n-placeholder="例: ウインク 私服 ぬいぐるみ" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white">
+                    <p class="text-[9px] text-gray-500 mt-1" data-i18n="ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります">ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります</p>
                 </div>
             </div>
-            
+
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
-                <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">閉じる</button>
+                <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800" data-i18n="閉じる">閉じる</button>
                 <button id="saveCardBtn" onclick="saveCard()" data-i18n="保存" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50">保存</button>
             </div>
         </div>
@@ -483,40 +483,40 @@
 
     <div id="albumModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">💿 アルバム管理</h3>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">💿 <span data-i18n="アルバム管理">アルバム管理</span></h3>
             <div id="albumList" class="space-y-3 mb-4 text-xs"></div>
             <div class="border-t border-gray-800 pt-4 space-y-2">
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">新規アルバムを追加</p>
-                <input type="text" id="newAlbumName" placeholder="アルバム名 (例: Set The Tempo)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
-                
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider" data-i18n="新規アルバムを追加">新規アルバムを追加</p>
+                <input type="text" id="newAlbumName" placeholder="アルバム名 (例: Set The Tempo)" data-i18n-placeholder="アルバム名 (例: Set The Tempo)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+
                 <div class="flex items-center gap-2">
                     <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] rounded-lg px-3 py-2 font-bold cursor-pointer transition-colors shrink-0">
-                        📁 背景画像を選択
+                        <span data-i18n="📁 背景画像を選択">📁 背景画像を選択</span>
                         <input type="file" id="newAlbumCoverFile" accept="image/*" class="file-input-hidden" onchange="previewAlbumCoverNew(this)">
                     </label>
-                    <span id="newAlbumCoverStatus" class="text-[10px] text-gray-500 truncate">未選択</span>
+                    <span id="newAlbumCoverStatus" class="text-[10px] text-gray-500 truncate" data-i18n="未選択">未選択</span>
                 </div>
 
-                <button onclick="addAlbum()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">＋ 追加</button>
+                <button onclick="addAlbum()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs" data-i18n="＋ 追加">＋ 追加</button>
             </div>
             <div class="flex justify-end mt-4">
-                <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
 
     <div id="storeModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏪 店舗管理</h3>
-            <p class="text-[10px] text-gray-500 mb-3">「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏪 <span data-i18n="店舗管理">店舗管理</span></h3>
+            <p class="text-[10px] text-gray-500 mb-3" data-i18n="「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。">「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。</p>
             <div id="storeList" class="space-y-2 mb-4 text-xs"></div>
             <div class="border-t border-gray-800 pt-4 space-y-2">
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">新規店舗を追加</p>
-                <input type="text" id="newStoreName" placeholder="店舗名 (例: Ktown4u)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
-                <button onclick="addStore()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">＋ 追加</button>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider" data-i18n="新規店舗を追加">新規店舗を追加</p>
+                <input type="text" id="newStoreName" placeholder="店舗名 (例: Ktown4u)" data-i18n-placeholder="店舗名 (例: Ktown4u)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                <button onclick="addStore()" class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs" data-i18n="＋ 追加">＋ 追加</button>
             </div>
             <div class="flex justify-end mt-4">
-                <button onclick="closeStoreModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeStoreModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
@@ -676,25 +676,25 @@
 
     <div id="memberPhotoModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📷 メンバー写真設定</h3>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📷 <span data-i18n="メンバー写真設定">メンバー写真設定</span></h3>
             <div id="memberPhotoList" class="space-y-2 mb-4 text-xs"></div>
             <div class="flex justify-end mt-2">
-                <button onclick="closeMemberPhotoModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeMemberPhotoModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
 
     <div id="memberPhotoAdjustModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-[60]">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-xs w-full p-5 card-shadow">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📷 写真の位置・ズームを調整</h3>
-            <p class="text-[10px] text-gray-500 mb-3">2本指でピンチしてズーム、ドラッグで位置を調整できます。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📷 <span data-i18n="写真の位置・ズームを調整">写真の位置・ズームを調整</span></h3>
+            <p class="text-[10px] text-gray-500 mb-3" data-i18n="2本指でピンチしてズーム、ドラッグで位置を調整できます。">2本指でピンチしてズーム、ドラッグで位置を調整できます。</p>
             <div id="memberPhotoAdjustViewport" class="relative w-40 h-40 mx-auto rounded-full bg-gray-900 border border-gray-800 overflow-hidden touch-none">
                 <img id="memberPhotoAdjustImg" src="" class="absolute inset-0 w-full h-full object-cover">
             </div>
-            <button onclick="resetMemberPhotoAdjust()" class="w-full mt-3 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors">↺ リセット</button>
+            <button onclick="resetMemberPhotoAdjust()" class="w-full mt-3 bg-gray-900 border border-gray-700 text-gray-400 text-[10px] rounded-lg py-1.5 font-bold transition-colors" data-i18n="↺ リセット">↺ リセット</button>
             <div class="flex justify-end gap-2 mt-4">
-                <button onclick="closeMemberPhotoAdjustModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">キャンセル</button>
-                <button id="memberPhotoAdjustSaveBtn" onclick="saveMemberPhotoAdjust()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold">保存</button>
+                <button onclick="closeMemberPhotoAdjustModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="キャンセル">キャンセル</button>
+                <button id="memberPhotoAdjustSaveBtn" onclick="saveMemberPhotoAdjust()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold" data-i18n="保存">保存</button>
             </div>
         </div>
     </div>
@@ -826,8 +826,64 @@
                 "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。": "Sessions that already entered with this PIN are not automatically revoked when it's regenerated (you can revoke them individually from Access Management).",
                 "このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。": "Revoke this user's access?\nThey will no longer be able to access the app the next time they log in.",
                 "登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？": "This will permanently delete all registered cards (including images).\nThis action cannot be undone. Are you sure?",
-                "最終確認です。本当に全部削除してよろしいですか？": "Final confirmation. Are you sure you want to delete everything?"
-                // 第1弾（主な確認ダイアログ）で順次追加
+                "最終確認です。本当に全部削除してよろしいですか？": "Final confirmation. Are you sure you want to delete everything?",
+                // ── 第2弾: カード登録/編集フォーム ──
+                "トレカ画像（表面） ": "Card Image (Front) ",
+                "*必須": "*Required",
+                "画像未登録": "No image",
+                "📸 撮影": "📸 Take Photo",
+                "🖼️ ギャラリー": "🖼️ Gallery",
+                "↺ 位置・ズームをリセット": "↺ Reset Position & Zoom",
+                "トレカ画像（裏面） ": "Card Image (Back) ",
+                "任意": "Optional",
+                "裏面を追加（任意）": "Add back (optional)",
+                "メンバー（複数選択可）": "Member(s) (multiple allowed)",
+                "アルバム": "Album",
+                "種類": "Category",
+                "店舗": "Store",
+                "テーマ (例: AWAKENING Ver.A)": "Theme (e.g. AWAKENING Ver.A)",
+                "トレカの名称やバージョン名": "Card name or version",
+                "検索タグ ": "Search Tags ",
+                "任意・スペース区切り": "Optional, space-separated",
+                "例: ウインク 私服 ぬいぐるみ": "e.g. wink, casual outfit, plushie",
+                "ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります": "Adding pose names, outfits, characters, etc. makes it easier to find later via search",
+                "閉じる": "Close",
+                "トレカアーカイブ登録": "Register Trading Card",
+                "トレカ情報の編集": "Edit Card Info",
+                "トレカ画像を登録してください！": "Please register a card image!",
+                "メンバーを1人以上選択してください！": "Please select at least one member!",
+                "保存に失敗しました。エラー: ": "Failed to save. Error: ",
+                // ── 第2弾: アルバム/店舗/メンバー写真管理画面 ──
+                "アルバム管理": "Album Management",
+                "新規アルバムを追加": "Add New Album",
+                "アルバム名 (例: Set The Tempo)": "Album name (e.g. Set The Tempo)",
+                "📁 背景画像を選択": "📁 Choose Background Image",
+                "未選択": "Not selected",
+                "＋ 追加": "＋ Add",
+                "店舗管理": "Store Management",
+                "「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。": "The list of stores available in \"Store Bonus / Lucky Draw\" (alphabetical order). Shared across all albums except I-LAND2.",
+                "新規店舗を追加": "Add New Store",
+                "店舗名 (例: Ktown4u)": "Store name (e.g. Ktown4u)",
+                "メンバー写真設定": "Member Photo Settings",
+                "写真の位置・ズームを調整": "Adjust Photo Position & Zoom",
+                "2本指でピンチしてズーム、ドラッグで位置を調整できます。": "Pinch with two fingers to zoom, drag to adjust the position.",
+                "↺ リセット": "↺ Reset",
+                "キャンセル": "Cancel",
+                "変更": "Change",
+                "名:": "Name:",
+                "📸 フォルダから画像を選ぶ": "📸 Choose Image from Folder",
+                "✓ 設定済み": "✓ Set",
+                "画像なし": "No image",
+                "✓ 選択中": "✓ Selected",
+                "同名のアルバムが存在します": "An album with this name already exists",
+                "アルバム「": "Album \"",
+                "」には ": "\" has ",
+                " 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？": " card(s) in it. Deleting it will move them to \"N/a\". Are you sure?",
+                "同名の店舗が既に存在します": "A store with this name already exists",
+                "「": "\"",
+                " 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？": " card(s) registered. Deleting it will unset the store on those cards. Are you sure?",
+                "」を削除しますか？": "\" — delete this store?"
+                // 第2弾: 引き続き他画面を追加
             },
             ko: {
                 // ── ヘッダー・「⋮」メニュー ──
@@ -884,8 +940,64 @@
                 "既にこのPINで入室済みのセッションは再生成しても自動では失効しません（アクセス管理から個別に取り消せます）。": "이미 이 PIN으로 입장한 세션은 재발급해도 자동으로 만료되지 않습니다(접근 권한 관리에서 개별적으로 취소할 수 있습니다).",
                 "このユーザーのアクセス権を取り消しますか？\n次回ログイン時にアクセスできなくなります。": "이 사용자의 접근 권한을 취소하시겠습니까?\n다음 로그인 시 접근할 수 없게 됩니다.",
                 "登録済みの全トレカ（画像を含む）を完全に削除します。\nこの操作は元に戻せません。本当によろしいですか？": "등록된 모든 카드(이미지 포함)를 완전히 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 정말 진행하시겠습니까?",
-                "最終確認です。本当に全部削除してよろしいですか？": "최종 확인입니다. 정말 전부 삭제하시겠습니까?"
-                // 第1弾（主な確認ダイアログ）で順次追加
+                "最終確認です。本当に全部削除してよろしいですか？": "최종 확인입니다. 정말 전부 삭제하시겠습니까?",
+                // ── 第2弾: 카드 등록/수정 폼 ──
+                "トレカ画像（表面） ": "카드 이미지(앞면) ",
+                "*必須": "*필수",
+                "画像未登録": "이미지 미등록",
+                "📸 撮影": "📸 촬영",
+                "🖼️ ギャラリー": "🖼️ 갤러리",
+                "↺ 位置・ズームをリセット": "↺ 위치・확대 초기화",
+                "トレカ画像（裏面） ": "카드 이미지(뒷면) ",
+                "任意": "선택",
+                "裏面を追加（任意）": "뒷면 추가(선택)",
+                "メンバー（複数選択可）": "멤버(복수 선택 가능)",
+                "アルバム": "앨범",
+                "種類": "종류",
+                "店舗": "매장",
+                "テーマ (例: AWAKENING Ver.A)": "테마 (예: AWAKENING Ver.A)",
+                "トレカの名称やバージョン名": "카드 이름이나 버전명",
+                "検索タグ ": "검색 태그 ",
+                "任意・スペース区切り": "선택, 공백으로 구분",
+                "例: ウインク 私服 ぬいぐるみ": "예: 윙크 사복 인형",
+                "ポーズ名・服装・キャラクターなどを入れると、後から検索で見つけやすくなります": "포즈 이름・의상・캐릭터 등을 입력하면 나중에 검색으로 찾기 쉬워집니다",
+                "閉じる": "닫기",
+                "トレカアーカイブ登録": "포토카드 등록",
+                "トレカ情報の編集": "카드 정보 수정",
+                "トレカ画像を登録してください！": "카드 이미지를 등록해 주세요!",
+                "メンバーを1人以上選択してください！": "멤버를 1명 이상 선택해 주세요!",
+                "保存に失敗しました。エラー: ": "저장에 실패했습니다. 오류: ",
+                // ── 第2弾: 앨범/매장/멤버 사진 관리 화면 ──
+                "アルバム管理": "앨범 관리",
+                "新規アルバムを追加": "새 앨범 추가",
+                "アルバム名 (例: Set The Tempo)": "앨범 이름 (예: Set The Tempo)",
+                "📁 背景画像を選択": "📁 배경 이미지 선택",
+                "未選択": "미선택",
+                "＋ 追加": "＋ 추가",
+                "店舗管理": "매장 관리",
+                "「店舗特典・ラキドロ」で選択できる店舗一覧です（アルファベット順）。I-LAND2以外の全アルバムで共通です。": "\"매장 특전・래키드로\"에서 선택할 수 있는 매장 목록입니다(알파벳순). I-LAND2를 제외한 모든 앨범에서 공통입니다.",
+                "新規店舗を追加": "새 매장 추가",
+                "店舗名 (例: Ktown4u)": "매장 이름 (예: Ktown4u)",
+                "メンバー写真設定": "멤버 사진 설정",
+                "写真の位置・ズームを調整": "사진 위치・확대 조정",
+                "2本指でピンチしてズーム、ドラッグで位置を調整できます。": "두 손가락으로 핀치하여 확대하고, 드래그로 위치를 조정할 수 있습니다.",
+                "↺ リセット": "↺ 초기화",
+                "キャンセル": "취소",
+                "変更": "변경",
+                "名:": "이름:",
+                "📸 フォルダから画像を選ぶ": "📸 폴더에서 이미지 선택",
+                "✓ 設定済み": "✓ 설정됨",
+                "画像なし": "이미지 없음",
+                "✓ 選択中": "✓ 선택됨",
+                "同名のアルバムが存在します": "동일한 이름의 앨범이 이미 존재합니다",
+                "アルバム「": "앨범 \"",
+                "」には ": "\"에는 ",
+                " 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？": "장의 카드가 있습니다. 삭제하면 \"N/a\"로 이동합니다. 정말 삭제하시겠습니까?",
+                "同名の店舗が既に存在します": "동일한 이름의 매장이 이미 존재합니다",
+                "「": "\"",
+                " 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？": "장의 카드가 등록되어 있습니다. 삭제하면 매장이 미설정됩니다. 정말 삭제하시겠습니까?",
+                "」を削除しますか？": "\"를 삭제하시겠습니까?"
+                // 第2弾: 引き続き他画面を追加
             }
         };
 
@@ -4171,7 +4283,7 @@
         }
 
         function openModal() {
-            document.getElementById("modalTitle").innerText = "トレカアーカイブ登録";
+            document.getElementById("modalTitle").innerText = t("トレカアーカイブ登録");
             document.getElementById("editIndex").value = "";
             document.getElementById("formTheme").value = "";
             document.getElementById("formTags").value = "";
@@ -4679,12 +4791,12 @@
             const tags = parseTagsInput(document.getElementById("formTags").value);
 
             if (!editId && !currentTempImageUrl) {
-                alert("トレカ画像を登録してください！");
+                alert(t("トレカ画像を登録してください！"));
                 return;
             }
 
             if (members.length === 0) {
-                alert("メンバーを1人以上選択してください！");
+                alert(t("メンバーを1人以上選択してください！"));
                 return;
             }
 
@@ -4772,7 +4884,7 @@
                 }
             } catch (err) {
                 console.error("saveCard failed:", err);
-                alert("保存に失敗しました。エラー: " + (err && err.message ? err.message : err));
+                alert(t("保存に失敗しました。エラー: ") + (err && err.message ? err.message : err));
             } finally {
                 btn.disabled = false;
                 btn.textContent = t("保存");
@@ -4806,7 +4918,7 @@
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
-            document.getElementById("modalTitle").innerText = "トレカ情報の編集";
+            document.getElementById("modalTitle").innerText = t("トレカ情報の編集");
             document.getElementById("editIndex").value = card.id;
             document.getElementById("formTheme").value = card.theme;
             document.getElementById("formAlbum").value = card.album;
@@ -4970,7 +5082,7 @@
 
         function openAlbumModal() {
             currentTempAlbumCoverUrl = "";
-            document.getElementById("newAlbumCoverStatus").innerText = "未選択";
+            document.getElementById("newAlbumCoverStatus").innerText = t("未選択");
             renderAlbumListModal();
             document.getElementById("albumModal").classList.remove("hidden");
             pushModalHistory("closeAlbumModal");
@@ -5008,7 +5120,7 @@
                     <div class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                         ${avatarHtml}
                         <span class="flex-1 font-bold text-gray-200">${m.name}</span>
-                        <button onclick="openMemberPhotoPicker('${m.name}')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg">変更</button>
+                        <button onclick="openMemberPhotoPicker('${m.name}')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg">${t("変更")}</button>
                     </div>
                 `;
             }).join('');
@@ -5371,7 +5483,7 @@
             const name = document.getElementById("newStoreName").value.trim();
             if (name === "") return;
             if (stores.some(s => s.toLowerCase() === name.toLowerCase())) {
-                alert("同名の店舗が既に存在します");
+                alert(t("同名の店舗が既に存在します"));
                 return;
             }
             stores.push(name);
@@ -5386,7 +5498,7 @@
             const oldName = stores[index];
             if (newName === "" || newName === oldName) { renderStoreList(); return; }
             if (stores.some((s, i) => i !== index && s.toLowerCase() === newName.toLowerCase())) {
-                alert("同名の店舗が既に存在します");
+                alert(t("同名の店舗が既に存在します"));
                 renderStoreList();
                 return;
             }
@@ -5403,12 +5515,12 @@
             const name = stores[index];
             const cardCount = pcData.filter(d => d.store === name).length;
             if (cardCount > 0) {
-                if (!confirm(`「${name}」には ${cardCount} 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？`)) return;
+                if (!confirm(t("「") + name + t("」には ") + cardCount + t(" 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？"))) return;
                 const affected = pcData.filter(d => d.store === name);
                 affected.forEach(card => { card.store = null; });
                 saveCardsToDB(affected);
             } else {
-                if (!confirm(`「${name}」を削除しますか？`)) return;
+                if (!confirm(t("「") + name + t("」を削除しますか？"))) return;
             }
             stores.splice(index, 1);
             saveStores();
@@ -5420,17 +5532,17 @@
             container.innerHTML = albums.map((a, i) => `
                 <div class="flex flex-col gap-2 bg-gray-900 border border-gray-800 rounded-lg p-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 font-bold">名:</span>
+                        <span class="text-xs text-gray-500 font-bold">${t("名:")}</span>
                         <input type="text" value="${a.name}" onchange="renameAlbum(${i}, this.value)" class="flex-1 font-bold text-white text-xs bg-transparent border-b border-gray-700 focus:border-pink-500 focus:outline-none px-1">
                         ${albums.length > 1 ? `<button onclick="deleteAlbum(${i})" class="text-rose-400 hover:text-rose-300 text-xs font-bold px-1">✕</button>` : ''}
                     </div>
                     <div class="flex items-center justify-between gap-2 pt-1">
                         <label class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-md px-2 py-1 font-bold cursor-pointer transition-colors">
-                            📸 フォルダから画像を選ぶ
+                            ${t("📸 フォルダから画像を選ぶ")}
                             <input type="file" accept="image/*" class="file-input-hidden" onchange="updateAlbumCoverFile(${i}, this)">
                         </label>
                         <span class="text-[10px] ${a.coverUrl ? 'text-emerald-400' : 'text-gray-500'} font-bold">
-                            ${a.coverUrl ? '✓ 設定済み' : '画像なし'}
+                            ${a.coverUrl ? t('✓ 設定済み') : t('画像なし')}
                         </span>
                     </div>
                 </div>
@@ -5443,7 +5555,7 @@
             const oldName = albums[index].name;
             const trimNewName = newName.trim();
             if (trimNewName === "" || trimNewName === oldName) { renderAlbumListModal(); return; }
-            if (albums.some((a, idx) => a.name === trimNewName && idx !== index)) { alert("同名のアルバムが存在します"); renderAlbumListModal(); return; }
+            if (albums.some((a, idx) => a.name === trimNewName && idx !== index)) { alert(t("同名のアルバムが存在します")); renderAlbumListModal(); return; }
 
             albums[index].name = trimNewName;
 
@@ -5477,7 +5589,7 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 currentTempAlbumCoverUrl = e.target.result;
-                document.getElementById("newAlbumCoverStatus").innerText = "✓ 選択中";
+                document.getElementById("newAlbumCoverStatus").innerText = t("✓ 選択中");
                 document.getElementById("newAlbumCoverStatus").className = "text-[10px] text-emerald-400 font-bold";
             };
             reader.readAsDataURL(file);
@@ -5486,16 +5598,16 @@
         function addAlbum() {
             const name = document.getElementById("newAlbumName").value.trim();
             if (name === "") return;
-            if (albums.some(a => a.name === name)) { alert("同名のアルバムが存在します"); return; }
-            
+            if (albums.some(a => a.name === name)) { alert(t("同名のアルバムが存在します")); return; }
+
             albums.push({ name, coverUrl: currentTempAlbumCoverUrl || "" });
             // 固定6アルバムより後ろに来るよう並べ直す（新規アルバムは常に末尾に追加される）
             albums = sortAlbumsByFixedOrder(albums);
             saveAlbums();
-            
+
             document.getElementById("newAlbumName").value = "";
             currentTempAlbumCoverUrl = "";
-            document.getElementById("newAlbumCoverStatus").innerText = "未選択";
+            document.getElementById("newAlbumCoverStatus").innerText = t("未選択");
             document.getElementById("newAlbumCoverStatus").className = "text-[10px] text-gray-500";
             
             renderAlbumListModal();
@@ -5506,7 +5618,7 @@
         async function deleteAlbum(index) {
             const name = albums[index].name;
             const cardCount = pcData.filter(d => d.album === name).length;
-            if (cardCount > 0 && !confirm(`アルバム「${name}」には ${cardCount} 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？`)) return;
+            if (cardCount > 0 && !confirm(t("アルバム「") + name + t("」には ") + cardCount + t(" 枚のトレカが入っています。削除すると「N/a」に移動します。よろしいですか？"))) return;
 
             try {
                 if (cardCount > 0) {
