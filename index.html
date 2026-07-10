@@ -212,28 +212,43 @@
             <label class="block text-[9px] text-gray-400 font-black uppercase tracking-wider mb-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">MEMBER SELECT</label>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4" id="albumTabs"></div>
 
-            <div class="flex justify-end gap-2 mb-4 flex-wrap">
-                <button id="bgSettingsBtn" onclick="openBackgroundModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    🏞️ 背景設定
-                </button>
-                <button id="migrateBgBtn" onclick="migrateLocalBackgroundsToFirestore()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    ☁️ 背景をFirestoreへ移行
-                </button>
-                <button id="migrateCardImagesBtn" onclick="migrateCardImagesToStorage()" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    ☁️ トレカ画像をStorageへ移行
-                </button>
-                <button id="resetAllDataBtn" onclick="confirmResetAllCards()" data-i18n="🗑️ トレカ全削除" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    🗑️ トレカ全削除
-                </button>
-                <button id="manageMemberPhotosBtn" onclick="openMemberPhotoModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    📷 メンバー写真設定
-                </button>
-                <button id="manageAlbumsBtn" onclick="openAlbumModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    💿 アルバム管理
-                </button>
-                <button id="manageStoresBtn" onclick="openStoreModal()" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
-                    🏪 店舗管理
-                </button>
+            <div id="adminToolsSection" class="hidden mb-4 space-y-2.5">
+                <div>
+                    <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1 text-right" data-i18n="管理画面">管理画面</label>
+                    <div class="flex justify-end gap-2 flex-wrap">
+                        <button id="bgSettingsBtn" onclick="openBackgroundModal()" data-i18n="🏞️ 背景設定" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            🏞️ 背景設定
+                        </button>
+                        <button id="manageMemberPhotosBtn" onclick="openMemberPhotoModal()" data-i18n="📷 メンバー写真設定" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            📷 メンバー写真設定
+                        </button>
+                        <button id="manageAlbumsBtn" onclick="openAlbumModal()" data-i18n="💿 アルバム管理" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            💿 アルバム管理
+                        </button>
+                        <button id="manageStoresBtn" onclick="openStoreModal()" data-i18n="🏪 店舗管理" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            🏪 店舗管理
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[9px] text-gray-500 font-black uppercase tracking-wider mb-1 text-right" data-i18n="移行ツール">移行ツール</label>
+                    <div class="flex justify-end gap-2 flex-wrap">
+                        <button id="migrateBgBtn" onclick="migrateLocalBackgroundsToFirestore()" data-i18n="☁️ 背景をFirestoreへ移行" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            ☁️ 背景をFirestoreへ移行
+                        </button>
+                        <button id="migrateCardImagesBtn" onclick="migrateCardImagesToStorage()" data-i18n="☁️ トレカ画像をStorageへ移行" class="hidden bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            ☁️ トレカ画像をStorageへ移行
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-1.5 border-t border-gray-800/60">
+                    <label class="block text-[9px] text-rose-500/80 font-black uppercase tracking-wider mb-1 text-right" data-i18n="危険な操作">危険な操作</label>
+                    <div class="flex justify-end gap-2 flex-wrap">
+                        <button id="resetAllDataBtn" onclick="confirmResetAllCards()" data-i18n="🗑️ トレカ全削除" class="hidden bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all">
+                            🗑️ トレカ全削除
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -926,7 +941,17 @@
                 "👑 管理者": "👑 Admin",
                 "（ニックネーム未設定）": "(No nickname set)",
                 "直近60日間の更新履歴はありません": "No activity in the last 60 days",
-                " ・ ": " · "
+                " ・ ": " · ",
+                // ── UI改善: 管理者用ボタンのグループ見出し・未翻訳ボタン ──
+                "管理画面": "Management",
+                "移行ツール": "Migration Tools",
+                "危険な操作": "Danger Zone",
+                "🏞️ 背景設定": "🏞️ Background Settings",
+                "📷 メンバー写真設定": "📷 Member Photo Settings",
+                "💿 アルバム管理": "💿 Album Management",
+                "🏪 店舗管理": "🏪 Store Management",
+                "☁️ 背景をFirestoreへ移行": "☁️ Migrate Backgrounds to Firestore",
+                "☁️ トレカ画像をStorageへ移行": "☁️ Migrate Card Images to Storage"
                 // 第2弾完了
             },
             ko: {
@@ -1084,7 +1109,17 @@
                 "👑 管理者": "👑 관리자",
                 "（ニックネーム未設定）": "(닉네임 미설정)",
                 "直近60日間の更新履歴はありません": "최근 60일간의 업데이트 이력이 없습니다",
-                " ・ ": " · "
+                " ・ ": " · ",
+                // ── UI改善: 管理者用ボタンのグループ見出し・未翻訳ボタン ──
+                "管理画面": "관리 화면",
+                "移行ツール": "이전 도구",
+                "危険な操作": "위험 작업",
+                "🏞️ 背景設定": "🏞️ 배경 설정",
+                "📷 メンバー写真設定": "📷 멤버 사진 설정",
+                "💿 アルバム管理": "💿 앨범 관리",
+                "🏪 店舗管理": "🏪 매장 관리",
+                "☁️ 背景をFirestoreへ移行": "☁️ 배경을 Firestore로 이전",
+                "☁️ トレカ画像をStorageへ移行": "☁️ 카드 이미지를 Storage로 이전"
                 // 第2弾完了
             }
         };
@@ -3178,7 +3213,7 @@
                 });
             } catch (e) {
                 btn.disabled = false;
-                btn.textContent = "☁️ 背景をFirestoreへ移行";
+                btn.textContent = t("☁️ 背景をFirestoreへ移行");
                 alert("IndexedDB の読み込みに失敗しました:\n" + (e.message || e));
                 return;
             }
@@ -3188,7 +3223,7 @@
 
             if (bgRecords.length === 0) {
                 btn.disabled = false;
-                btn.textContent = "☁️ 背景をFirestoreへ移行";
+                btn.textContent = t("☁️ 背景をFirestoreへ移行");
                 alert("IndexedDB に移行対象の背景画像がありません。\n" +
                     "（すでに移行済みか、このブラウザには背景が設定されていません）");
                 return;
@@ -3239,7 +3274,7 @@
             }
 
             btn.disabled = false;
-            btn.textContent = "☁️ 背景をFirestoreへ移行";
+            btn.textContent = t("☁️ 背景をFirestoreへ移行");
 
             alert(
                 `移行完了\n` +
@@ -3273,7 +3308,7 @@
                 cardIds = snapshot.docs.map(doc => doc.id);
             } catch (e) {
                 btn.disabled = false;
-                btn.textContent = "☁️ トレカ画像をStorageへ移行";
+                btn.textContent = t("☁️ トレカ画像をStorageへ移行");
                 alert("Firestoreからのカード一覧取得に失敗しました:\n" + (e.message || e));
                 return;
             }
@@ -3315,7 +3350,7 @@
             }
 
             btn.disabled = false;
-            btn.textContent = "☁️ トレカ画像をStorageへ移行";
+            btn.textContent = t("☁️ トレカ画像をStorageへ移行");
 
             alert(
                 `移行完了\n` +
@@ -3912,6 +3947,7 @@
         // 表示/非表示をロールに応じてまとめて適用する。トップ階層・ギャラリー画面のどちらの再描画からも呼ぶ
         // （片方だけ更新して食い違うのを防ぐため、判定はここに集約する）。
         function updateHeaderMenuVisibility() {
+            document.getElementById("adminToolsSection").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("bgSettingsBtn").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("importLabel").classList.toggle("hidden", currentRole !== "admin");
             document.getElementById("pinViewBtn").classList.toggle("hidden", currentRole !== "admin");
@@ -6023,7 +6059,21 @@
         }
 
         function toggleHeaderMenu() {
-            document.getElementById("headerMenu").classList.toggle("hidden");
+            const menu = document.getElementById("headerMenu");
+            const opening = menu.classList.contains("hidden");
+            menu.classList.toggle("hidden");
+            if (opening) {
+                // 通常はright-0でボタンの右端に揃うが、ヘッダー右端がビューポート左端に近い
+                // 画面幅ではメニュー（w-48）が画面外にはみ出すため、開くたびに実測して補正する
+                menu.style.transform = "";
+                const rect = menu.getBoundingClientRect();
+                const margin = 8;
+                if (rect.left < margin) {
+                    menu.style.transform = `translateX(${margin - rect.left}px)`;
+                } else if (rect.right > window.innerWidth - margin) {
+                    menu.style.transform = `translateX(${(window.innerWidth - margin) - rect.right}px)`;
+                }
+            }
         }
         // メニュー外をタップしたら閉じる
         document.addEventListener("click", function(e) {
