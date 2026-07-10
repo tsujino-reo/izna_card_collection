@@ -523,61 +523,61 @@
 
     <div id="inviteModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🔗 招待リンクを作成</h3>
-            <p class="text-[10px] text-gray-500 mb-4">発行したリンクは7日間有効です。1回使用されると無効になります。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4" data-i18n="🔗 招待リンクを作成">🔗 招待リンクを作成</h3>
+            <p class="text-[10px] text-gray-500 mb-4" data-i18n="発行したリンクは7日間有効です。1回使用されると無効になります。">発行したリンクは7日間有効です。1回使用されると無効になります。</p>
 
             <div class="space-y-3">
                 <div>
-                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">付与するロール</label>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1" data-i18n="付与するロール">付与するロール</label>
                     <select id="inviteRoleSelect" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
-                        <option value="editor">✍️ 編集者</option>
-                        <option value="viewer">👁️ 閲覧者</option>
+                        <option value="editor" data-i18n="✍️ 編集者">✍️ 編集者</option>
+                        <option value="viewer" data-i18n="👁️ 閲覧者">👁️ 閲覧者</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">ニックネーム（誰に渡すかのメモ、任意）</label>
-                    <input type="text" id="inviteNicknameInput" placeholder="例: ゆうさん" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1" data-i18n="ニックネーム（誰に渡すかのメモ、任意）">ニックネーム（誰に渡すかのメモ、任意）</label>
+                    <input type="text" id="inviteNicknameInput" placeholder="例: ゆうさん" data-i18n-placeholder="例: ゆうさん" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs">
                 </div>
-                <button id="inviteCreateBtn" onclick="createInviteLink()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs">🔗 招待リンクを発行</button>
+                <button id="inviteCreateBtn" onclick="createInviteLink()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs" data-i18n="🔗 招待リンクを発行">🔗 招待リンクを発行</button>
 
                 <div id="inviteResultBox" class="hidden pt-3 border-t border-gray-800 space-y-2">
-                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">発行された招待リンク</label>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider" data-i18n="発行された招待リンク">発行された招待リンク</label>
                     <div class="flex gap-1.5">
                         <input type="text" id="inviteResultUrl" readonly class="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-[10px]">
-                        <button id="inviteCopyBtn" onclick="copyInviteLinkToClipboard()" class="shrink-0 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-[10px] font-bold">📋 コピー</button>
+                        <button id="inviteCopyBtn" onclick="copyInviteLinkToClipboard()" class="shrink-0 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-[10px] font-bold" data-i18n="📋 コピー">📋 コピー</button>
                     </div>
-                    <p class="text-[9px] text-gray-500">このリンクは7日後、または1回使用されると無効になります。</p>
+                    <p class="text-[9px] text-gray-500" data-i18n="このリンクは7日後、または1回使用されると無効になります。">このリンクは7日後、または1回使用されると無効になります。</p>
                 </div>
             </div>
 
             <div class="flex justify-end mt-4">
-                <button onclick="closeInviteModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeInviteModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
 
     <div id="accessManageModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">👥 アクセス管理</h3>
-            <p class="text-[10px] text-gray-500 mb-4">招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4" data-i18n="👥 アクセス管理">👥 アクセス管理</h3>
+            <p class="text-[10px] text-gray-500 mb-4" data-i18n="招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。">招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。</p>
 
             <div id="accessManageList" class="space-y-2"></div>
 
             <div class="flex justify-end mt-4">
-                <button onclick="closeAccessManageModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeAccessManageModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
 
     <div id="activityLogModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📜 更新履歴</h3>
-            <p class="text-[10px] text-gray-500 mb-4">直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4" data-i18n="📜 更新履歴">📜 更新履歴</h3>
+            <p class="text-[10px] text-gray-500 mb-4" data-i18n="直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。">直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。</p>
 
             <div id="activityLogList" class="space-y-2"></div>
 
             <div class="flex justify-end mt-4">
-                <button onclick="closeActivityLogModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeActivityLogModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold" data-i18n="閉じる">閉じる</button>
             </div>
         </div>
     </div>
@@ -882,8 +882,52 @@
                 "同名の店舗が既に存在します": "A store with this name already exists",
                 "「": "\"",
                 " 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？": " card(s) registered. Deleting it will unset the store on those cards. Are you sure?",
-                "」を削除しますか？": "\" — delete this store?"
-                // 第2弾: 引き続き他画面を追加
+                "」を削除しますか？": "\" — delete this store?",
+                // ── 第2弾: 招待・アクセス管理画面 ──
+                "発行したリンクは7日間有効です。1回使用されると無効になります。": "Issued links are valid for 7 days. They become invalid after a single use.",
+                "付与するロール": "Role to Grant",
+                "✍️ 編集者": "✍️ Editor",
+                "👁️ 閲覧者": "👁️ Viewer",
+                "ニックネーム（誰に渡すかのメモ、任意）": "Nickname (a note on who this is for, optional)",
+                "例: ゆうさん": "e.g. Yu",
+                "🔗 招待リンクを発行": "🔗 Issue Invite Link",
+                "発行中...": "Issuing...",
+                "発行された招待リンク": "Issued Invite Link",
+                "📋 コピー": "📋 Copy",
+                "このリンクは7日後、または1回使用されると無効になります。": "This link will expire after 7 days or a single use.",
+                "招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。": "A list of users granted editor/viewer access via invite links. Revoking access will prevent them from logging in the next time they try.",
+                "招待リンクの発行に失敗しました: ": "Failed to issue invite link: ",
+                "招待リンク: ": "Invite link: ",
+                "読み込み中...": "Loading...",
+                "editor/viewer権限を持つユーザーはいません": "No users have editor/viewer access",
+                "🛠️ 編集用PIN経由（一時アクセス）": "🛠️ Via Editor PIN (temporary access)",
+                "（ニックネーム未設定・": "(No nickname set · ",
+                "…）": "…)",
+                " ・ 付与日: ": " · Granted on: ",
+                "不明": "Unknown",
+                "取り消し": "Revoke",
+                "読み込みに失敗しました": "Failed to load",
+                "アクセス取り消しに失敗しました: ": "Failed to revoke access: ",
+                "無効な招待リンクです。": "Invalid invite link.",
+                "この招待リンクは既に使用されています。": "This invite link has already been used.",
+                "この招待リンクの有効期限が切れています。": "This invite link has expired.",
+                "招待の適用に失敗しました。(": "Failed to apply the invite. (",
+                "Googleログイン中のみニックネームを設定できます。": "You can only set a nickname while signed in with Google.",
+                "表示用のニックネームを入力してください。": "Enter the nickname to display.",
+                "ニックネームを更新しました: ": "Nickname updated: ",
+                "（空欄）": "(empty)",
+                "更新に失敗しました: ": "Failed to update: ",
+                // ── 第2弾: 更新履歴表示ラベル ──
+                "直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。": "Card additions, edits, and deletions from the last 60 days (newest first).",
+                "🆕 追加": "🆕 Added",
+                "✏️ 編集": "✏️ Edited",
+                "🗑️ 削除": "🗑️ Deleted",
+                "記録中...": "Recording...",
+                "👑 管理者": "👑 Admin",
+                "（ニックネーム未設定）": "(No nickname set)",
+                "直近60日間の更新履歴はありません": "No activity in the last 60 days",
+                " ・ ": " · "
+                // 第2弾完了
             },
             ko: {
                 // ── ヘッダー・「⋮」メニュー ──
@@ -996,8 +1040,52 @@
                 "同名の店舗が既に存在します": "동일한 이름의 매장이 이미 존재합니다",
                 "「": "\"",
                 " 枚のトレカが登録されています。削除すると店舗未設定になります。よろしいですか？": "장의 카드가 등록되어 있습니다. 삭제하면 매장이 미설정됩니다. 정말 삭제하시겠습니까?",
-                "」を削除しますか？": "\"를 삭제하시겠습니까?"
-                // 第2弾: 引き続き他画面を追加
+                "」を削除しますか？": "\"를 삭제하시겠습니까?",
+                // ── 第2弾: 招待・アクセス管理画面 ──
+                "発行したリンクは7日間有効です。1回使用されると無効になります。": "발급된 링크는 7일간 유효합니다. 1회 사용하면 무효화됩니다.",
+                "付与するロール": "부여할 역할",
+                "✍️ 編集者": "✍️ 편집자",
+                "👁️ 閲覧者": "👁️ 열람자",
+                "ニックネーム（誰に渡すかのメモ、任意）": "닉네임 (누구에게 줄지 메모, 선택)",
+                "例: ゆうさん": "예: 유님",
+                "🔗 招待リンクを発行": "🔗 초대 링크 발급",
+                "発行中...": "발급 중...",
+                "発行された招待リンク": "발급된 초대 링크",
+                "📋 コピー": "📋 복사",
+                "このリンクは7日後、または1回使用されると無効になります。": "이 링크는 7일 후 또는 1회 사용 시 무효화됩니다.",
+                "招待リンクで編集者・閲覧者権限を付与したユーザーの一覧です。取り消すと、そのユーザーは次回アクセス時にログインできなくなります。": "초대 링크로 편집자・열람자 권한을 부여한 사용자 목록입니다. 취소하면 다음 접속 시 로그인할 수 없게 됩니다.",
+                "招待リンクの発行に失敗しました: ": "초대 링크 발급에 실패했습니다: ",
+                "招待リンク: ": "초대 링크: ",
+                "読み込み中...": "불러오는 중...",
+                "editor/viewer権限を持つユーザーはいません": "editor/viewer 권한을 가진 사용자가 없습니다",
+                "🛠️ 編集用PIN経由（一時アクセス）": "🛠️ 편집용 PIN 경유(임시 접근)",
+                "（ニックネーム未設定・": "(닉네임 미설정・",
+                "…）": "…)",
+                " ・ 付与日: ": " · 부여일: ",
+                "不明": "알 수 없음",
+                "取り消し": "취소",
+                "読み込みに失敗しました": "불러오기에 실패했습니다",
+                "アクセス取り消しに失敗しました: ": "접근 취소에 실패했습니다: ",
+                "無効な招待リンクです。": "유효하지 않은 초대 링크입니다.",
+                "この招待リンクは既に使用されています。": "이 초대 링크는 이미 사용되었습니다.",
+                "この招待リンクの有効期限が切れています。": "이 초대 링크는 유효 기간이 만료되었습니다.",
+                "招待の適用に失敗しました。(": "초대 적용에 실패했습니다. (",
+                "Googleログイン中のみニックネームを設定できます。": "Google 로그인 중에만 닉네임을 설정할 수 있습니다.",
+                "表示用のニックネームを入力してください。": "표시할 닉네임을 입력해주세요.",
+                "ニックネームを更新しました: ": "닉네임을 업데이트했습니다: ",
+                "（空欄）": "(공란)",
+                "更新に失敗しました: ": "업데이트에 실패했습니다: ",
+                // ── 第2弾: 更新履歴表示ラベル ──
+                "直近60日間のトレカ追加・編集・削除の履歴です（新しい順）。": "최근 60일간의 카드 추가・수정・삭제 이력입니다(최신순).",
+                "🆕 追加": "🆕 추가",
+                "✏️ 編集": "✏️ 수정",
+                "🗑️ 削除": "🗑️ 삭제",
+                "記録中...": "기록 중...",
+                "👑 管理者": "👑 관리자",
+                "（ニックネーム未設定）": "(닉네임 미설정)",
+                "直近60日間の更新履歴はありません": "최근 60일간의 업데이트 이력이 없습니다",
+                " ・ ": " · "
+                // 第2弾完了
             }
         };
 
@@ -1712,18 +1800,18 @@
         async function setMyNickname() {
             document.getElementById("headerMenu").classList.add("hidden");
             if (!fbAuth.currentUser || fbAuth.currentUser.isAnonymous) {
-                alert("Googleログイン中のみニックネームを設定できます。");
+                alert(t("Googleログイン中のみニックネームを設定できます。"));
                 return;
             }
-            const input = prompt("表示用のニックネームを入力してください。", currentUserNickname || "");
+            const input = prompt(t("表示用のニックネームを入力してください。"), currentUserNickname || "");
             if (input === null) return; // キャンセル
             const trimmed = input.trim().slice(0, 20);
             try {
                 await FS_USERS_DOC().update({ [fbAuth.currentUser.uid + ".nickname"]: trimmed });
                 currentUserNickname = trimmed;
-                alert("ニックネームを更新しました: " + (trimmed || "（空欄）"));
+                alert(t("ニックネームを更新しました: ") + (trimmed || t("（空欄）")));
             } catch (err) {
-                alert("更新に失敗しました: " + (err.message || err));
+                alert(t("更新に失敗しました: ") + (err.message || err));
             }
         }
 
@@ -1744,7 +1832,7 @@
             const btn = document.getElementById("inviteCreateBtn");
             const role = document.getElementById("inviteRoleSelect").value;
             const nickname = document.getElementById("inviteNicknameInput").value.trim();
-            if (btn) { btn.disabled = true; btn.textContent = "発行中..."; }
+            if (btn) { btn.disabled = true; btn.textContent = t("発行中..."); }
             try {
                 const token = generateInviteToken();
                 const expiresAt = firebase.firestore.Timestamp.fromMillis(Date.now() + INVITE_EXPIRY_MS);
@@ -1761,9 +1849,9 @@
                 document.getElementById("inviteResultBox").classList.remove("hidden");
                 document.getElementById("inviteNicknameInput").value = "";
             } catch (err) {
-                alert("招待リンクの発行に失敗しました: " + (err.message || err));
+                alert(t("招待リンクの発行に失敗しました: ") + (err.message || err));
             } finally {
-                if (btn) { btn.disabled = false; btn.textContent = "🔗 招待リンクを発行"; }
+                if (btn) { btn.disabled = false; btn.textContent = t("🔗 招待リンクを発行"); }
             }
         }
 
@@ -1773,12 +1861,12 @@
                 await navigator.clipboard.writeText(input.value);
                 const btn = document.getElementById("inviteCopyBtn");
                 if (btn) {
-                    btn.textContent = "✓ コピーしました";
-                    setTimeout(() => { btn.textContent = "📋 コピー"; }, 2000);
+                    btn.textContent = t("✓ コピーしました");
+                    setTimeout(() => { btn.textContent = t("📋 コピー"); }, 2000);
                 }
             } catch (_) {
                 input.select();
-                alert("招待リンク: " + input.value);
+                alert(t("招待リンク: ") + input.value);
             }
         }
 
@@ -1812,7 +1900,7 @@
         // invitedViaが記録されている場合は、対応するinvites/{token}のusedAtを付与日として表示する。
         async function renderAccessManageList() {
             const container = document.getElementById("accessManageList");
-            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">読み込み中...</p>`;
+            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">${t("読み込み中...")}</p>`;
             try {
                 const [usersDoc, editPinGrantsSnap] = await Promise.all([
                     FS_USERS_DOC().get(),
@@ -1829,7 +1917,7 @@
 
                 const allEntries = [...entries, ...editPinEntries];
                 if (allEntries.length === 0) {
-                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">editor/viewer権限を持つユーザーはいません</p>`;
+                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">${t("editor/viewer権限を持つユーザーはいません")}</p>`;
                     return;
                 }
 
@@ -1844,27 +1932,27 @@
                     } catch (_) { /* 招待情報が取得できなくても一覧表示自体は継続する */ }
                 }));
 
-                const roleLabel = { editor: "✍️ 編集者", viewer: "👁️ 閲覧者" };
+                const roleLabel = { editor: t("✍️ 編集者"), viewer: t("👁️ 閲覧者") };
                 container.innerHTML = allEntries.map(e => {
                     const name = e.source === "editPin"
-                        ? "🛠️ 編集用PIN経由（一時アクセス）"
-                        : (e.nickname || `（ニックネーム未設定・${e.uid.slice(0, 8)}…）`);
-                    const grantedAt = grantedAtMap[e.uid] ? grantedAtMap[e.uid].toLocaleDateString("ja-JP") : "不明";
+                        ? t("🛠️ 編集用PIN経由（一時アクセス）")
+                        : (e.nickname || `${t("（ニックネーム未設定・")}${e.uid.slice(0, 8)}${t("…）")}`);
+                    const grantedAt = grantedAtMap[e.uid] ? grantedAtMap[e.uid].toLocaleDateString("ja-JP") : t("不明");
                     return `
                         <div class="flex items-center justify-between gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                             <div class="min-w-0">
                                 <p class="text-xs font-bold text-gray-200 truncate">${escapeHtml(name)}</p>
-                                <p class="text-[9px] text-gray-500">${roleLabel[e.role] || e.role} ・ 付与日: ${grantedAt}</p>
+                                <p class="text-[9px] text-gray-500">${roleLabel[e.role] || e.role}${t(" ・ 付与日: ")}${grantedAt}</p>
                             </div>
                             <button onclick="revokeAccess('${e.uid}', '${e.source}')" class="shrink-0 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors">
-                                取り消し
+                                ${t("取り消し")}
                             </button>
                         </div>
                     `;
                 }).join('');
             } catch (err) {
                 console.error("アクセス一覧の取得に失敗しました:", err);
-                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">読み込みに失敗しました</p>`;
+                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">${t("読み込みに失敗しました")}</p>`;
             }
         }
 
@@ -1882,7 +1970,7 @@
                 await renderAccessManageList();
             } catch (err) {
                 console.error("アクセス取り消しに失敗しました:", err);
-                alert("アクセス取り消しに失敗しました: " + (err.message || err));
+                alert(t("アクセス取り消しに失敗しました: ") + (err.message || err));
             }
         }
 
@@ -1904,7 +1992,7 @@
         // activityLogコレクションから直近60日分を新しい順に取得して一覧表示する
         async function renderActivityLogList() {
             const container = document.getElementById("activityLogList");
-            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">読み込み中...</p>`;
+            container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">${t("読み込み中...")}</p>`;
             try {
                 const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
                 const snapshot = await FS_ACTIVITY_LOG_COL()
@@ -1913,17 +2001,17 @@
                     .get();
 
                 if (snapshot.empty) {
-                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">直近60日間の更新履歴はありません</p>`;
+                    container.innerHTML = `<p class="text-gray-500 text-xs text-center py-4">${t("直近60日間の更新履歴はありません")}</p>`;
                     return;
                 }
 
                 container.innerHTML = snapshot.docs.map(doc => {
                     const log = doc.data();
-                    const actionLabel = ACTIVITY_LOG_ACTION_LABEL[log.action] || log.action;
-                    const dateLabel = log.timestamp ? log.timestamp.toDate().toLocaleString("ja-JP") : "記録中...";
+                    const actionLabel = t(ACTIVITY_LOG_ACTION_LABEL[log.action] || log.action);
+                    const dateLabel = log.timestamp ? log.timestamp.toDate().toLocaleString("ja-JP") : t("記録中...");
                     // userNicknameが空でも、記録時のロールがadminなら「未設定」ではなく管理者と分かる表示にする。
                     // userRoleは今回追加したフィールドのため、過去ログには無く従来通りの表示になる。
-                    const nickname = log.userNickname || (log.userRole === "admin" ? "👑 管理者" : "（ニックネーム未設定）");
+                    const nickname = log.userNickname || (log.userRole === "admin" ? t("👑 管理者") : t("（ニックネーム未設定）"));
                     return `
                         <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
                             <div class="flex items-center justify-between gap-2">
@@ -1931,13 +2019,13 @@
                                 <span class="text-[9px] text-gray-500 shrink-0">${dateLabel}</span>
                             </div>
                             <p class="text-[11px] text-gray-300 mt-1 truncate">${escapeHtml(log.cardSummary || "")}</p>
-                            <p class="text-[9px] text-gray-500 mt-0.5">${escapeHtml(nickname)}${log.note ? ` ・ ${escapeHtml(log.note)}` : ""}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5">${escapeHtml(nickname)}${log.note ? `${t(" ・ ")}${escapeHtml(log.note)}` : ""}</p>
                         </div>
                     `;
                 }).join('');
             } catch (err) {
                 console.error("更新履歴の取得に失敗しました:", err);
-                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">読み込みに失敗しました</p>`;
+                container.innerHTML = `<p class="text-rose-400 text-xs text-center py-4">${t("読み込みに失敗しました")}</p>`;
             }
         }
 
@@ -1954,16 +2042,16 @@
             try {
                 const doc = await FS_INVITES_COL().doc(token).get();
                 if (!doc.exists) {
-                    alert("無効な招待リンクです。");
+                    alert(t("無効な招待リンクです。"));
                     return;
                 }
                 const data = doc.data();
                 if (data.used) {
-                    alert("この招待リンクは既に使用されています。");
+                    alert(t("この招待リンクは既に使用されています。"));
                     return;
                 }
                 if (data.expiresAt && data.expiresAt.toDate().getTime() < Date.now()) {
-                    alert("この招待リンクの有効期限が切れています。");
+                    alert(t("この招待リンクの有効期限が切れています。"));
                     return;
                 }
                 pendingInvite = { token, role: data.role, nickname: data.nickname || "" };
@@ -1987,7 +2075,7 @@
                 });
             } catch (err) {
                 console.error("招待の適用に失敗しました:", err);
-                alert("招待の適用に失敗しました。(" + (err.message || err) + ")");
+                alert(t("招待の適用に失敗しました。(") + (err.message || err) + ")");
             } finally {
                 pendingInvite = null;
                 const url = new URL(location.href);
