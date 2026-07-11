@@ -225,7 +225,7 @@
                 <input type="text" id="topSearchBar" oninput="renderTopSearch()" placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." data-i18n-placeholder="🔍 メンバー名、店舗名、テーマ等で検索..." 
                        class="w-full bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-pink-500 transition-colors relative z-10">
                 <div id="topSearchResults" class="hidden mt-3 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3 relative z-10">
-                    <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 検索結果</p>
+                    <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2" data-i18n="🌐 検索結果">🌐 検索結果</p>
                     <div id="topSearchList" class="space-y-1.5 max-h-72 overflow-y-auto hide-scrollbar"></div>
                 </div>
             </div>
@@ -296,7 +296,7 @@
             </div>
 
             <div id="globalSearchResults" class="hidden mb-4 bg-pink-950/80 border border-pink-900/40 rounded-2xl p-3">
-                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2">🌐 全メンバー横断検索結果</p>
+                <p class="text-[9px] text-pink-400 font-black uppercase tracking-wider mb-2" data-i18n="🌐 全メンバー横断検索結果">🌐 全メンバー横断検索結果</p>
                 <div id="globalSearchList" class="space-y-1.5 max-h-56 overflow-y-auto hide-scrollbar"></div>
             </div>
 
@@ -513,7 +513,7 @@
                     <div id="viewModalTags" class="flex flex-wrap gap-1 mt-1"></div>
                 </div>
             </div>
-            <button onclick="closePreviewModal()" class="w-full py-2 bg-gradient-to-r from-purple-900 to-pink-900 text-white font-bold text-xs rounded-xl border border-purple-700/30 active:scale-95 transition-transform">閉じる</button>
+            <button onclick="closePreviewModal()" data-i18n="閉じる" class="w-full py-2 bg-gradient-to-r from-purple-900 to-pink-900 text-white font-bold text-xs rounded-xl border border-purple-700/30 active:scale-95 transition-transform">閉じる</button>
         </div>
     </div>
 
@@ -1057,7 +1057,17 @@
                 "選択した ": "This will delete the ",
                 " 枚のトレカを削除します。よろしいですか？": " selected card(s). Are you sure?",
                 "削除できませんでした。権限を確認してください。": "Couldn't delete. Please check your permissions.",
-                "移動できませんでした。権限を確認してください。": "Couldn't move. Please check your permissions."
+                "移動できませんでした。権限を確認してください。": "Couldn't move. Please check your permissions.",
+                // ── i18n追加対応7: プレビュー/検索結果・カードリスト表示 ──
+                "🌐 検索結果": "🌐 Search Results",
+                "🌐 全メンバー横断検索結果": "🌐 Cross-Member Search Results",
+                "移動 ➔": "Go ➔",
+                "該当するトレカが見つかりません": "No matching cards found",
+                "裏面あり": "Has back",
+                "店舗未設定": "No store set",
+                "未指定": "Unspecified",
+                "🔄 タップして表面": "🔄 Tap for front",
+                "🔄 タップして裏面": "🔄 Tap for back"
                 // 第2弾完了
             },
             ko: {
@@ -1310,7 +1320,17 @@
                 "選択した ": "선택한 ",
                 " 枚のトレカを削除します。よろしいですか？": "장의 포토카드를 삭제합니다. 계속하시겠습니까?",
                 "削除できませんでした。権限を確認してください。": "삭제할 수 없었습니다. 권한을 확인해 주세요.",
-                "移動できませんでした。権限を確認してください。": "이동할 수 없었습니다. 권한을 확인해 주세요."
+                "移動できませんでした。権限を確認してください。": "이동할 수 없었습니다. 권한을 확인해 주세요.",
+                // ── i18n追加対応7: プレビュー/検索結果・カードリスト表示 ──
+                "🌐 検索結果": "🌐 검색 결과",
+                "🌐 全メンバー横断検索結果": "🌐 전체 멤버 통합 검색 결과",
+                "移動 ➔": "이동 ➔",
+                "該当するトレカが見つかりません": "일치하는 카드를 찾을 수 없습니다",
+                "裏面あり": "뒷면 있음",
+                "店舗未設定": "매장 미설정",
+                "未指定": "미지정",
+                "🔄 タップして表面": "🔄 탭하면 앞면",
+                "🔄 タップして裏面": "🔄 탭하면 뒷면"
                 // 第2弾完了
             }
         };
@@ -4288,7 +4308,7 @@
                             <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
                             <p class="text-[9px] text-gray-400 truncate">${formatMemberNames(card)} ・ ${card.album}</p>
                         </div>
-                        <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
+                        <span class="text-[9px] text-pink-400 font-bold shrink-0">${t("移動 ➔")}</span>
                     </div>
                 `;
             }).join('');
@@ -4317,7 +4337,7 @@
 
             if (matches.length === 0) {
                 resultsBox.classList.remove("hidden");
-                listBox.innerHTML = `<div class="text-gray-500 italic text-[11px] text-center py-2">該当するトレカが見つかりません</div>`;
+                listBox.innerHTML = `<div class="text-gray-500 italic text-[11px] text-center py-2">${t("該当するトレカが見つかりません")}</div>`;
                 return;
             }
 
@@ -4332,7 +4352,7 @@
                             <p class="text-[10px] font-black text-white truncate">${card.theme}</p>
                             <p class="text-[9px] text-gray-400 truncate">${formatMemberNames(card)} ・ ${card.album}</p>
                         </div>
-                        <span class="text-[9px] text-pink-400 font-bold shrink-0">移動 ➔</span>
+                        <span class="text-[9px] text-pink-400 font-bold shrink-0">${t("移動 ➔")}</span>
                     </div>
                 `;
             }).join('');
@@ -4505,7 +4525,7 @@
                     ${isSelected ? '✓' : ''}
                 </div>` : '';
             const backBadgeHtml = card.imgUrlBack ? `
-                <div class="absolute top-1 right-1 z-20 bg-black/70 text-white text-[9px] rounded-full w-5 h-5 flex items-center justify-center" title="裏面あり">🔄</div>` : '';
+                <div class="absolute top-1 right-1 z-20 bg-black/70 text-white text-[9px] rounded-full w-5 h-5 flex items-center justify-center" title="${t("裏面あり")}">🔄</div>` : '';
 
             // 1行4枚のグリッドではカード自体の幅はグリッドセルに合わせる。
             // 画像コンテナの高さは縦向き・横向きに関わらずaspect-[2/3]で統一し、
@@ -4518,7 +4538,7 @@
                     <div class="aspect-[2/3] bg-gray-900 rounded-lg mb-1 flex items-center justify-center border border-gray-800 overflow-hidden relative">
                         ${card.imgUrl ? `<img src="${card.imgUrl}" draggable="false" oncontextmenu="return false" loading="lazy" decoding="async" class="photocard-img absolute inset-0 w-full h-full object-contain">` : `<span class="text-base">📸</span>`}
                     </div>
-                    <div class="text-white font-bold text-[9px] truncate w-full">${(card.category === "店舗特典・ラキドロ") ? (card.store || '店舗未設定') : (card.theme || '未指定')}</div>
+                    <div class="text-white font-bold text-[9px] truncate w-full">${(card.category === "店舗特典・ラキドロ") ? (card.store || t('店舗未設定')) : (card.theme || t('未指定'))}</div>
                     ${actionButtons}
                 </div>
             `;
@@ -5404,7 +5424,7 @@
             // 裏面画像が存在する場合だけ「タップして裏面」ヒントを出す
             if (card.imgUrlBack) {
                 flipHint.classList.remove("hidden");
-                flipHint.innerText = isShowingBackFace ? "🔄 タップして表面" : "🔄 タップして裏面";
+                flipHint.innerText = isShowingBackFace ? t("🔄 タップして表面") : t("🔄 タップして裏面");
             } else {
                 flipHint.classList.add("hidden");
             }
