@@ -5124,6 +5124,7 @@
 
         let currentPreviewCardId = null;
         let isShowingBackFace = false;
+        let previewModalOpenedFromMember = null;
 
         function openPreviewModal(id) {
             const card = pcData.find(d => d.id === id);
@@ -5137,6 +5138,9 @@
                 renderApp();
             }
 
+            // 閉じた時に戻すため、モーダルを開く直前に見ていたメンバータブを記憶しておく。
+            // card.membersの先頭ではなく、開いた時点のタブに必ず戻すのが目的。
+            previewModalOpenedFromMember = currentMember;
             currentPreviewCardId = id;
             isShowingBackFace = false;
             renderPreviewFace(card);
@@ -5209,7 +5213,8 @@
             currentPreviewCardId = null;
             isShowingBackFace = false;
             if (!skipHistory) history.back();
-            if (card) jumpToCard(card.album, getCardMembers(card)[0] || currentMember);
+            if (card) jumpToCard(card.album, previewModalOpenedFromMember || getCardMembers(card)[0] || currentMember);
+            previewModalOpenedFromMember = null;
         }
 
         function openAlbumModal() {
