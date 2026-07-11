@@ -1067,7 +1067,11 @@
                 "店舗未設定": "No store set",
                 "未指定": "Unspecified",
                 "🔄 タップして表面": "🔄 Tap for front",
-                "🔄 タップして裏面": "🔄 Tap for back"
+                "🔄 タップして裏面": "🔄 Tap for back",
+                // ── i18n追加対応8: トレカ削除・全削除フロー ──
+                "全てのトレカを削除しました。": "All cards have been deleted.",
+                "削除に失敗しました。エラー: ": "Failed to delete. Error: ",
+                "このトレカを削除してもよろしいですか？": "Delete this card?"
                 // 第2弾完了
             },
             ko: {
@@ -1330,7 +1334,11 @@
                 "店舗未設定": "매장 미설정",
                 "未指定": "미지정",
                 "🔄 タップして表面": "🔄 탭하면 앞면",
-                "🔄 タップして裏面": "🔄 탭하면 뒷면"
+                "🔄 タップして裏面": "🔄 탭하면 뒷면",
+                // ── i18n追加対応8: トレカ削除・全削除フロー ──
+                "全てのトレカを削除しました。": "모든 카드를 삭제했습니다.",
+                "削除に失敗しました。エラー: ": "삭제에 실패했습니다. 오류: ",
+                "このトレカを削除してもよろしいですか？": "이 카드를 삭제하시겠습니까?"
                 // 第2弾完了
             }
         };
@@ -4189,10 +4197,10 @@
                 renderAlbumTabs();
                 if (currentView === "gallery") renderApp();
                 updateStorageEstimate();
-                alert("全てのトレカを削除しました。");
+                alert(t("全てのトレカを削除しました。"));
             } catch (err) {
                 console.error("全削除に失敗しました:", err);
-                alert("削除に失敗しました。エラー: " + (err && err.message ? err.message : err));
+                alert(t("削除に失敗しました。エラー: ") + (err && err.message ? err.message : err));
             }
         }
 
@@ -5336,7 +5344,7 @@
         }
 
         async function deleteCard(id) {
-            if (!confirm("このトレカを削除してもよろしいですか？")) return;
+            if (!confirm(t("このトレカを削除してもよろしいですか？"))) return;
             try {
                 const target = pcData.find(d => d.id === id);
                 if (target) await captureUndoSnapshot([target]);
@@ -5348,7 +5356,7 @@
                 showUndoToast(1);
             } catch (err) {
                 console.error("削除に失敗しました:", err);
-                showErrorToast("削除できませんでした。権限を確認してください。");
+                showErrorToast(t("削除できませんでした。権限を確認してください。"));
             }
         }
 
@@ -5999,7 +6007,7 @@
                 updateStorageEstimate();
             } catch (err) {
                 console.error("アルバムの削除に失敗しました:", err);
-                showErrorToast("削除できませんでした。権限を確認してください。");
+                showErrorToast(t("削除できませんでした。権限を確認してください。"));
             }
         }
 
