@@ -5137,6 +5137,7 @@
             currentPreviewCardId = id;
             isShowingBackFace = false;
             renderPreviewFace(card);
+            if (card.imgUrlBack) { const preload = new Image(); preload.src = card.imgUrlBack; }
             updatePreviewFrameAspect("viewModalImgWrap", card.orientation || "portrait");
 
             document.getElementById("viewModalMember").innerText = formatMemberNames(card);
