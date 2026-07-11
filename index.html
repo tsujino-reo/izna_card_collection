@@ -2571,7 +2571,7 @@
         // JIYOONはI-LAND2とN/a以外のアルバムでは選べない（出演作品の都合等の理由を想定）。
         function getAllowedAlbumsForMember(memberName) {
             if (memberName === "JIYOON") {
-                return albums.filter(a => a.name === "I-LAND2" || a.name === "N/a").map(a => a.name);
+                return albums.filter(a => a.name === "I-LAND2" || a.name === "N/a" || a.name === "その他特典").map(a => a.name);
             }
             return albums.map(a => a.name);
         }
@@ -2579,7 +2579,7 @@
         // 後方互換: 一部の処理が「アルバムで選べるメンバー一覧」という逆方向の問い合わせをすることがあるため、
         // getAllowedAlbumsForMemberを使って同等の判定を行うヘルパーを残しておく。
         function getAllowedMembersForAlbum(albumName) {
-            if (albumName !== "I-LAND2" && albumName !== "N/a") {
+            if (albumName !== "I-LAND2" && albumName !== "N/a" && albumName !== "その他特典") {
                 return memberData.filter(m => m.name !== "JIYOON");
             }
             return memberData;
