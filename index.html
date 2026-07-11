@@ -2675,7 +2675,7 @@
             }
             wrap.classList.remove("hidden");
             select.innerHTML = availableCategories.map(c =>
-                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
+                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${t(c)}</option>`
             ).join('');
             if (availableCategories.includes(prevValue)) select.value = prevValue;
             updateFormStoreVisibility();
@@ -6205,7 +6205,7 @@
             }
             wrap.classList.remove("hidden");
             select.innerHTML = availableCategories.map(c =>
-                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${c}</option>`
+                `<option value="${c}">${CATEGORY_ICONS[c] || "⚫"} ${t(c)}</option>`
             ).join('');
             updateBulkMoveStoreVisibility();
         }
