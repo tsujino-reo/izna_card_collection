@@ -5045,6 +5045,7 @@
             const card = pcData.find(d => d.id === id);
             if (!card) return;
 
+            document.getElementById("cardModal").classList.remove("hidden");
             document.getElementById("modalTitle").innerText = t("トレカ情報の編集");
             document.getElementById("editIndex").value = card.id;
             document.getElementById("formTheme").value = card.theme;
@@ -5097,7 +5098,6 @@
                 getBackImgAdjuster().deactivate();
             }
 
-            document.getElementById("cardModal").classList.remove("hidden");
             pushModalHistory("closeModal");
         }
 
