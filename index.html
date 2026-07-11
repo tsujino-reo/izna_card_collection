@@ -5105,16 +5105,14 @@
             if (card.imgUrl) {
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
-                // 実際に読み込まれた画像サイズから縦/横を判定し、枠のアスペクト比を確定させてから
+                // プレビューモーダル（閲覧側）と同じく、保存済みのcard.orientationを使って
+                // 枠のアスペクト比を画像読み込みを待たず即座に確定させてから、
                 // ピンチ/ドラッグ調整用アダプタを初期化する（枠サイズが計算に必要なため）。
-                imgPreview.onload = () => {
-                    const orientation = (imgPreview.naturalWidth > imgPreview.naturalHeight) ? "landscape" : "portrait";
-                    updatePreviewFrameAspect("imgLabel", orientation);
-                    // imgUrlがblob:（IndexedDB由来）の場合のみピンチ/ドラッグ調整・保存を許可する。
-                    // Firebase Storageの https:// URL は他端末等でcanvas書き出しがCORSで失敗しうるため対象外。
-                    getFrontImgAdjuster().setImage(card.imgUrl.startsWith("blob:"));
-                };
+                updatePreviewFrameAspect("imgLabel", card.orientation || "portrait");
                 imgPreview.src = card.imgUrl;
+                // imgUrlがblob:（IndexedDB由来）の場合のみピンチ/ドラッグ調整・保存を許可する。
+                // Firebase Storageの https:// URL は他端末等でcanvas書き出しがCORSで失敗しうるため対象外。
+                getFrontImgAdjuster().setImage(card.imgUrl.startsWith("blob:"));
             } else {
                 imgPreview.classList.add("hidden");
                 document.getElementById("imgPlaceholder").classList.remove("hidden");
