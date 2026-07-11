@@ -391,7 +391,7 @@
                     <label class="text-gray-400 font-bold block mb-1"><span data-i18n="トレカ画像（表面） ">トレカ画像（表面） </span><span class="text-rose-500 font-black" data-i18n="*必須">*必須</span></label>
                     <input type="file" id="formImage" accept="image/*" class="file-input-hidden" onchange="previewImage(this)">
                     <div id="imgLabel" onclick="handleImgAreaClick(event, 'formImage', 'imgPreview')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
-                        <img id="imgPreview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                        <img id="imgPreview" src="" loading="eager" class="absolute inset-0 w-full h-full object-cover hidden">
                         <div id="imgPlaceholder" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">📷</span>
                             <span class="text-[10px] text-gray-400 font-bold group-hover:text-pink-400 transition-colors" data-i18n="画像未登録">画像未登録</span>
@@ -414,7 +414,7 @@
                     <label class="text-gray-400 font-bold block mb-1"><span data-i18n="トレカ画像（裏面） ">トレカ画像（裏面） </span><span class="text-gray-600 font-bold" data-i18n="任意">任意</span></label>
                     <input type="file" id="formImageBack" accept="image/*" class="file-input-hidden" onchange="previewImageBack(this)">
                     <div id="imgLabelBack" onclick="handleImgAreaClick(event, 'formImageBack', 'imgPreviewBack')" class="w-full aspect-[2/3] max-w-[140px] mx-auto bg-gray-900 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center p-2 relative overflow-hidden group touch-none">
-                        <img id="imgPreviewBack" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                        <img id="imgPreviewBack" src="" loading="eager" class="absolute inset-0 w-full h-full object-cover hidden">
                         <button type="button" id="removeBackBtn" onclick="event.preventDefault(); event.stopPropagation(); removeBackImage()" class="hidden absolute top-1 right-1 z-20 bg-black/70 hover:bg-rose-900 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">✕</button>
                         <div id="imgPlaceholderBack" class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                             <span class="text-2xl">🔄</span>
@@ -3435,8 +3435,7 @@
         async function getStorageDownloadUrl(path) {
             try {
                 return await fbStorage.ref(path).getDownloadURL();
-            } catch (err) {
-                console.error("Storage画像取得失敗:", path, err.code || err.message || err);
+            } catch (_) {
                 return null;
             }
         }
