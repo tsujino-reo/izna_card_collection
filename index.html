@@ -484,7 +484,6 @@
                 <img id="viewModalImg" src="" draggable="false" oncontextmenu="return false" loading="lazy" class="photocard-img w-full h-full object-cover hidden">
                 <span id="viewModalNoImgIcon" class="text-4xl text-gray-700 hidden">📸</span>
                 <div id="viewModalFlipHint" class="hidden absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] font-bold px-2 py-1 rounded-full">🔄 タップして裏面</div>
-                <div id="viewModalDebugLog" class="absolute top-1 left-1 right-1 bg-black/80 text-lime-400 text-[8px] font-mono p-1 rounded z-50 pointer-events-none max-h-24 overflow-hidden"></div>
             </div>
             <div class="text-left space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800/80">
                 <div><span class="text-[9px] text-purple-400 font-bold tracking-widest block uppercase">MEMBER</span><p id="viewModalMember" class="text-xs font-black text-white"></p></div>
@@ -5163,7 +5162,6 @@
                 tagsBox.innerHTML = "";
             }
 
-            document.getElementById("viewModalDebugLog").innerHTML = "";
             document.getElementById("previewModal").classList.remove("hidden");
             requestAnimationFrame(() => pushModalHistory("closePreviewModal"));
         }
@@ -5194,20 +5192,10 @@
             }
         }
 
-        function debugLog(msg) {
-            const el = document.getElementById("viewModalDebugLog");
-            if (!el) return;
-            const time = new Date().toISOString().split("T")[1].slice(0, 12);
-            el.innerHTML = `[${time}] ${msg}<br>` + el.innerHTML;
-        }
-
         function toggleViewModalFace() {
-            debugLog("tap detected");
             const card = pcData.find(d => d.id === currentPreviewCardId);
-            if (!card) { debugLog("card not found"); return; }
-            if (!card.imgUrlBack) { debugLog("no imgUrlBack, abort"); return; }
+            if (!card || !card.imgUrlBack) return; // 裏面が無いカードは切り替え不要
             isShowingBackFace = !isShowingBackFace;
-            debugLog("flipped to " + (isShowingBackFace ? "back" : "front"));
             renderPreviewFace(card);
         }
 
