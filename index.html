@@ -210,7 +210,7 @@
 
         <div id="storageSection" class="mb-3 px-1">
             <div class="flex justify-between items-center mb-1">
-                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">💾 ブラウザストレージ使用量</span>
+                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider" data-i18n="💾 ブラウザストレージ使用量">💾 ブラウザストレージ使用量</span>
                 <span id="storageLabel" class="text-[9px] text-gray-400 font-bold"></span>
             </div>
             <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
@@ -309,7 +309,7 @@
                     </div>
                 </div>
                 <div class="flex gap-1.5 items-center">
-                    <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
+                    <button id="multiSelectToggleBtn" onclick="toggleMultiSelectMode()" data-i18n="☑ 複数選択" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs px-2.5 py-1.5 rounded-xl font-bold transition-all hidden">
                         ☑ 複数選択
                     </button>
                     <button id="addBtn" onclick="openModal()" data-i18n="＋ 新規トレカ追加" class="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hidden">
@@ -976,7 +976,20 @@
                 // ── UI改善: 「⋮」メニューのアコーディオン化 ──
                 "🔑 PIN関連": "🔑 PIN",
                 "👤 アカウント・権限": "👤 Account & Access",
-                "🗂️ データ管理": "🗂️ Data Management"
+                "🗂️ データ管理": "🗂️ Data Management",
+                // ── i18n追加対応: 未対応固定ラベル ──
+                "👁 閲覧中 → ✍️": "👁 Viewing → ✍️",
+                "現在: 閲覧モード（タップで編集モードに戻ります）": "Currently: View mode (tap to return to edit mode)",
+                "✍️ 編集中 → 👁": "✍️ Editing → 👁",
+                "現在: 編集モード（タップで閲覧モードに切り替わります）": "Currently: Edit mode (tap to switch to view mode)",
+                "💾 ブラウザストレージ使用量": "💾 Browser Storage Usage",
+                "☑ 複数選択": "☑ Multi-Select",
+                "登録されたトレカはありません": "No cards registered",
+                "編集": "Edit",
+                "アルバム封入": "Album Insert",
+                "店舗特典・ラキドロ": "Store Bonus / Lucky Draw",
+                "サノク": "Sanok (Pre-recorded)",
+                "その他": "Other"
                 // 第2弾完了
             },
             ko: {
@@ -1148,7 +1161,20 @@
                 // ── UI改善: 「⋮」メニューのアコーディオン化 ──
                 "🔑 PIN関連": "🔑 PIN",
                 "👤 アカウント・権限": "👤 계정 및 권한",
-                "🗂️ データ管理": "🗂️ 데이터 관리"
+                "🗂️ データ管理": "🗂️ 데이터 관리",
+                // ── i18n追加対応: 未対応固定ラベル ──
+                "👁 閲覧中 → ✍️": "👁 보는 중 → ✍️",
+                "現在: 閲覧モード（タップで編集モードに戻ります）": "현재: 열람 모드(탭하면 편집 모드로 돌아갑니다)",
+                "✍️ 編集中 → 👁": "✍️ 편집 중 → 👁",
+                "現在: 編集モード（タップで閲覧モードに切り替わります）": "현재: 편집 모드(탭하면 열람 모드로 전환됩니다)",
+                "💾 ブラウザストレージ使用量": "💾 브라우저 스토리지 사용량",
+                "☑ 複数選択": "☑ 다중 선택",
+                "登録されたトレカはありません": "등록된 포토카드가 없습니다",
+                "編集": "편집",
+                "アルバム封入": "앨범 동봉",
+                "店舗特典・ラキドロ": "매장 특전・래키드로",
+                "サノク": "사녹",
+                "その他": "기타"
                 // 第2弾完了
             }
         };
@@ -3843,11 +3869,11 @@
             // ラベルは「今の状態」を主役にし、押した後どうなるかを補足で示す
             // （切替先だけを表示すると現在の状態と誤解されやすいため）
             if (currentRole === "viewer") {
-                btn.textContent = "👁 閲覧中 → ✍️";
-                btn.title = "現在: 閲覧モード（タップで編集モードに戻ります）";
+                btn.textContent = t("👁 閲覧中 → ✍️");
+                btn.title = t("現在: 閲覧モード（タップで編集モードに戻ります）");
             } else {
-                btn.textContent = "✍️ 編集中 → 👁";
-                btn.title = "現在: 編集モード（タップで閲覧モードに切り替わります）";
+                btn.textContent = t("✍️ 編集中 → 👁");
+                btn.title = t("現在: 編集モード（タップで閲覧モードに切り替わります）");
             }
         }
 
@@ -4236,7 +4262,7 @@
                 container.dataset.album = currentAlbum;
                 container.innerHTML = sortedCards.length
                     ? sortedCards.map(card => renderCard(card, isViewer)).join('')
-                    : `<div class="col-span-full text-center text-gray-400 italic py-8 text-xs">登録されたトレカはありません</div>`;
+                    : `<div class="col-span-full text-center text-gray-400 italic py-8 text-xs">${t("登録されたトレカはありません")}</div>`;
                 if (currentRole === "admin") initSortableForList(container);
             } else {
                 // category が未設定、または現在のアルバムで無効な値になっているカードは
@@ -4288,7 +4314,7 @@
                         <div>
                             <h3 class="text-[10px] font-bold text-gray-300 mb-2 border-l-2 border-purple-500 pl-2 tracking-widest uppercase flex items-center gap-1.5">
                                 <span>${CATEGORY_ICONS[cat] || "⚫"}</span>
-                                <span>${cat} (${catCards.length})</span>
+                                <span>${t(cat)} (${catCards.length})</span>
                             </h3>
                             ${bodyHtml}
                         </div>
@@ -4325,7 +4351,7 @@
             if (!isViewer && !isMultiSelectMode) {
                 actionButtons = `
                     <div class="mt-2 pt-2 border-t border-gray-800/80 flex gap-1" onclick="event.stopPropagation()">
-                        <button type="button" onclick="editCard('${card.id}')" class="flex-1 bg-gray-800 hover:bg-purple-900 text-white py-1 rounded font-bold text-[9px] transition-colors">編集</button>
+                        <button type="button" onclick="editCard('${card.id}')" class="flex-1 bg-gray-800 hover:bg-purple-900 text-white py-1 rounded font-bold text-[9px] transition-colors">${t("編集")}</button>
                         ${currentRole === 'admin' ? `<button type="button" onclick="deleteCard('${card.id}')" class="bg-gray-800 hover:bg-rose-950 text-rose-400 px-1.5 rounded text-[9px] transition-colors">✕</button>` : ''}
                     </div>
                 `;
