@@ -373,28 +373,28 @@
 
     <div id="bulkMoveModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">📦 まとめて移動</h3>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4" data-i18n="📦 まとめて移動">📦 まとめて移動</h3>
             <div class="space-y-3 text-xs">
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">移動先メンバー</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="移動先メンバー">移動先メンバー</label>
                     <select id="bulkMoveMember" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
                 <div>
-                    <label class="text-gray-400 font-bold block mb-1">移動先アルバム</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="移動先アルバム">移動先アルバム</label>
                     <select id="bulkMoveAlbum" onchange="updateBulkMoveCategoryOptions()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
                 <div id="bulkMoveCategoryWrap">
-                    <label class="text-gray-400 font-bold block mb-1">移動先の種類</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="移動先の種類">移動先の種類</label>
                     <select id="bulkMoveCategory" onchange="updateBulkMoveStoreVisibility()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
                 <div id="bulkMoveStoreWrap" class="hidden">
-                    <label class="text-gray-400 font-bold block mb-1">移動先の店舗</label>
+                    <label class="text-gray-400 font-bold block mb-1" data-i18n="移動先の店舗">移動先の店舗</label>
                     <select id="bulkMoveStore" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white"></select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6 text-xs font-bold">
-                <button onclick="closeBulkMoveModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">キャンセル</button>
-                <button onclick="confirmBulkMove()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white">移動する</button>
+                <button onclick="closeBulkMoveModal()" data-i18n="キャンセル" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800">キャンセル</button>
+                <button onclick="confirmBulkMove()" data-i18n="移動する" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white">移動する</button>
             </div>
         </div>
     </div>
@@ -1040,7 +1040,15 @@
                 " 件（画像なし ": " (no image ",
                 " / Storage既存 ": " / already in Storage ",
                 "） / ": ") / ",
-                "失敗: ": "Failed: "
+                "失敗: ": "Failed: ",
+                // ── i18n追加対応5: まとめて移動モーダル ──
+                "📦 まとめて移動": "📦 Bulk Move",
+                "移動先メンバー": "Target Member",
+                "移動先アルバム": "Target Album",
+                "移動先の種類": "Target Category",
+                "移動先の店舗": "Target Store",
+                "移動する": "Move",
+                "複数メンバーのカードが含まれているため一括移動できません。": "Bulk move isn't possible because it includes a card with multiple members."
                 // 第2弾完了
             },
             ko: {
@@ -1276,7 +1284,15 @@
                 " 件（画像なし ": " 건(이미지 없음 ",
                 " / Storage既存 ": " / Storage 기존 ",
                 "） / ": ") / ",
-                "失敗: ": "실패: "
+                "失敗: ": "실패: ",
+                // ── i18n追加対応5: まとめて移動モーダル ──
+                "📦 まとめて移動": "📦 일괄 이동",
+                "移動先メンバー": "이동할 멤버",
+                "移動先アルバム": "이동할 앨범",
+                "移動先の種類": "이동할 종류",
+                "移動先の店舗": "이동할 매장",
+                "移動する": "이동",
+                "複数メンバーのカードが含まれているため一括移動できません。": "여러 멤버가 등록된 카드가 포함되어 있어 일괄 이동할 수 없습니다."
                 // 第2弾完了
             }
         };
@@ -6142,7 +6158,7 @@
             // 複数メンバーが登録されているカードが混ざっていると他のメンバー情報が消えてしまう。
             // そのため、対象に複数メンバーカードが1件でもあれば移動自体を中止する。
             if (targets.some(card => getCardMembers(card).length > 1)) {
-                alert("複数メンバーのカードが含まれているため一括移動できません。");
+                alert(t("複数メンバーのカードが含まれているため一括移動できません。"));
                 return;
             }
 
