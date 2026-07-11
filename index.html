@@ -794,7 +794,7 @@
 
     <div id="undoBar" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 border border-purple-700/50 text-white text-xs font-bold rounded-full pl-4 pr-2 py-2 items-center gap-3 shadow-2xl z-[60]">
         <span id="undoMessage">削除しました</span>
-        <button onclick="undoLastDelete()" class="bg-purple-700 hover:bg-purple-600 text-white rounded-full px-3 py-1 text-[11px] font-black transition-colors">↩ 元に戻す</button>
+        <button onclick="undoLastDelete()" data-i18n="↩ 元に戻す" class="bg-purple-700 hover:bg-purple-600 text-white rounded-full px-3 py-1 text-[11px] font-black transition-colors">↩ 元に戻す</button>
     </div>
 
     <div id="errorToast" class="hidden fixed top-4 right-4 max-w-[80vw] bg-rose-950 border border-rose-700/60 text-rose-200 text-[11px] font-bold rounded-lg px-3 py-2.5 shadow-2xl z-[70]"></div>
@@ -1078,7 +1078,16 @@
                 "トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）": "Fit the card snugly inside the frame (pinch with two fingers to zoom)",
                 "お使いの端末・ブラウザはカメラ撮影に対応していません。": "Your device or browser doesn't support camera capture.",
                 "カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: ": "Couldn't start the camera. Please check that camera access is allowed.\nError: ",
-                "カメラの準備中です。少し待ってから再度お試しください。": "The camera is still getting ready. Please wait a moment and try again."
+                "カメラの準備中です。少し待ってから再度お試しください。": "The camera is still getting ready. Please wait a moment and try again.",
+                // ── i18n追加対応10: メンバー写真設定モーダル・カード画像読込エラー・ストレージ使用量表示・undoバー ──
+                "メンバー写真の保存に失敗しました: ": "Failed to save the member photo: ",
+                "画像の読み込みに失敗しました。別の画像でお試しください。": "Failed to load the image. Please try a different image.",
+                "裏面画像の読み込みに失敗しました。別の画像でお試しください。": "Failed to load the back image. Please try a different image.",
+                "無題のトレカ": "Untitled Card",
+                "この端末では取得できません": "Not available on this device",
+                "取得に失敗しました": "Failed to retrieve",
+                "↩ 元に戻す": "↩ Undo",
+                "枚を削除しました": " deleted"
                 // 第2弾完了
             },
             ko: {
@@ -1352,7 +1361,16 @@
                 "トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）": "카드를 프레임 안에 꼭 맞게 넣어주세요(두 손가락으로 핀치하여 확대/축소)",
                 "お使いの端末・ブラウザはカメラ撮影に対応していません。": "사용 중인 기기・브라우저는 카메라 촬영을 지원하지 않습니다.",
                 "カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: ": "카메라를 시작할 수 없었습니다. 카메라 접근 권한이 허용되어 있는지 확인해 주세요.\n오류: ",
-                "カメラの準備中です。少し待ってから再度お試しください。": "카메라를 준비하는 중입니다. 잠시 후 다시 시도해 주세요."
+                "カメラの準備中です。少し待ってから再度お試しください。": "카메라를 준비하는 중입니다. 잠시 후 다시 시도해 주세요.",
+                // ── i18n追加対応10: メンバー写真設定モーダル・カード画像読込エラー・ストレージ使用量表示・undoバー ──
+                "メンバー写真の保存に失敗しました: ": "멤버 사진 저장에 실패했습니다: ",
+                "画像の読み込みに失敗しました。別の画像でお試しください。": "이미지를 불러오지 못했습니다. 다른 이미지로 다시 시도해 주세요.",
+                "裏面画像の読み込みに失敗しました。別の画像でお試しください。": "뒷면 이미지를 불러오지 못했습니다. 다른 이미지로 다시 시도해 주세요.",
+                "無題のトレカ": "제목 없는 카드",
+                "この端末では取得できません": "이 기기에서는 확인할 수 없습니다",
+                "取得に失敗しました": "가져오기에 실패했습니다",
+                "↩ 元に戻す": "↩ 실행 취소",
+                "枚を削除しました": "장을 삭제했습니다"
                 // 第2弾完了
             }
         };
@@ -4268,7 +4286,7 @@
             if (!memberPhotoTargetName) return;
             const btn = document.getElementById("memberPhotoAdjustSaveBtn");
             btn.disabled = true;
-            btn.textContent = "保存中...";
+            btn.textContent = t("保存中...");
             try {
                 const dataUrl = getMemberPhotoAdjuster().exportDataUrl(200, 200, 0.85);
                 await saveImageBlob("member_" + memberPhotoTargetName, dataUrl);
@@ -4278,10 +4296,10 @@
                 closeMemberPhotoAdjustModal();
             } catch (err) {
                 console.error("メンバー写真の保存に失敗しました:", err);
-                alert("メンバー写真の保存に失敗しました: " + (err.message || err));
+                alert(t("メンバー写真の保存に失敗しました: ") + (err.message || err));
             } finally {
                 btn.disabled = false;
-                btn.textContent = "保存";
+                btn.textContent = t("保存");
             }
         }
 
@@ -4802,7 +4820,7 @@
             };
             reader.onerror = function(err) {
                 console.error("FileReader 読み込み失敗:", err);
-                alert("画像の読み込みに失敗しました。別の画像でお試しください。");
+                alert(t("画像の読み込みに失敗しました。別の画像でお試しください。"));
             };
             reader.readAsDataURL(file);
         }
@@ -4840,7 +4858,7 @@
             };
             reader.onerror = function(err) {
                 console.error("FileReader(裏面) 読み込み失敗:", err);
-                alert("裏面画像の読み込みに失敗しました。別の画像でお試しください。");
+                alert(t("裏面画像の読み込みに失敗しました。別の画像でお試しください。"));
             };
             reader.readAsDataURL(file);
         }
@@ -5148,7 +5166,7 @@
             const btn = document.getElementById("saveCardBtn");
             if (btn.disabled) return; // 保存処理中の二重タップを防ぐ
 
-            const theme = document.getElementById("formTheme").value.trim() || "無題のトレカ";
+            const theme = document.getElementById("formTheme").value.trim() || t("無題のトレカ");
             const members = getFormSelectedMembers();
             const album = document.getElementById("formAlbum").value;
             const albumCats = getCategoriesForAlbum(album);
@@ -6289,7 +6307,7 @@
 
         function showUndoToast(count) {
             const bar = document.getElementById("undoBar");
-            document.getElementById("undoMessage").innerText = `${count}枚を削除しました`;
+            document.getElementById("undoMessage").innerText = `${count}${t("枚を削除しました")}`;
             bar.classList.remove("hidden");
             bar.classList.add("flex");
             if (undoTimer) clearTimeout(undoTimer);
@@ -6511,10 +6529,10 @@
                     const quotaMB = (quota / 1024 / 1024).toFixed(0);
                     document.getElementById("storageLabel").innerText = `${usageMB} MB / ${quotaMB} MB (${pct.toFixed(0)}%)`;
                 } else {
-                    document.getElementById("storageLabel").innerText = "この端末では取得できません";
+                    document.getElementById("storageLabel").innerText = t("この端末では取得できません");
                 }
             } catch (e) {
-                document.getElementById("storageLabel").innerText = "取得に失敗しました";
+                document.getElementById("storageLabel").innerText = t("取得に失敗しました");
             }
         }
 
