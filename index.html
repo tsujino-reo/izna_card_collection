@@ -5064,6 +5064,8 @@
             
             currentTempImageUrl = "";
             const imgPreview = document.getElementById("imgPreview");
+            imgPreview.src = "";
+            imgPreview.classList.add("hidden");
             if (card.imgUrl) {
                 imgPreview.src = card.imgUrl;
                 imgPreview.classList.remove("hidden");
@@ -5083,6 +5085,8 @@
             removeBackImageFlag = false;
             document.getElementById("formImageBack").value = "";
             const imgPreviewBack = document.getElementById("imgPreviewBack");
+            imgPreviewBack.src = "";
+            imgPreviewBack.classList.add("hidden");
             if (card.imgUrlBack) {
                 imgPreviewBack.src = card.imgUrlBack;
                 imgPreviewBack.classList.remove("hidden");
