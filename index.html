@@ -3435,7 +3435,8 @@
         async function getStorageDownloadUrl(path) {
             try {
                 return await fbStorage.ref(path).getDownloadURL();
-            } catch (_) {
+            } catch (err) {
+                console.error("Storage画像取得失敗:", path, err.code || err.message || err);
                 return null;
             }
         }
