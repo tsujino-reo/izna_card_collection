@@ -132,40 +132,58 @@
                 <div id="headerMenuWrap" class="relative">
                     <button id="headerMenuBtn" onclick="toggleHeaderMenu()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm rounded-lg w-8 h-8 flex items-center justify-center font-bold transition-colors">⋮</button>
                     <div id="headerMenu" class="hidden absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden w-48">
-                        <button id="pinViewBtn" onclick="showCurrentPin()" data-i18n="🔑 PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🔑 PINコードを確認
+                        <button type="button" onclick="toggleMenuGroup('menuGroupPinBody', this)" class="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wide hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            <span data-i18n="🔑 PIN関連">🔑 PIN関連</span>
+                            <span class="menuGroupArrow text-gray-500">▶</span>
                         </button>
-                        <button id="pinRegenBtn" onclick="regeneratePin()" data-i18n="🔄 PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🔄 PINコードを再生成
+                        <div id="menuGroupPinBody" class="hidden">
+                            <button id="pinViewBtn" onclick="showCurrentPin()" data-i18n="🔑 PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🔑 PINコードを確認
+                            </button>
+                            <button id="pinRegenBtn" onclick="regeneratePin()" data-i18n="🔄 PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🔄 PINコードを再生成
+                            </button>
+                            <button id="editPinViewBtn" onclick="showCurrentEditPin()" data-i18n="🛠️ 編集用PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🛠️ 編集用PINコードを確認
+                            </button>
+                            <button id="editPinRegenBtn" onclick="regenerateEditPin()" data-i18n="🛠️🔄 編集用PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-700">
+                                🛠️🔄 編集用PINコードを再生成
+                            </button>
+                        </div>
+                        <button type="button" onclick="toggleMenuGroup('menuGroupAccountBody', this)" class="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wide hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            <span data-i18n="👤 アカウント・権限">👤 アカウント・権限</span>
+                            <span class="menuGroupArrow text-gray-500">▶</span>
                         </button>
-                        <button id="editPinViewBtn" onclick="showCurrentEditPin()" data-i18n="🛠️ 編集用PINコードを確認" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🛠️ 編集用PINコードを確認
+                        <div id="menuGroupAccountBody" class="hidden">
+                            <button id="setNicknameBtn" onclick="setMyNickname()" data-i18n="🙋 ニックネームを設定" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🙋 ニックネームを設定
+                            </button>
+                            <button id="inviteLinkBtn" onclick="openInviteModal()" data-i18n="🔗 招待リンクを作成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🔗 招待リンクを作成
+                            </button>
+                            <button id="accessManageBtn" onclick="openAccessManageModal()" data-i18n="👥 アクセス管理" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-700">
+                                👥 アクセス管理
+                            </button>
+                        </div>
+                        <button type="button" onclick="toggleMenuGroup('menuGroupDataBody', this)" class="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wide hover:bg-gray-800 transition-colors border-b border-gray-800">
+                            <span data-i18n="🗂️ データ管理">🗂️ データ管理</span>
+                            <span class="menuGroupArrow text-gray-500">▶</span>
                         </button>
-                        <button id="editPinRegenBtn" onclick="regenerateEditPin()" data-i18n="🛠️🔄 編集用PINコードを再生成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-700">
-                            🛠️🔄 編集用PINコードを再生成
-                        </button>
-                        <button id="setNicknameBtn" onclick="setMyNickname()" data-i18n="🙋 ニックネームを設定" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🙋 ニックネームを設定
-                        </button>
-                        <button id="inviteLinkBtn" onclick="openInviteModal()" data-i18n="🔗 招待リンクを作成" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🔗 招待リンクを作成
-                        </button>
-                        <button id="accessManageBtn" onclick="openAccessManageModal()" data-i18n="👥 アクセス管理" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-700">
-                            👥 アクセス管理
-                        </button>
-                        <button id="activityLogBtn" onclick="openActivityLogModal()" data-i18n="📜 更新履歴" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            📜 更新履歴
-                        </button>
-                        <button id="exportFullBtn" onclick="exportData(true)" data-i18n="🖼️ フル出力（画像含む）" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            🖼️ フル出力（画像含む）
-                        </button>
-                        <button id="exportMetaBtn" onclick="exportData(false)" data-i18n="📝 メタデータのみ出力" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
-                            📝 メタデータのみ出力
-                        </button>
-                        <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer border-b border-gray-700">
-                            <span data-i18n="📥 読込">📥 読込</span>
-                            <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
-                        </label>
+                        <div id="menuGroupDataBody" class="hidden">
+                            <button id="activityLogBtn" onclick="openActivityLogModal()" data-i18n="📜 更新履歴" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                📜 更新履歴
+                            </button>
+                            <button id="exportFullBtn" onclick="exportData(true)" data-i18n="🖼️ フル出力（画像含む）" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                🖼️ フル出力（画像含む）
+                            </button>
+                            <button id="exportMetaBtn" onclick="exportData(false)" data-i18n="📝 メタデータのみ出力" class="hidden w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors border-b border-gray-800">
+                                📝 メタデータのみ出力
+                            </button>
+                            <label id="importLabel" class="block w-full text-left px-3 py-2 text-[10px] font-bold text-gray-200 hover:bg-gray-800 transition-colors cursor-pointer border-b border-gray-700">
+                                <span data-i18n="📥 読込">📥 読込</span>
+                                <input type="file" id="importInput" accept=".json" class="file-input-hidden" onchange="importData(this)">
+                            </label>
+                        </div>
                         <button id="logoutBtn" onclick="logoutApp()" data-i18n="🚪 ログアウト" class="w-full text-left px-3 py-2 text-[10px] font-bold text-rose-400 hover:bg-gray-800 transition-colors">
                             🚪 ログアウト
                         </button>
@@ -954,7 +972,11 @@
                 "💿 アルバム管理": "💿 Album Management",
                 "🏪 店舗管理": "🏪 Store Management",
                 "☁️ 背景をFirestoreへ移行": "☁️ Migrate Backgrounds to Firestore",
-                "☁️ トレカ画像をStorageへ移行": "☁️ Migrate Card Images to Storage"
+                "☁️ トレカ画像をStorageへ移行": "☁️ Migrate Card Images to Storage",
+                // ── UI改善: 「⋮」メニューのアコーディオン化 ──
+                "🔑 PIN関連": "🔑 PIN",
+                "👤 アカウント・権限": "👤 Account & Access",
+                "🗂️ データ管理": "🗂️ Data Management"
                 // 第2弾完了
             },
             ko: {
@@ -1122,7 +1144,11 @@
                 "💿 アルバム管理": "💿 앨범 관리",
                 "🏪 店舗管理": "🏪 매장 관리",
                 "☁️ 背景をFirestoreへ移行": "☁️ 배경을 Firestore로 이전",
-                "☁️ トレカ画像をStorageへ移行": "☁️ 카드 이미지를 Storage로 이전"
+                "☁️ トレカ画像をStorageへ移行": "☁️ 카드 이미지를 Storage로 이전",
+                // ── UI改善: 「⋮」メニューのアコーディオン化 ──
+                "🔑 PIN関連": "🔑 PIN",
+                "👤 アカウント・権限": "👤 계정 및 권한",
+                "🗂️ データ管理": "🗂️ 데이터 관리"
                 // 第2弾完了
             }
         };
@@ -6069,6 +6095,15 @@
             await loadPCData();
             renderApp();
             updateStorageEstimate();
+        }
+
+        // 「⋮」メニュー内のグループ見出し（PIN関連・アカウント/権限・データ管理）の開閉。
+        // 複数グループを同時に開いておけるよう、他グループの開閉状態には触れない。
+        function toggleMenuGroup(bodyId, headerBtn) {
+            const body = document.getElementById(bodyId);
+            const nowHidden = body.classList.toggle("hidden");
+            const arrow = headerBtn.querySelector(".menuGroupArrow");
+            if (arrow) arrow.textContent = nowHidden ? "▶" : "▼";
         }
 
         function toggleHeaderMenu() {
