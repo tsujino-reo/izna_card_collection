@@ -1416,6 +1416,7 @@
             currentLang = lang;
             localStorage.setItem(LANG_STORAGE_KEY, lang);
             applyTranslations();
+            updateViewModeToggleButton();
         }
 
         // PINゲートは認証状態に関わらずページ読み込み直後に表示されるため、
