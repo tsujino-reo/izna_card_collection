@@ -620,22 +620,22 @@
 
     <div id="backgroundModal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center hidden p-4 z-50">
         <div class="bg-gray-950 border border-gray-800 rounded-2xl max-w-sm w-full p-5 card-shadow max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">🏞️ 背景設定</h3>
-            <p class="text-[10px] text-gray-500 mb-4">表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。</p>
+            <h3 class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4" data-i18n="🏞️ 背景設定">🏞️ 背景設定</h3>
+            <p class="text-[10px] text-gray-500 mb-4" data-i18n="表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。">表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。</p>
 
             <div class="flex gap-1.5 mb-4">
-                <button id="bgTabGlobalBtn" onclick="switchBgModalTab('global')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gradient-to-r from-purple-600 to-pink-600 text-white">①全体共通</button>
-                <button id="bgTabComboBtn" onclick="switchBgModalTab('combo')" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">②組み合わせ</button>
+                <button id="bgTabGlobalBtn" onclick="switchBgModalTab('global')" data-i18n="①全体共通" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gradient-to-r from-purple-600 to-pink-600 text-white">①全体共通</button>
+                <button id="bgTabComboBtn" onclick="switchBgModalTab('combo')" data-i18n="②組み合わせ" class="flex-1 py-2 rounded-lg text-[10px] font-bold transition-colors bg-gray-900 border border-gray-800 text-gray-400">②組み合わせ</button>
             </div>
 
             <!-- ①全体共通の背景 -->
             <div id="bgTabGlobal" class="space-y-3">
                 <div id="bgGlobalPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
                 <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
-                    🏞️ 画像を選択して設定
+                    <span data-i18n="🏞️ 画像を選択して設定">🏞️ 画像を選択して設定</span>
                     <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'global')">
                 </label>
-                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+                <button onclick="removeBgForCurrentTab()" data-i18n="この背景を削除" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
             </div>
 
             <!-- ②メンバー×アルバムの組み合わせの背景 -->
@@ -644,29 +644,29 @@
                 <select id="bgComboAlbumSelect" onchange="renderBgModalPreview()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-xs"></select>
                 <div id="bgComboPreview" class="w-full aspect-video rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center text-[10px] text-gray-500 overflow-hidden relative">未設定</div>
                 <label class="block w-full text-center py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-xs font-bold cursor-pointer">
-                    🏞️ 画像を選択して設定
+                    <span data-i18n="🏞️ 画像を選択して設定">🏞️ 画像を選択して設定</span>
                     <input type="file" accept="image/*" class="file-input-hidden" onchange="handleBgFileSelected(this, 'combo')">
                 </label>
-                <button onclick="removeBgForCurrentTab()" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
+                <button onclick="removeBgForCurrentTab()" data-i18n="この背景を削除" class="w-full py-2 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold">この背景を削除</button>
             </div>
 
             <!-- 表示範囲の調整（拡大率・位置）。設定済みの画像がある場合のみ表示する -->
             <div id="bgAdjustPanel" class="hidden mt-4 pt-4 border-t border-gray-800 space-y-3">
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">使用される範囲（元画像）</p>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider" data-i18n="使用される範囲（元画像）">使用される範囲（元画像）</p>
                 <div id="bgSourcePreviewWrap" class="relative w-full rounded-xl bg-gray-900 border border-gray-800 overflow-hidden">
                     <img id="bgSourceImg" src="" draggable="false" oncontextmenu="return false" class="photocard-img w-full h-auto block">
                     <div id="bgCropFrame" class="absolute border-2 border-pink-400 shadow-[0_0_0_2000px_rgba(0,0,0,0.45)] pointer-events-none"></div>
                 </div>
 
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-2">表示範囲の調整</p>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-2" data-i18n="表示範囲の調整">表示範囲の調整</p>
                 <div>
-                    <label class="text-[10px] text-gray-400 block mb-1">拡大率: <span id="bgScaleValue">100</span>%</label>
+                    <label class="text-[10px] text-gray-400 block mb-1"><span data-i18n="拡大率: ">拡大率: </span><span id="bgScaleValue">100</span>%</label>
                     <input type="range" id="bgScaleSlider" min="50" max="300" step="5" value="100" oninput="onBgAdjustChange()" class="w-full">
                 </div>
                 <div id="bgFillColorWrap" class="hidden flex items-center gap-2">
-                    <label class="text-[10px] text-gray-400 shrink-0">余白の色:</label>
+                    <label class="text-[10px] text-gray-400 shrink-0" data-i18n="余白の色:">余白の色:</label>
                     <input type="color" id="bgFillColorPicker" value="#000000" oninput="onBgFillColorChange()" class="w-10 h-8 rounded border border-gray-700 bg-gray-900 cursor-pointer">
-                    <span class="text-[10px] text-gray-500">100%未満の時に表示される余白を埋める色です</span>
+                    <span class="text-[10px] text-gray-500" data-i18n="100%未満の時に表示される余白を埋める色です">100%未満の時に表示される余白を埋める色です</span>
                 </div>
                 <div class="flex items-center justify-center gap-2">
                     <div class="grid grid-cols-3 gap-1.5 w-32">
@@ -674,7 +674,7 @@
                         <button id="bgNudgeUp" data-dx="0" data-dy="-0.5" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
                         <div></div>
                         <button id="bgNudgeLeft" data-dx="-0.5" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
-                        <button onclick="resetBgPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
+                        <button onclick="resetBgPosition()" data-i18n="中央" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
                         <button id="bgNudgeRight" data-dx="0.5" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
                         <div></div>
                         <button id="bgNudgeDown" data-dx="0" data-dy="0.5" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
@@ -684,8 +684,8 @@
 
                 <!-- PC幅(768px以上)では画像全体が欠けずに収まる表示(contain)になるため、
                      拡大率・クロップ範囲ではなく「余白の中でどちらに寄せるか」だけを個別に調整する。 -->
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-3 mt-1 border-t border-gray-800">PC画面での表示位置</p>
-                <p class="text-[9px] text-gray-600 leading-relaxed">PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。</p>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider pt-3 mt-1 border-t border-gray-800" data-i18n="PC画面での表示位置">PC画面での表示位置</p>
+                <p class="text-[9px] text-gray-600 leading-relaxed" data-i18n="PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。">PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。</p>
                 <div id="bgPcPreviewWrap" class="w-full aspect-video rounded-xl border border-gray-800 overflow-hidden bg-black">
                     <div id="bgPcPreview" class="w-full h-full" style="background-repeat:no-repeat;"></div>
                 </div>
@@ -695,7 +695,7 @@
                         <button id="bgPcNudgeUp" data-dx="0" data-dy="-2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↑</button>
                         <div></div>
                         <button id="bgPcNudgeLeft" data-dx="-2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">←</button>
-                        <button onclick="resetBgPcPosition()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
+                        <button onclick="resetBgPcPosition()" data-i18n="中央" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-[9px]">中央</button>
                         <button id="bgPcNudgeRight" data-dx="2" data-dy="0" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">→</button>
                         <div></div>
                         <button id="bgPcNudgeDown" data-dx="0" data-dy="2" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-2 text-white text-xs">↓</button>
@@ -705,7 +705,7 @@
             </div>
 
             <div class="flex justify-end mt-4">
-                <button onclick="closeBackgroundModal()" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
+                <button onclick="closeBackgroundModal()" data-i18n="閉じる" class="px-4 py-2 rounded-lg bg-gray-900 text-gray-400 border border-gray-800 text-xs font-bold">閉じる</button>
             </div>
         </div>
     </div>
@@ -989,7 +989,58 @@
                 "アルバム封入": "Album Insert",
                 "店舗特典・ラキドロ": "Store Bonus / Lucky Draw",
                 "サノク": "Sanok (Pre-recorded)",
-                "その他": "Other"
+                "その他": "Other",
+                // ── i18n追加対応2: カテゴリ空状態・アルバム名・枚数単位 ──
+                "未登録": "None",
+                "その他特典": "Other Perks",
+                "枚": "",
+                // ── i18n追加対応3: 背景設定モーダル ──
+                "表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。": "Display priority: ① Member × Album combination → ② Global. You only need to set what you want — unset falls back to Global automatically.",
+                "①全体共通": "① Global",
+                "②組み合わせ": "② Combination",
+                "未設定": "Not set",
+                "🏞️ 画像を選択して設定": "🏞️ Choose & Set Image",
+                "この背景を削除": "Delete This Background",
+                "使用される範囲（元画像）": "Area Used (Original Image)",
+                "表示範囲の調整": "Adjust Display Area",
+                "拡大率: ": "Scale: ",
+                "余白の色:": "Fill Color:",
+                "100%未満の時に表示される余白を埋める色です": "The color used to fill empty space when below 100%",
+                "中央": "Center",
+                "PC画面での表示位置": "Position on PC Screen",
+                "PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。": "On PC width, the image is shown in full without cropping. You can adjust which side the image leans toward within the margin here.",
+                "背景画像の保存に失敗しました。": "Failed to save the background image.",
+                "この背景設定を削除しますか？": "Delete this background setting?",
+                // ── i18n追加対応4: データ移行ツール ──
+                "スキャン中…": "Scanning…",
+                "IndexedDB の読み込みに失敗しました:\n": "Failed to read from IndexedDB:\n",
+                "IndexedDB に移行対象の背景画像がありません。\n": "No background images to migrate in IndexedDB.\n",
+                "（すでに移行済みか、このブラウザには背景が設定されていません）": "(Already migrated, or no background is set in this browser)",
+                "Firestore確認中…": "Checking Firestore…",
+                "移行中…": "Migrating…",
+                "（Firestore に既存）": "(Already in Firestore)",
+                "移行完了\n": "Migration complete\n",
+                "成功: ": "Success: ",
+                " 件 / スキップ: ": " / Skipped: ",
+                " 件 / 失敗: ": " / Failed: ",
+                " 件\n\n": "\n\n",
+                "登録済みの全トレカについて、この端末に保存されている画像をFirebase Storageへアップロードします。\n": "This will upload images stored on this device to Firebase Storage for all registered cards.\n",
+                "・画像がこの端末に無いカードはスキップします\n": "・Cards without an image on this device will be skipped\n",
+                "・Storageに既に同じ画像がある場合もスキップします（上書きしません）\n": "・Cards that already have the same image in Storage will also be skipped (not overwritten)\n",
+                "・この端末のデータは削除・変更しません\n\n": "・Data on this device will not be deleted or changed\n\n",
+                "続行しますか？": "Continue?",
+                "確認中…": "Checking…",
+                "Firestoreからのカード一覧取得に失敗しました:\n": "Failed to retrieve the card list from Firestore:\n",
+                "（この端末に画像なし）": "(No image on this device)",
+                "（Storageに既存）": "(Already in Storage)",
+                "対象: ": "Target: ",
+                " 件 / 成功: ": " / Success: ",
+                " 件 / ": " / ",
+                "スキップ: ": "Skipped: ",
+                " 件（画像なし ": " (no image ",
+                " / Storage既存 ": " / already in Storage ",
+                "） / ": ") / ",
+                "失敗: ": "Failed: "
                 // 第2弾完了
             },
             ko: {
@@ -1174,7 +1225,58 @@
                 "アルバム封入": "앨범 동봉",
                 "店舗特典・ラキドロ": "매장 특전・래키드로",
                 "サノク": "사녹",
-                "その他": "기타"
+                "その他": "기타",
+                // ── i18n追加対応2: カテゴリ空状態・アルバム名・枚数単位 ──
+                "未登録": "없음",
+                "その他特典": "기타 특전",
+                "枚": "장",
+                // ── i18n追加対応3: 背景設定モーダル ──
+                "表示の優先順位: ①メンバー×アルバムの組み合わせ → ②全体共通。設定したい範囲だけでOKです（未設定は自動で全体共通にフォールバックします）。": "표시 우선순위: ① 멤버×앨범 조합 → ② 전체 공통. 설정하고 싶은 범위만 설정하면 됩니다(미설정 시 자동으로 전체 공통으로 대체됩니다).",
+                "①全体共通": "① 전체 공통",
+                "②組み合わせ": "② 조합",
+                "未設定": "미설정",
+                "🏞️ 画像を選択して設定": "🏞️ 이미지를 선택하여 설정",
+                "この背景を削除": "이 배경 삭제",
+                "使用される範囲（元画像）": "사용되는 범위(원본 이미지)",
+                "表示範囲の調整": "표시 범위 조정",
+                "拡大率: ": "확대율: ",
+                "余白の色:": "여백 색상:",
+                "100%未満の時に表示される余白を埋める色です": "100% 미만일 때 표시되는 여백을 채우는 색상입니다",
+                "中央": "중앙",
+                "PC画面での表示位置": "PC 화면에서의 표시 위치",
+                "PC幅では画像は縮小されず全体が表示されます（切り取りなし）。余白の中で画像がどちらに寄るかをここで調整できます。": "PC 너비에서는 이미지가 축소되지 않고 전체가 표시됩니다(잘림 없음). 여백 안에서 이미지가 어느 쪽으로 치우칠지 여기서 조정할 수 있습니다.",
+                "背景画像の保存に失敗しました。": "배경 이미지 저장에 실패했습니다.",
+                "この背景設定を削除しますか？": "이 배경 설정을 삭제하시겠습니까?",
+                // ── i18n追加対応4: データ移行ツール ──
+                "スキャン中…": "스캔 중…",
+                "IndexedDB の読み込みに失敗しました:\n": "IndexedDB 읽기에 실패했습니다:\n",
+                "IndexedDB に移行対象の背景画像がありません。\n": "IndexedDB에 이전할 배경 이미지가 없습니다.\n",
+                "（すでに移行済みか、このブラウザには背景が設定されていません）": "(이미 이전되었거나, 이 브라우저에는 배경이 설정되어 있지 않습니다)",
+                "Firestore確認中…": "Firestore 확인 중…",
+                "移行中…": "이전 중…",
+                "（Firestore に既存）": "(Firestore에 이미 존재)",
+                "移行完了\n": "이전 완료\n",
+                "成功: ": "성공: ",
+                " 件 / スキップ: ": " 건 / 스킵: ",
+                " 件 / 失敗: ": " 건 / 실패: ",
+                " 件\n\n": " 건\n\n",
+                "登録済みの全トレカについて、この端末に保存されている画像をFirebase Storageへアップロードします。\n": "등록된 모든 포토카드에 대해, 이 기기에 저장된 이미지를 Firebase Storage로 업로드합니다.\n",
+                "・画像がこの端末に無いカードはスキップします\n": "・이 기기에 이미지가 없는 카드는 건너뜁니다\n",
+                "・Storageに既に同じ画像がある場合もスキップします（上書きしません）\n": "・Storage에 이미 같은 이미지가 있는 경우도 건너뜁니다(덮어쓰지 않음)\n",
+                "・この端末のデータは削除・変更しません\n\n": "・이 기기의 데이터는 삭제・변경하지 않습니다\n\n",
+                "続行しますか？": "계속하시겠습니까?",
+                "確認中…": "확인 중…",
+                "Firestoreからのカード一覧取得に失敗しました:\n": "Firestore에서 카드 목록을 가져오지 못했습니다:\n",
+                "（この端末に画像なし）": "(이 기기에 이미지 없음)",
+                "（Storageに既存）": "(Storage에 이미 존재)",
+                "対象: ": "대상: ",
+                " 件 / 成功: ": " 건 / 성공: ",
+                " 件 / ": " 건 / ",
+                "スキップ: ": "스킵: ",
+                " 件（画像なし ": " 건(이미지 없음 ",
+                " / Storage既存 ": " / Storage 기존 ",
+                "） / ": ") / ",
+                "失敗: ": "실패: "
                 // 第2弾完了
             }
         };
@@ -2657,7 +2759,7 @@
                             : 'bg-gray-900 border border-gray-800 text-gray-400'
                         }">
                         ${thumbHtml}
-                        <span>${a.name}</span>
+                        <span>${t(a.name)}</span>
                     </button>
                 `;
             }).join('');
@@ -3255,7 +3357,7 @@
         async function migrateLocalBackgroundsToFirestore() {
             const btn = document.getElementById("migrateBgBtn");
             btn.disabled = true;
-            btn.textContent = "スキャン中…";
+            btn.textContent = t("スキャン中…");
 
             // IndexedDB settings ストアから全件取得
             let records = [];
@@ -3269,7 +3371,7 @@
             } catch (e) {
                 btn.disabled = false;
                 btn.textContent = t("☁️ 背景をFirestoreへ移行");
-                alert("IndexedDB の読み込みに失敗しました:\n" + (e.message || e));
+                alert(t("IndexedDB の読み込みに失敗しました:\n") + (e.message || e));
                 return;
             }
 
@@ -3279,12 +3381,12 @@
             if (bgRecords.length === 0) {
                 btn.disabled = false;
                 btn.textContent = t("☁️ 背景をFirestoreへ移行");
-                alert("IndexedDB に移行対象の背景画像がありません。\n" +
-                    "（すでに移行済みか、このブラウザには背景が設定されていません）");
+                alert(t("IndexedDB に移行対象の背景画像がありません。\n") +
+                    t("（すでに移行済みか、このブラウザには背景が設定されていません）"));
                 return;
             }
 
-            btn.textContent = "Firestore確認中…";
+            btn.textContent = t("Firestore確認中…");
 
             // bgCache は IndexedDB 由来のデータも含むため、Firestore の実態はサーバーへ直接問い合わせる
             const firestoreKeys = new Set();
@@ -3295,7 +3397,7 @@
                 console.warn("Firestore既存キー確認失敗（スキップチェックを無効化して続行）:", e);
             }
 
-            btn.textContent = "移行中…";
+            btn.textContent = t("移行中…");
             let ok = 0, skipped = 0, failed = 0;
             const lines = [];
 
@@ -3305,7 +3407,7 @@
                 const fsKey = sanitizeBgKey(key);
                 // Firestore サーバーに既存のキーはスキップ（bgCache は参照しない）
                 if (firestoreKeys.has(fsKey)) {
-                    lines.push(`⏭ SKIP  ${fsKey}  （Firestore に既存）`);
+                    lines.push(`⏭ SKIP  ${fsKey}  ${t("（Firestore に既存）")}`);
                     skipped++;
                     continue;
                 }
@@ -3332,8 +3434,8 @@
             btn.textContent = t("☁️ 背景をFirestoreへ移行");
 
             alert(
-                `移行完了\n` +
-                `成功: ${ok} 件 / スキップ: ${skipped} 件 / 失敗: ${failed} 件\n\n` +
+                t("移行完了\n") +
+                t("成功: ") + ok + t(" 件 / スキップ: ") + skipped + t(" 件 / 失敗: ") + failed + t(" 件\n\n") +
                 lines.join("\n")
             );
 
@@ -3347,15 +3449,15 @@
         async function migrateCardImagesToStorage() {
             const btn = document.getElementById("migrateCardImagesBtn");
             if (!confirm(
-                "登録済みの全トレカについて、この端末に保存されている画像をFirebase Storageへアップロードします。\n" +
-                "・画像がこの端末に無いカードはスキップします\n" +
-                "・Storageに既に同じ画像がある場合もスキップします（上書きしません）\n" +
-                "・この端末のデータは削除・変更しません\n\n" +
-                "続行しますか？"
+                t("登録済みの全トレカについて、この端末に保存されている画像をFirebase Storageへアップロードします。\n") +
+                t("・画像がこの端末に無いカードはスキップします\n") +
+                t("・Storageに既に同じ画像がある場合もスキップします（上書きしません）\n") +
+                t("・この端末のデータは削除・変更しません\n\n") +
+                t("続行しますか？")
             )) return;
 
             btn.disabled = true;
-            btn.textContent = "確認中…";
+            btn.textContent = t("確認中…");
 
             let cardIds = [];
             try {
@@ -3364,25 +3466,25 @@
             } catch (e) {
                 btn.disabled = false;
                 btn.textContent = t("☁️ トレカ画像をStorageへ移行");
-                alert("Firestoreからのカード一覧取得に失敗しました:\n" + (e.message || e));
+                alert(t("Firestoreからのカード一覧取得に失敗しました:\n") + (e.message || e));
                 return;
             }
 
-            btn.textContent = "移行中…";
+            btn.textContent = t("移行中…");
             let success = 0, skippedNoLocal = 0, skippedInStorage = 0, failed = 0;
             const lines = [];
 
             for (const id of cardIds) {
                 const frontBlob = await getImageBlob(id).catch(() => null);
                 if (!frontBlob) {
-                    lines.push(`⏭ SKIP  ${id}  （この端末に画像なし）`);
+                    lines.push(`⏭ SKIP  ${id}  ${t("（この端末に画像なし）")}`);
                     skippedNoLocal++;
                     continue;
                 }
                 try {
                     const alreadyInStorage = await getStorageDownloadUrl(`cards/${id}.jpg`);
                     if (alreadyInStorage) {
-                        lines.push(`⏭ SKIP  ${id}  （Storageに既存）`);
+                        lines.push(`⏭ SKIP  ${id}  ${t("（Storageに既存）")}`);
                         skippedInStorage++;
                         continue;
                     }
@@ -3408,10 +3510,10 @@
             btn.textContent = t("☁️ トレカ画像をStorageへ移行");
 
             alert(
-                `移行完了\n` +
-                `対象: ${cardIds.length} 件 / 成功: ${success} 件 / ` +
-                `スキップ: ${skippedNoLocal + skippedInStorage} 件（画像なし ${skippedNoLocal} / Storage既存 ${skippedInStorage}） / ` +
-                `失敗: ${failed} 件\n\n` +
+                t("移行完了\n") +
+                t("対象: ") + cardIds.length + t(" 件 / 成功: ") + success + t(" 件 / ") +
+                t("スキップ: ") + (skippedNoLocal + skippedInStorage) + t(" 件（画像なし ") + skippedNoLocal + t(" / Storage既存 ") + skippedInStorage + t("） / ") +
+                t("失敗: ") + failed + t(" 件\n\n") +
                 lines.join("\n")
             );
         }
@@ -3424,7 +3526,7 @@
                 await saveBackgroundForKey(BG_KEY_DEFAULT, file);
             } catch (err) {
                 console.error("背景画像の保存に失敗:", err);
-                alert("背景画像の保存に失敗しました。");
+                alert(t("背景画像の保存に失敗しました。"));
             }
             input.value = "";
             document.getElementById("headerMenu").classList.add("hidden");
@@ -3980,7 +4082,7 @@
                      class="bg-gray-900/50 border border-gray-800/80 rounded-2xl p-2.5 hover:bg-gray-800/60 active:scale-95 transition-all cursor-pointer">
                     <div class="mb-2">
                         <div class="text-gray-100 font-black text-sm truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">${m.name}</div>
-                        <div class="text-[10px] text-gray-300 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">${count}枚</div>
+                        <div class="text-[10px] text-gray-300 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">${count}${t("枚")}</div>
                     </div>
                     <div class="relative w-full aspect-square rounded-full bg-gray-800 border border-gray-700 overflow-hidden">
                         ${imgHtml}
@@ -4289,7 +4391,7 @@
                         );
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">${t("未登録")}</div>`;
                         bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     } else if (cat === "その他") {
                         // その他はテーマ名の50音・アルファベット順で固定表示する(1つの詰めたグリッド)。
@@ -4300,13 +4402,13 @@
                         });
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">${t("未登録")}</div>`;
                         bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     } else {
                         catCards = sortCards(catCards);
                         const cardsHtml = catCards.length
                             ? catCards.map(card => renderCard(card, isViewer)).join('')
-                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">未登録</div>`;
+                            : `<div class="col-span-full text-gray-400 italic text-[10px] py-2">${t("未登録")}</div>`;
                         bodyHtml = `<div id="${listId}" data-album="${currentAlbum}" data-category="${cat}" class="grid grid-cols-4 md:grid-cols-6 gap-2">${cardsHtml}</div>`;
                     }
 
@@ -5503,7 +5605,7 @@
                 document.getElementById("bgFillColorWrap").classList.toggle("hidden", t.scale >= 100);
             } else {
                 previewEl.style.backgroundImage = "";
-                previewEl.innerHTML = "未設定";
+                previewEl.innerHTML = t("未設定");
                 document.getElementById("bgSourceImg").src = "";
                 document.getElementById("bgPcPreview").style.backgroundImage = "";
                 adjustPanel.classList.add("hidden");
@@ -5663,14 +5765,14 @@
                 await renderBgModalPreview();
             } catch (err) {
                 console.error("背景画像の保存に失敗:", err);
-                alert("背景画像の保存に失敗しました。");
+                alert(t("背景画像の保存に失敗しました。"));
             }
             input.value = "";
         }
 
         async function removeBgForCurrentTab() {
             const key = getCurrentBgModalKey();
-            if (!confirm("この背景設定を削除しますか？")) return;
+            if (!confirm(t("この背景設定を削除しますか？"))) return;
             try {
                 await deleteBackgroundForKey(key);
                 await renderBgModalPreview();
