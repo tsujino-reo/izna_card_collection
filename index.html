@@ -339,7 +339,7 @@
 
     <div id="cameraModal" class="fixed inset-0 bg-black flex flex-col hidden z-[70]">
         <div class="flex items-center justify-between p-3 bg-black/80">
-            <span class="text-white text-xs font-bold">📸 トレカを枠に合わせて撮影</span>
+            <span class="text-white text-xs font-bold" data-i18n="📸 トレカを枠に合わせて撮影">📸 トレカを枠に合わせて撮影</span>
             <button onclick="closeCameraCapture()" class="text-white text-lg px-2">✕</button>
         </div>
 
@@ -351,13 +351,13 @@
                 <div id="cameraGuideFrame" class="border-2 border-pink-400 rounded-xl shadow-[0_0_0_2000px_rgba(0,0,0,0.55)]" style="aspect-ratio: 2/3; width: 70%; max-height: 80%;"></div>
             </div>
 
-            <button onclick="toggleCameraOrientation()" class="absolute top-3 right-3 z-10 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+            <button onclick="toggleCameraOrientation()" data-i18n="🔄 縦/横を切り替え" class="absolute top-3 right-3 z-10 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
                 🔄 縦/横を切り替え
             </button>
 
             <span id="cameraZoomLabel" class="hidden absolute top-3 left-3 z-10 bg-black/70 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full pointer-events-none">🔍 1.0x</span>
 
-            <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6 pointer-events-none">
+            <p class="absolute bottom-28 left-0 right-0 text-center text-white text-[11px] font-bold drop-shadow-lg px-6 pointer-events-none" data-i18n="トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）">
                 トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）
             </p>
 
@@ -1071,7 +1071,14 @@
                 // ── i18n追加対応8: トレカ削除・全削除フロー ──
                 "全てのトレカを削除しました。": "All cards have been deleted.",
                 "削除に失敗しました。エラー: ": "Failed to delete. Error: ",
-                "このトレカを削除してもよろしいですか？": "Delete this card?"
+                "このトレカを削除してもよろしいですか？": "Delete this card?",
+                // ── i18n追加対応9: カメラ撮影フロー ──
+                "📸 トレカを枠に合わせて撮影": "📸 Fit the card in the frame",
+                "🔄 縦/横を切り替え": "🔄 Switch Orientation",
+                "トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）": "Fit the card snugly inside the frame (pinch with two fingers to zoom)",
+                "お使いの端末・ブラウザはカメラ撮影に対応していません。": "Your device or browser doesn't support camera capture.",
+                "カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: ": "Couldn't start the camera. Please check that camera access is allowed.\nError: ",
+                "カメラの準備中です。少し待ってから再度お試しください。": "The camera is still getting ready. Please wait a moment and try again."
                 // 第2弾完了
             },
             ko: {
@@ -1338,7 +1345,14 @@
                 // ── i18n追加対応8: トレカ削除・全削除フロー ──
                 "全てのトレカを削除しました。": "모든 카드를 삭제했습니다.",
                 "削除に失敗しました。エラー: ": "삭제에 실패했습니다. 오류: ",
-                "このトレカを削除してもよろしいですか？": "이 카드를 삭제하시겠습니까?"
+                "このトレカを削除してもよろしいですか？": "이 카드를 삭제하시겠습니까?",
+                // ── i18n追加対応9: カメラ撮影フロー ──
+                "📸 トレカを枠に合わせて撮影": "📸 카드를 프레임에 맞춰 촬영",
+                "🔄 縦/横を切り替え": "🔄 세로/가로 전환",
+                "トレカを枠の中にきっちり収めてください（2本指でピンチしてズーム）": "카드를 프레임 안에 꼭 맞게 넣어주세요(두 손가락으로 핀치하여 확대/축소)",
+                "お使いの端末・ブラウザはカメラ撮影に対応していません。": "사용 중인 기기・브라우저는 카메라 촬영을 지원하지 않습니다.",
+                "カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: ": "카메라를 시작할 수 없었습니다. 카메라 접근 권한이 허용되어 있는지 확인해 주세요.\n오류: ",
+                "カメラの準備中です。少し待ってから再度お試しください。": "카메라를 준비하는 중입니다. 잠시 후 다시 시도해 주세요."
                 // 第2弾完了
             }
         };
@@ -4872,7 +4886,7 @@
             updateCameraGuideOrientation();
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("お使いの端末・ブラウザはカメラ撮影に対応していません。");
+                alert(t("お使いの端末・ブラウザはカメラ撮影に対応していません。"));
                 return;
             }
 
@@ -4912,7 +4926,7 @@
                 updateCameraZoomLabel();
             } catch (err) {
                 console.error("カメラの起動に失敗しました:", err);
-                alert("カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: " + (err && err.message ? err.message : err));
+                alert(t("カメラを起動できませんでした。カメラへのアクセスを許可しているかご確認ください。\nエラー: ") + (err && err.message ? err.message : err));
                 closeCameraCapture();
             }
         }
@@ -5032,7 +5046,7 @@
             const frameEl = document.getElementById("cameraGuideFrame");
 
             if (!video.videoWidth || !video.videoHeight) {
-                alert("カメラの準備中です。少し待ってから再度お試しください。");
+                alert(t("カメラの準備中です。少し待ってから再度お試しください。"));
                 return;
             }
 
