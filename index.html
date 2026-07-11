@@ -4618,11 +4618,21 @@
                 currentTempImageUrlBack = dataUrl;
                 removeBackImageFlag = false;
                 const imgPreview = document.getElementById("imgPreviewBack");
-                imgPreview.src = currentTempImageUrlBack;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
-                getBackImgAdjuster().setImage(true);
+
+                // ファイルから選んだ場合、実際の画像サイズから縦/横を自動判定する。
+                // 枠のアスペクト比を確定させてから（枠サイズが調整用アダプタの計算に必要なため）
+                // imgPreview.srcを設定し、ピンチ/ドラッグ調整を初期化する。
+                const img = new Image();
+                img.onload = () => {
+                    const orientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
+                    updatePreviewFrameAspect("imgLabelBack", orientation);
+                    imgPreview.src = currentTempImageUrlBack;
+                    getBackImgAdjuster().setImage(true);
+                };
+                img.src = currentTempImageUrlBack;
             };
             reader.onerror = function(err) {
                 console.error("FileReader(裏面) 読み込み失敗:", err);
@@ -5093,16 +5103,23 @@
             imgPreview.src = "";
             imgPreview.classList.add("hidden");
             if (card.imgUrl) {
-                imgPreview.src = card.imgUrl;
                 imgPreview.classList.remove("hidden");
                 document.getElementById("imgPlaceholder").classList.add("hidden");
-                // imgUrlがblob:（IndexedDB由来）の場合のみピンチ/ドラッグ調整・保存を許可する。
-                // Firebase Storageの https:// URL は他端末等でcanvas書き出しがCORSで失敗しうるため対象外。
-                getFrontImgAdjuster().setImage(card.imgUrl.startsWith("blob:"));
+                // 実際に読み込まれた画像サイズから縦/横を判定し、枠のアスペクト比を確定させてから
+                // ピンチ/ドラッグ調整用アダプタを初期化する（枠サイズが計算に必要なため）。
+                imgPreview.onload = () => {
+                    const orientation = (imgPreview.naturalWidth > imgPreview.naturalHeight) ? "landscape" : "portrait";
+                    updatePreviewFrameAspect("imgLabel", orientation);
+                    // imgUrlがblob:（IndexedDB由来）の場合のみピンチ/ドラッグ調整・保存を許可する。
+                    // Firebase Storageの https:// URL は他端末等でcanvas書き出しがCORSで失敗しうるため対象外。
+                    getFrontImgAdjuster().setImage(card.imgUrl.startsWith("blob:"));
+                };
+                imgPreview.src = card.imgUrl;
             } else {
                 imgPreview.classList.add("hidden");
                 document.getElementById("imgPlaceholder").classList.remove("hidden");
                 document.getElementById("imgResetBtn").classList.add("hidden");
+                updatePreviewFrameAspect("imgLabel", "portrait");
                 getFrontImgAdjuster().deactivate();
             }
 
@@ -5114,17 +5131,24 @@
             imgPreviewBack.src = "";
             imgPreviewBack.classList.add("hidden");
             if (card.imgUrlBack) {
-                imgPreviewBack.src = card.imgUrlBack;
                 imgPreviewBack.classList.remove("hidden");
                 document.getElementById("imgPlaceholderBack").classList.add("hidden");
                 document.getElementById("removeBackBtn").classList.remove("hidden");
-                getBackImgAdjuster().setImage(card.imgUrlBack.startsWith("blob:"));
+                // 実際に読み込まれた画像サイズから縦/横を判定し、枠のアスペクト比を確定させてから
+                // ピンチ/ドラッグ調整用アダプタを初期化する（枠サイズが計算に必要なため）。
+                imgPreviewBack.onload = () => {
+                    const orientation = (imgPreviewBack.naturalWidth > imgPreviewBack.naturalHeight) ? "landscape" : "portrait";
+                    updatePreviewFrameAspect("imgLabelBack", orientation);
+                    getBackImgAdjuster().setImage(card.imgUrlBack.startsWith("blob:"));
+                };
+                imgPreviewBack.src = card.imgUrlBack;
             } else {
                 imgPreviewBack.src = "";
                 imgPreviewBack.classList.add("hidden");
                 document.getElementById("imgPlaceholderBack").classList.remove("hidden");
                 document.getElementById("removeBackBtn").classList.add("hidden");
                 document.getElementById("imgResetBackBtn").classList.add("hidden");
+                updatePreviewFrameAspect("imgLabelBack", "portrait");
                 getBackImgAdjuster().deactivate();
             }
 
