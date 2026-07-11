@@ -5162,7 +5162,7 @@
             }
 
             document.getElementById("previewModal").classList.remove("hidden");
-            pushModalHistory("closePreviewModal");
+            requestAnimationFrame(() => pushModalHistory("closePreviewModal"));
         }
 
         // プレビューモーダル内の画像領域をタップすると表/裏を切り替える
