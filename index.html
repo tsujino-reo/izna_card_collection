@@ -1419,6 +1419,11 @@
             localStorage.setItem(LANG_STORAGE_KEY, lang);
             applyTranslations();
             updateViewModeToggleButton();
+            updateViewModalFlipHintText();
+            updateSelectedCountLabel();
+            updateUndoMessageText();
+            updateStorageLabelText();
+            updateBgPreviewPlaceholderText();
         }
 
         // PINゲートは認証状態に関わらずページ読み込み直後に表示されるため、
@@ -2773,6 +2778,9 @@
         // ── 削除Undo用の状態 ─────────────────────────────────────────
         let lastDeletedSnapshot = null; // { cards: [...], images: Map<id, dataUrl> }
         let undoTimer = null;
+
+        // storageLabelが現在どの文言を表示中か（数値表示中はnull。言語切替時の再翻訳に使う）
+        let storageLabelState = null; // null | "unsupported" | "error"
 
         // 【修正5】生成済みSortableインスタンスを保持し、再描画前に破棄するためのレジストリ
         let sortableInstances = [];
@@ -5502,6 +5510,13 @@
             }
         }
 
+        // プレビューモーダルの裏表タップヒントの文言を、表示中の場合のみ現在の言語で書き直す
+        function updateViewModalFlipHintText() {
+            const flipHint = document.getElementById("viewModalFlipHint");
+            if (flipHint.classList.contains("hidden")) return; // 裏面なし/モーダル未表示中は何もしない
+            flipHint.innerText = isShowingBackFace ? t("🔄 タップして表面") : t("🔄 タップして裏面");
+        }
+
         function toggleViewModalFace() {
             const card = pcData.find(d => d.id === currentPreviewCardId);
             if (!card || !card.imgUrlBack) return; // 裏面が無いカードは切り替え不要
@@ -5736,6 +5751,15 @@
                 document.getElementById("bgPcPreview").style.backgroundImage = "";
                 adjustPanel.classList.add("hidden");
             }
+        }
+
+        // 背景プレビューの「未設定」文言を、表示中（背景画像が設定されていない）の場合のみ
+        // 現在の言語で書き直す。画像表示中はbackgroundImageがセットされているため対象外。
+        function updateBgPreviewPlaceholderText() {
+            ["bgGlobalPreview", "bgComboPreview"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.style.backgroundImage) el.innerHTML = t("未設定");
+            });
         }
 
         // 拡大率スライダー・矢印ボタンの操作を、現在のプレビューと実際の保存値の両方に反映する
@@ -6350,6 +6374,12 @@
             }, 6000);
         }
 
+        // undoバーの「n枚を削除しました」文言を、表示中の場合のみ現在の言語で書き直す
+        function updateUndoMessageText() {
+            if (!lastDeletedSnapshot) return; // バー非表示中は何もしない
+            document.getElementById("undoMessage").innerText = `${lastDeletedSnapshot.cards.length}${t("枚を削除しました")}`;
+        }
+
         async function undoLastDelete() {
             if (!lastDeletedSnapshot) return;
             const { cards, images } = lastDeletedSnapshot;
@@ -6566,10 +6596,23 @@
                     const usageMB = (usage / 1024 / 1024).toFixed(1);
                     const quotaMB = (quota / 1024 / 1024).toFixed(0);
                     document.getElementById("storageLabel").innerText = `${usageMB} MB / ${quotaMB} MB (${pct.toFixed(0)}%)`;
+                    storageLabelState = null;
                 } else {
                     document.getElementById("storageLabel").innerText = t("この端末では取得できません");
+                    storageLabelState = "unsupported";
                 }
             } catch (e) {
+                document.getElementById("storageLabel").innerText = t("取得に失敗しました");
+                storageLabelState = "error";
+            }
+        }
+
+        // storageLabelが「取得不可/失敗」の文言を表示中の場合のみ、現在の言語で書き直す
+        // （数値表示中は言語に依存しないため何もしない）
+        function updateStorageLabelText() {
+            if (storageLabelState === "unsupported") {
+                document.getElementById("storageLabel").innerText = t("この端末では取得できません");
+            } else if (storageLabelState === "error") {
                 document.getElementById("storageLabel").innerText = t("取得に失敗しました");
             }
         }
