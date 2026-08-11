@@ -889,6 +889,7 @@
                 "トレカ画像を登録してください！": "Please register a card image!",
                 "メンバーを1人以上選択してください！": "Please select at least one member!",
                 "保存に失敗しました。エラー: ": "Failed to save. Error: ",
+                "カード情報は保存されましたが、画像のアップロードに失敗しました。もう一度保存すると再アップロードされます。": "The card info was saved, but the image failed to upload. Save again to retry the upload.",
                 // ── 第2弾: アルバム/店舗/メンバー写真管理画面 ──
                 "アルバム管理": "Album Management",
                 "新規アルバムを追加": "Add New Album",
@@ -1174,6 +1175,7 @@
                 "トレカ画像を登録してください！": "카드 이미지를 등록해 주세요!",
                 "メンバーを1人以上選択してください！": "멤버를 1명 이상 선택해 주세요!",
                 "保存に失敗しました。エラー: ": "저장에 실패했습니다. 오류: ",
+                "カード情報は保存されましたが、画像のアップロードに失敗しました。もう一度保存すると再アップロードされます。": "카드 정보는 저장되었지만, 이미지 업로드에는 실패했습니다. 다시 저장하면 재업로드됩니다.",
                 // ── 第2弾: 앨범/매장/멤버 사진 관리 화면 ──
                 "アルバム管理": "앨범 관리",
                 "新規アルバムを追加": "새 앨범 추가",
@@ -3173,14 +3175,19 @@
         }
 
         // トレカ画像をIndexedDB（ローカルキャッシュ）とFirebase Storage（他端末との同期用）の
-        // 両方に保存する。Storage側は失敗してもIndexedDBへの保存は既に完了しているため握りつぶす
-        // （オフライン時など。次にこのカードを保存し直せば改めてアップロードされる）。
+        // 両方に保存する。IndexedDBへの保存が成功していればローカルでは失われないため、
+        // Storage側が失敗した場合はisImageUploadErrorフラグ付きのエラーを投げて呼び出し元に
+        // 判断を委ねる（オフライン時など。次にこのカードを保存し直せば改めてアップロードされる）。
         async function saveCardImage(id, dataUrl) {
             await saveImageBlob(id, dataUrl);
             try {
                 await fbStorage.ref(`cards/${id}.jpg`).putString(dataUrl, "data_url");
             } catch (err) {
                 console.warn(`Storageへの画像アップロードに失敗しました (cards/${id}.jpg):`, err);
+                const uploadErr = new Error(`Failed to upload image to Storage: cards/${id}.jpg`);
+                uploadErr.isImageUploadError = true;
+                uploadErr.originalError = err;
+                throw uploadErr;
             }
         }
 
@@ -5154,16 +5161,23 @@
         // またはこの端末にBlobがある既存画像）は常に現在の調整結果を書き出して保存し、
         // 調整不可（Storageのみの既存画像等）の場合は新しい画像が選ばれた時だけ差し替える。
         // これにより、調整していない既存カードの画像を無駄に再圧縮・再アップロードしない。
+        // 戻り値: Storageへのアップロードに失敗した場合はfalse、それ以外（保存不要だった場合も含む）はtrue。
         async function saveAdjustedCardImage(id, viewportEl, adjuster, tempDataUrl, forceSave) {
-            if (adjuster.isInteractive()) {
-                if (forceSave || tempDataUrl || adjuster.isDirty()) {
-                    const isLandscape = viewportEl.clientWidth > viewportEl.clientHeight;
-                    const outW = isLandscape ? 1200 : 800;
-                    const outH = isLandscape ? 800 : 1200;
-                    await saveCardImage(id, adjuster.exportDataUrl(outW, outH, 0.85));
+            try {
+                if (adjuster.isInteractive()) {
+                    if (forceSave || tempDataUrl || adjuster.isDirty()) {
+                        const isLandscape = viewportEl.clientWidth > viewportEl.clientHeight;
+                        const outW = isLandscape ? 1200 : 800;
+                        const outH = isLandscape ? 800 : 1200;
+                        await saveCardImage(id, adjuster.exportDataUrl(outW, outH, 0.85));
+                    }
+                } else if (tempDataUrl) {
+                    await saveCardImage(id, tempDataUrl);
                 }
-            } else if (tempDataUrl) {
-                await saveCardImage(id, tempDataUrl);
+                return true;
+            } catch (err) {
+                if (err && err.isImageUploadError) return false;
+                throw err;
             }
         }
 
@@ -5193,6 +5207,11 @@
             btn.disabled = true;
             btn.textContent = t("保存中...");
 
+            // カードのメタデータ（Firestore/IndexedDB）は保存できたが、画像のStorageアップロードだけ
+            // 失敗した場合に立てるフラグ。データ自体は失われていないため、この場合も通常の保存成功フロー
+            // （モーダルを閉じてプレビューを開く等）は継続しつつ、最後にユーザーへ個別に警告する。
+            let imageUploadFailed = false;
+
             try {
                 let newId = null;
                 if (editId) {
@@ -5212,18 +5231,20 @@
                         await saveCardToDB(card);
                         await logCardActivity("update", card);
                         // 新しい画像が選ばれた場合、または既存画像をピンチ/ドラッグで調整した場合に保存する
-                        await saveAdjustedCardImage(
+                        const frontOk = await saveAdjustedCardImage(
                             card.id, document.getElementById("imgLabel"), getFrontImgAdjuster(),
                             currentTempImageUrl, false
                         );
+                        if (!frontOk) imageUploadFailed = true;
                         // 裏面: 削除フラグが立っていればBlobを削除、そうでなければ表面と同様に保存判定する
                         if (removeBackImageFlag) {
                             await deleteCardImage(card.id + "_back");
                         } else {
-                            await saveAdjustedCardImage(
+                            const backOk = await saveAdjustedCardImage(
                                 card.id + "_back", document.getElementById("imgLabelBack"), getBackImgAdjuster(),
                                 currentTempImageUrlBack, false
                             );
+                            if (!backOk) imageUploadFailed = true;
                         }
                     }
                 } else {
@@ -5244,16 +5265,22 @@
                     if (currentRole !== "admin") newCard.needsReview = true;
                     await saveCardToDB(newCard);
                     await logCardActivity("create", newCard);
-                    await saveAdjustedCardImage(
+                    const frontOk = await saveAdjustedCardImage(
                         newId, document.getElementById("imgLabel"), getFrontImgAdjuster(),
                         currentTempImageUrl, true
                     );
+                    if (!frontOk) imageUploadFailed = true;
                     if (currentTempImageUrlBack) {
-                        await saveAdjustedCardImage(
+                        const backOk = await saveAdjustedCardImage(
                             newId + "_back", document.getElementById("imgLabelBack"), getBackImgAdjuster(),
                             currentTempImageUrlBack, true
                         );
+                        if (!backOk) imageUploadFailed = true;
                     }
+                }
+
+                if (imageUploadFailed) {
+                    alert(t("カード情報は保存されましたが、画像のアップロードに失敗しました。もう一度保存すると再アップロードされます。"));
                 }
 
                 document.getElementById("cardModal").classList.add("hidden");
@@ -6330,9 +6357,15 @@
             await saveCardsToDB(cards);
             for (const card of cards) {
                 const dataUrl = images.get(card.id);
-                if (dataUrl) await saveCardImage(card.id, dataUrl);
+                // Storageアップロードの失敗はローカル復元自体には影響しないため、ここでは握りつぶす
+                // （元に戻したカードは次回保存時に改めてアップロードされる）。
+                if (dataUrl) await saveCardImage(card.id, dataUrl).catch(err => {
+                    if (!err || !err.isImageUploadError) throw err;
+                });
                 const backDataUrl = images.get(card.id + "_back");
-                if (backDataUrl) await saveCardImage(card.id + "_back", backDataUrl);
+                if (backDataUrl) await saveCardImage(card.id + "_back", backDataUrl).catch(err => {
+                    if (!err || !err.isImageUploadError) throw err;
+                });
             }
 
             lastDeletedSnapshot = null;
