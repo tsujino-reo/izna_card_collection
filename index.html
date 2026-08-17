@@ -419,7 +419,7 @@
                         <button type="button" onclick="openCameraCapture('front')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="📸 撮影">
                             📸 撮影
                         </button>
-                        <button type="button" onclick="document.getElementById('formImage').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
+                        <button type="button" onclick="openFilePickerWithFallback('formImage')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
                             🖼️ ギャラリー
                         </button>
                     </div>
@@ -443,7 +443,7 @@
                         <button type="button" onclick="openCameraCapture('back')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="📸 撮影">
                             📸 撮影
                         </button>
-                        <button type="button" onclick="document.getElementById('formImageBack').click()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
+                        <button type="button" onclick="openFilePickerWithFallback('formImageBack')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[10px] rounded-lg py-2 font-bold transition-colors flex items-center justify-center gap-1" data-i18n="🖼️ ギャラリー">
                             🖼️ ギャラリー
                         </button>
                     </div>
@@ -4256,13 +4256,52 @@
             }
         }
 
+        // 一部のキャリア/OEM製ブラウザ（独自UIの「かんたんブラウザ」「あんしんブラウザ」等）では、
+        // ファイル選択ピッカーが正しく開かない、または選択結果がinputに反映されないことがある。
+        // 未知の亜種が多くUA判定では網羅できないため、click()後の状態遷移を汎用的に監視し、
+        // うまくいっていなさそうな場合にのみ代替ブラウザを勧める案内を出す。
+        // 検出は3シグナルの組み合わせ:
+        //   A) changeイベント発火 → 成功。何もしない
+        //   B) visibilitychangeでタブがvisibleに復帰し、1秒待ってもchangeが来ない → ピッカーは開いたが結果が反映されなかった
+        //   C) click()から8秒経ってもA/Bどちらも起きない → ピッカー自体が開いていない（一部WebViewはvisibilitychangeも発火しない）
+        // 誤検出（単なるキャンセル）の影響を抑えるため、案内はセッション中1回までに制限する。
+        let filePickerFallbackShown = false;
+        function openFilePickerWithFallback(inputId) {
+            const input = document.getElementById(inputId);
+            let resolved = false;
+
+            function cleanup() {
+                clearTimeout(timeoutId);
+                input.removeEventListener("change", onChange);
+                document.removeEventListener("visibilitychange", onVisible);
+            }
+            function maybeShowFallback() {
+                cleanup();
+                if (resolved || filePickerFallbackShown) return;
+                filePickerFallbackShown = true;
+                showErrorToast(t("ファイル選択がうまく反映されない場合は、Safari/Chromeでの利用をお試しください"));
+            }
+            function onChange() {
+                resolved = true;
+                cleanup();
+            }
+            function onVisible() {
+                if (document.visibilityState !== "visible") return;
+                setTimeout(maybeShowFallback, 1000);
+            }
+
+            const timeoutId = setTimeout(maybeShowFallback, 8000);
+            input.addEventListener("change", onChange);
+            document.addEventListener("visibilitychange", onVisible);
+            input.click();
+        }
+
         // 管理者がタブの📷ボタンを押した時に、対象メンバーの顔写真選択を開始する
         let memberPhotoTargetName = null;
         function openMemberPhotoPicker(memberName) {
             memberPhotoTargetName = memberName;
-            const input = document.getElementById("memberPhotoInput");
-            input.value = "";
-            input.click();
+            document.getElementById("memberPhotoInput").value = "";
+            openFilePickerWithFallback("memberPhotoInput");
         }
 
         // 選択した写真を、位置・ズーム調整モーダルに読み込んで表示する（この時点では保存しない）
@@ -4797,7 +4836,7 @@
         function handleImgAreaClick(event, inputId, previewId) {
             const preview = document.getElementById(previewId);
             if (preview && !preview.classList.contains("hidden")) return;
-            document.getElementById(inputId).click();
+            openFilePickerWithFallback(inputId);
         }
 
         function resetImageAdjust(face) {
